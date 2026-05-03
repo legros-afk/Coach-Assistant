@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Woodford RFC palette ─────────────────────────────── */
+:root {
+  --brand-purple:        #782880;
+  --brand-purple-dark:   #5C1E63;
+  --brand-purple-light:  #9B4FA1;
+  --brand-purple-soft:   #F4E8F5;
+  --brand-purple-softer: #FAF3FB;
+  --brand-ink:           #201820;
+}
+
+/* ─── Resets / base ─────────────────────────────────────── */
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent iOS rubber-band scroll on the body */
+  overscroll-behavior-y: none;
+}
+
+/* ─── Utility classes shared across features ────────────── */
+@layer utilities {
+  .tap-target {
+    min-height: 56px;
+  }
+
+  .mono {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  /* iOS safe-area bottom padding on scroll containers */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* ─── Sub-builder confirm pulse ──────────────────────────── */
+@keyframes pulse-ready {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(120, 40, 128, 0.6); }
+  50%       { box-shadow: 0 0 0 10px rgba(120, 40, 128, 0); }
+}
+.pulse-ready {
+  animation: pulse-ready 1.6s ease-out infinite;
+}
