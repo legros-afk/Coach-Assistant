@@ -8,6 +8,7 @@ import FixtureListScreen from '@/features/fixture/FixtureListScreen'
 import FixturePrepScreen from '@/features/fixture/FixturePrepScreen'
 import HomeScreen from '@/features/home/HomeScreen'
 import { WoodfordMark } from '@/components/WoodfordMark'
+import InstallPrompt from '@/components/InstallPrompt'
 import { FOLDER_ID_KEY } from '@/lib/drive/driveRead'
 import { syncFromDrive } from '@/lib/drive/driveSync'
 import type { Fixture } from '@/lib/events/types'
@@ -84,6 +85,8 @@ export default function App() {
           onSaved={() => setScreen('fixtures')}
         />
       )}
+
+      <InstallPrompt />
 
       {showTabBar && (
         <div

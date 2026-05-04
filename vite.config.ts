@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/*.png', 'woodford-mark.svg'],
+      includeAssets: ['woodford-mark.svg', 'favicon.ico', '*.png'],
       manifest: {
         name: 'Coach Assistant — Woodford RFC',
         short_name: 'Coach',
@@ -19,10 +19,12 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
+        scope: '/',
         icons: [
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'pwa-64x64.png',              sizes: '64x64',   type: 'image/png' },
+          { src: 'pwa-192x192.png',             sizes: '192x192', type: 'image/png' },
+          { src: 'pwa-512x512.png',             sizes: '512x512', type: 'image/png' },
+          { src: 'maskable-icon-512x512.png',   sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
