@@ -1,7 +1,10 @@
 import { create } from 'zustand';
+import { db } from '@/lib/db/db';
 import { replayEvents } from '@/lib/events/replay';
 import type { ID, MatchEvent, MatchState, Player, TeamSheet } from '@/lib/events/types';
 import { DEMO_SQUAD, DEMO_TEAM_SHEET } from './mockData';
+
+const DEMO_MATCH_ID = 'demo';
 
 let _seq = 0;
 const newId = () => `${Date.now()}-${++_seq}`;
@@ -12,6 +15,7 @@ interface MatchStore {
   teamSheet: TeamSheet;
   events: MatchEvent[];
   matchState: MatchState;
+  isHydrated: boolean;
 
   // wall-clock tracking for live elapsed (not in events)
   clockRunning: boolean;
@@ -19,6 +23,7 @@ interface MatchStore {
   baseElapsedMs: number;
 
   currentElapsedMs: () => number;
+  hydrate: () => Promise<void>;
   startClock: () => void;
   pauseClock: () => void;
   endHalf: () => void;
@@ -35,9 +40,22 @@ interface MatchStore {
 function withEvent(
   state: MatchStore,
   event: MatchEvent,
-): Partial<MatchStore> {
+): Pick<MatchStore, 'events' | 'matchState'> {
   const events = [...state.events, event];
   return { events, matchState: replayEvents(events, state.teamSheet, state.squad) };
+}
+
+function persist(events: MatchEvent[]): void {
+  db.matches.put({
+    id: DEMO_MATCH_ID,
+    fixtureId: 'demo-fixture',
+    teamSheetId: DEMO_TEAM_SHEET.id,
+    opponent: 'Saints',
+    events,
+    startedAt: undefined,
+    endedAt: undefined,
+    version: 1,
+  });
 }
 
 export const useMatchStore = create<MatchStore>()((set, get) => ({
@@ -45,6 +63,7 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
   teamSheet: DEMO_TEAM_SHEET,
   events: [],
   matchState: replayEvents([], DEMO_TEAM_SHEET, DEMO_SQUAD),
+  isHydrated: false,
 
   clockRunning: false,
   clockStartedAt: null,
@@ -57,6 +76,24 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
       : baseElapsedMs;
   },
 
+  hydrate: async () => {
+    const stored = await db.matches.get(DEMO_MATCH_ID);
+    if (stored && stored.events.length > 0) {
+      const { squad, teamSheet } = get();
+      const matchState = replayEvents(stored.events, teamSheet, squad);
+      set({
+        events: stored.events,
+        matchState,
+        baseElapsedMs: matchState.elapsedMs,
+        clockRunning: false,
+        clockStartedAt: null,
+        isHydrated: true,
+      });
+    } else {
+      set({ isHydrated: true });
+    }
+  },
+
   startClock: () => {
     const state = get();
     const hasHalf1End = state.events.some(
@@ -64,14 +101,18 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
     );
     const half: 1 | 2 = hasHalf1End ? 2 : 1;
     const event: MatchEvent = { id: newId(), ts: nowIso(), type: 'CLOCK_START', payload: { half } };
-    set({ clockRunning: true, clockStartedAt: Date.now(), ...withEvent(state, event) });
+    const patch = withEvent(state, event);
+    set({ clockRunning: true, clockStartedAt: Date.now(), ...patch });
+    persist(patch.events);
   },
 
   pauseClock: () => {
     const state = get();
     const elapsedMs = state.currentElapsedMs();
     const event: MatchEvent = { id: newId(), ts: nowIso(), type: 'CLOCK_PAUSE', payload: { elapsedMs } };
-    set({ clockRunning: false, clockStartedAt: null, baseElapsedMs: elapsedMs, ...withEvent(state, event) });
+    const patch = withEvent(state, event);
+    set({ clockRunning: false, clockStartedAt: null, baseElapsedMs: elapsedMs, ...patch });
+    persist(patch.events);
   },
 
   endHalf: () => {
@@ -79,7 +120,9 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
     const elapsedMs = state.currentElapsedMs();
     const half = state.matchState.half;
     const event: MatchEvent = { id: newId(), ts: nowIso(), type: 'HALF_END', payload: { half, elapsedMs } };
-    set({ clockRunning: false, clockStartedAt: null, baseElapsedMs: elapsedMs, ...withEvent(state, event) });
+    const patch = withEvent(state, event);
+    set({ clockRunning: false, clockStartedAt: null, baseElapsedMs: elapsedMs, ...patch });
+    persist(patch.events);
   },
 
   recordTryUs: (scorerId) => {
@@ -88,7 +131,9 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
       id: newId(), ts: nowIso(), type: 'TRY_US',
       payload: { scorerId, elapsedMs: state.currentElapsedMs() },
     };
-    set(withEvent(state, event));
+    const patch = withEvent(state, event);
+    set(patch);
+    persist(patch.events);
   },
 
   recordTryThem: () => {
@@ -97,7 +142,9 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
       id: newId(), ts: nowIso(), type: 'TRY_THEM',
       payload: { elapsedMs: state.currentElapsedMs() },
     };
-    set(withEvent(state, event));
+    const patch = withEvent(state, event);
+    set(patch);
+    persist(patch.events);
   },
 
   commitSubBatch: (offIds, onIds) => {
@@ -106,7 +153,9 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
       id: newId(), ts: nowIso(), type: 'SUB_BATCH',
       payload: { offIds, onIds, elapsedMs: state.currentElapsedMs() },
     };
-    set(withEvent(state, event));
+    const patch = withEvent(state, event);
+    set(patch);
+    persist(patch.events);
   },
 
   bloodOff: (playerId, replacementId) => {
@@ -115,7 +164,9 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
       id: newId(), ts: nowIso(), type: 'BLOOD_OFF',
       payload: { playerId, replacementId, elapsedMs: state.currentElapsedMs() },
     };
-    set(withEvent(state, event));
+    const patch = withEvent(state, event);
+    set(patch);
+    persist(patch.events);
   },
 
   bloodReturn: (playerId) => {
@@ -124,7 +175,9 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
       id: newId(), ts: nowIso(), type: 'BLOOD_RETURN',
       payload: { playerId, elapsedMs: state.currentElapsedMs() },
     };
-    set(withEvent(state, event));
+    const patch = withEvent(state, event);
+    set(patch);
+    persist(patch.events);
   },
 
   injuredOff: (playerId, replacementId) => {
@@ -133,7 +186,9 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
       id: newId(), ts: nowIso(), type: 'INJURED_OFF',
       payload: { playerId, replacementId, elapsedMs: state.currentElapsedMs() },
     };
-    set(withEvent(state, event));
+    const patch = withEvent(state, event);
+    set(patch);
+    persist(patch.events);
   },
 
   injuredReturn: (playerId) => {
@@ -142,7 +197,9 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
       id: newId(), ts: nowIso(), type: 'INJURED_RETURN',
       payload: { playerId, elapsedMs: state.currentElapsedMs() },
     };
-    set(withEvent(state, event));
+    const patch = withEvent(state, event);
+    set(patch);
+    persist(patch.events);
   },
 
   undoLast: () => {
@@ -152,7 +209,6 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
     const newEvents = events.slice(0, -1);
     const newMatchState = replayEvents(newEvents, teamSheet, squad);
     const clockPatch: Partial<MatchStore> = {};
-    // sync live clock state when undoing clock events
     if (last.type === 'CLOCK_START' && clockRunning) {
       clockPatch.clockRunning = false;
       clockPatch.clockStartedAt = null;
@@ -163,5 +219,6 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
       clockPatch.baseElapsedMs = newMatchState.elapsedMs;
     }
     set({ events: newEvents, matchState: newMatchState, ...clockPatch });
+    persist(newEvents);
   },
 }));
