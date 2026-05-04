@@ -1,4 +1,4 @@
-import type { Fixture, Squad } from '@/lib/events/types';
+import type { Fixture, Match, Squad } from '@/lib/events/types';
 import { requestDriveToken } from './driveAuth';
 import { upsertJsonFile, ensureSubfolder, DriveWriteError } from './driveWrite';
 
@@ -49,6 +49,29 @@ export async function publishFixture(fixture: Fixture, folderId: string): Promis
     const fileName = `${fixture.date}-vs-${safeName}.json`;
     const cached = getFileIds()[fileKey];
     const newFileId = await upsertJsonFile(fileName, fixture, fixturesFolderId, token, cached);
+    cacheFileId(fileKey, newFileId);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: friendlyError(e) };
+  }
+}
+
+export async function publishMatch(match: Match, folderId: string, date: string): Promise<PublishResult> {
+  try {
+    const token = await requestDriveToken();
+
+    const folderKey = 'matches-folder';
+    let matchesFolderId = getFileIds()[folderKey];
+    if (!matchesFolderId) {
+      matchesFolderId = await ensureSubfolder('matches', folderId, token);
+      cacheFileId(folderKey, matchesFolderId);
+    }
+
+    const fileKey = `match-${match.id}`;
+    const safeName = match.opponent.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
+    const fileName = `${date}-vs-${safeName}-${match.teamSheetId}.json`;
+    const cached = getFileIds()[fileKey];
+    const newFileId = await upsertJsonFile(fileName, match, matchesFolderId, token, cached);
     cacheFileId(fileKey, newFileId);
     return { ok: true };
   } catch (e) {

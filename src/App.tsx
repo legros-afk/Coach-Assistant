@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Calendar, Home, Users } from 'lucide-react'
 import LiveMatch from '@/features/match/LiveMatch'
 import PostMatchScreen from '@/features/match/PostMatchScreen'
@@ -38,6 +38,24 @@ export default function App() {
 
   const showTabBar = screen === 'home' || screen === 'squad' || screen === 'fixtures'
 
+  const TAB_ORDER = ['home', 'fixtures', 'squad'] as const
+  const tabIndex = TAB_ORDER.indexOf(screen as typeof TAB_ORDER[number])
+  const swipeStart = useRef<{ x: number; y: number } | null>(null)
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (tabIndex === -1) return
+    swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!swipeStart.current || tabIndex === -1) return
+    const dx = e.changedTouches[0].clientX - swipeStart.current.x
+    const dy = e.changedTouches[0].clientY - swipeStart.current.y
+    swipeStart.current = null
+    if (Math.abs(dx) < 60 || Math.abs(dy) > 80) return
+    if (dx < 0 && tabIndex < TAB_ORDER.length - 1) setScreen(TAB_ORDER[tabIndex + 1])
+    if (dx > 0 && tabIndex > 0) setScreen(TAB_ORDER[tabIndex - 1])
+  }
+
   if (screen === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: PURPLE }}>
@@ -51,7 +69,7 @@ export default function App() {
   }
 
   return (
-    <>
+    <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="contents">
       {screen === 'home' && (
         <HomeScreen
           onMatch={() => setScreen('match')}
@@ -109,6 +127,6 @@ export default function App() {
           ))}
         </div>
       )}
-    </>
+    </div>
   )
 }

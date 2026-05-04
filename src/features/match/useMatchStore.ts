@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { db } from '@/lib/db/db';
 import { replayEvents } from '@/lib/events/replay';
-import type { ID, MatchEvent, MatchState, Player, TeamSheet } from '@/lib/events/types';
+import type { ID, Match, MatchEvent, MatchState, Player, TeamSheet } from '@/lib/events/types';
+import { FOLDER_ID_KEY } from '@/lib/drive/driveRead';
+import { publishMatch } from '@/lib/drive/drivePublish';
 import { DEMO_SQUAD, DEMO_TEAM_SHEET } from './mockData';
 
 let _seq = 0;
@@ -162,10 +164,26 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
     endMatch: () => {
       const state = get();
       const elapsedMs = state.currentElapsedMs();
-      const event: MatchEvent = { id: newId(), ts: nowIso(), type: 'MATCH_END', payload: { elapsedMs } };
-      const patch = withEvent(state, event);
+      const endEvent: MatchEvent = { id: newId(), ts: nowIso(), type: 'MATCH_END', payload: { elapsedMs } };
+      const patch = withEvent(state, endEvent);
       set({ clockRunning: false, clockStartedAt: null, baseElapsedMs: elapsedMs, ...patch });
       persist(patch.events);
+
+      const folderId = localStorage.getItem(FOLDER_ID_KEY);
+      if (folderId && state.matchId) {
+        const date = (patch.events[0]?.ts ?? endEvent.ts).slice(0, 10);
+        const matchRecord: Match = {
+          id: state.matchId,
+          fixtureId: state.fixtureId ?? state.matchId,
+          teamSheetId: state.teamSheet.id,
+          opponent: state.opponent,
+          events: patch.events,
+          startedAt: patch.events[0]?.ts,
+          endedAt: endEvent.ts,
+          version: 1,
+        };
+        publishMatch(matchRecord, folderId, date).catch(() => {/* best-effort */});
+      }
     },
 
     recordTryUs: (scorerId) => {
