@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { useMatchStore } from '@/features/match/useMatchStore'
+import { useSquadStore } from '@/features/squad/useSquadStore'
+import type { Match, TeamSheet } from '@/lib/events/types'
 import { Calendar, Home, Users } from 'lucide-react'
 import LiveMatch from '@/features/match/LiveMatch'
 import PostMatchScreen from '@/features/match/PostMatchScreen'
@@ -34,6 +37,13 @@ export default function App() {
   const openFixturePrep = (fixture?: Fixture) => {
     setEditingFixture(fixture)
     setScreen('fixture-prep')
+  }
+
+  const openStoredMatch = (match: Match, teamSheet: TeamSheet) => {
+    const squad = useSquadStore.getState().squad
+    if (!squad) return
+    useMatchStore.getState().loadStoredMatch(match, teamSheet, squad.players)
+    setScreen('post-match')
   }
 
   const showTabBar = screen === 'home' || screen === 'squad' || screen === 'fixtures'
@@ -93,6 +103,7 @@ export default function App() {
         <FixtureListScreen
           onNew={() => openFixturePrep()}
           onEdit={f => openFixturePrep(f)}
+          onViewMatch={openStoredMatch}
         />
       )}
       {screen === 'fixture-prep' && (

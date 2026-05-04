@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Calendar, ChevronRight, Plus, RefreshCw } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
-import type { Fixture } from '@/lib/events/types'
+import type { Fixture, Match, TeamSheet } from '@/lib/events/types'
+import { db } from '@/lib/db/db'
 import { useFixtureStore } from './useFixtureStore'
 import { useSyncStore, fmtSyncAge, driveConfigured } from '@/lib/drive/useSyncStore'
 
@@ -12,14 +13,20 @@ const INK         = '#201820'
 interface Props {
   onNew: () => void
   onEdit: (fixture: Fixture) => void
+  onViewMatch: (match: Match, teamSheet: TeamSheet) => void
 }
 
-export default function FixtureListScreen({ onNew, onEdit }: Props) {
+export default function FixtureListScreen({ onNew, onEdit, onViewMatch }: Props) {
   const { fixtures, isHydrated, hydrate } = useFixtureStore()
   const { isSyncing, lastSyncedAt, syncAll } = useSyncStore()
   const hasDrive = driveConfigured()
+  const [matchMap, setMatchMap] = useState<Map<string, Match>>(new Map())
 
   useEffect(() => { if (!isHydrated) hydrate() }, [isHydrated, hydrate])
+
+  useEffect(() => {
+    db.matches.toArray().then(all => setMatchMap(new Map(all.map(m => [m.id, m]))))
+  }, [isHydrated])
 
   return (
     <div className="min-h-screen pb-24" style={{ background: '#F5F3F0', color: INK }}>
@@ -71,20 +78,44 @@ export default function FixtureListScreen({ onNew, onEdit }: Props) {
           </div>
         ) : (
           <div className="space-y-1.5">
-            {fixtures.map(f => (
-              <button
-                key={f.id}
-                onClick={() => onEdit(f)}
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border active:scale-[0.99] transition text-left"
-                style={{ borderColor: '#E7E5E4' }}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm" style={{ color: INK }}>vs {f.opponent}</div>
-                  <div className="text-xs text-stone-400">{f.date} · {f.teamSheets.length} team sheet{f.teamSheets.length !== 1 ? 's' : ''}</div>
-                </div>
-                <ChevronRight size={16} className="text-stone-300 flex-shrink-0" />
-              </button>
-            ))}
+            {fixtures.map(f => {
+              const playedSheets = f.teamSheets.filter(ts => matchMap.has(ts.id))
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => onEdit(f)}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border active:scale-[0.99] transition text-left"
+                  style={{ borderColor: '#E7E5E4' }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm" style={{ color: INK }}>vs {f.opponent}</div>
+                    <div className="text-xs text-stone-400">{f.date} · {f.teamSheets.length} team sheet{f.teamSheets.length !== 1 ? 's' : ''}</div>
+                  </div>
+                  {playedSheets.length > 0 && (
+                    <div className="flex gap-1 items-center flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      {playedSheets.map(ts => {
+                        const match = matchMap.get(ts.id)!
+                        const scoreUs = match.events.filter(e => e.type === 'TRY_US').length
+                        const scoreThem = match.events.filter(e => e.type === 'TRY_THEM').length
+                        const result = scoreUs > scoreThem ? 'W' : scoreUs < scoreThem ? 'L' : 'D'
+                        const bg = result === 'W' ? '#059669' : result === 'L' ? '#DC2626' : '#D97706'
+                        return (
+                          <button
+                            key={ts.id}
+                            onClick={() => onViewMatch(match, ts)}
+                            className="px-2 py-1 rounded text-[11px] font-bold text-white active:scale-95 transition"
+                            style={{ background: bg }}
+                          >
+                            {ts.label} {scoreUs}–{scoreThem}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <ChevronRight size={16} className="text-stone-300 flex-shrink-0" />
+                </button>
+              )
+            })}
           </div>
         )}
       </div>

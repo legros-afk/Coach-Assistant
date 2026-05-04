@@ -34,6 +34,7 @@ interface MatchStore {
   currentElapsedMs: () => number;
   initMatch: (args: InitMatchArgs) => Promise<void>;
   initDemoMatch: () => Promise<void>;
+  loadStoredMatch: (match: Match, teamSheet: TeamSheet, players: Player[]) => void;
   startClock: () => void;
   pauseClock: () => void;
   endHalf: () => void;
@@ -121,6 +122,23 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
     initMatch: async ({ fixtureId, teamSheet, squad, opponent }) => {
       const patch = await loadMatchState(teamSheet.id, fixtureId, opponent, teamSheet, squad);
       set(patch as MatchStore);
+    },
+
+    loadStoredMatch: (match, teamSheet, players) => {
+      const matchState = replayEvents(match.events, teamSheet, players);
+      set({
+        matchId: match.id,
+        fixtureId: match.fixtureId,
+        opponent: match.opponent,
+        squad: players,
+        teamSheet,
+        events: match.events,
+        matchState,
+        baseElapsedMs: matchState.elapsedMs,
+        clockRunning: false,
+        clockStartedAt: null,
+        isHydrated: true,
+      });
     },
 
     initDemoMatch: async () => {
