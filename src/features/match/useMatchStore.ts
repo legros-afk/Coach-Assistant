@@ -25,7 +25,7 @@ interface MatchStore {
   recordTryUs: (scorerId?: ID) => void;
   recordTryThem: () => void;
   commitSubBatch: (offIds: ID[], onIds: ID[]) => void;
-  bloodOff: (playerId: ID) => void;
+  bloodOff: (playerId: ID, replacementId?: ID) => void;
   bloodReturn: (playerId: ID) => void;
   injuredOff: (playerId: ID) => void;
   injuredReturn: (playerId: ID) => void;
@@ -109,11 +109,11 @@ export const useMatchStore = create<MatchStore>()((set, get) => ({
     set(withEvent(state, event));
   },
 
-  bloodOff: (playerId) => {
+  bloodOff: (playerId, replacementId) => {
     const state = get();
     const event: MatchEvent = {
       id: newId(), ts: nowIso(), type: 'BLOOD_OFF',
-      payload: { playerId, elapsedMs: state.currentElapsedMs() },
+      payload: { playerId, replacementId, elapsedMs: state.currentElapsedMs() },
     };
     set(withEvent(state, event));
   },

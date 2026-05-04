@@ -128,7 +128,7 @@ export function replayEvents(
       }
 
       case 'BLOOD_OFF': {
-        const { playerId, elapsedMs: evMs } = event.payload;
+        const { playerId, replacementId, elapsedMs: evMs } = event.payload;
         const ps = playerStates.get(playerId);
         if (ps) {
           if (running && ps.currentStintStartedAtMs !== undefined) {
@@ -136,6 +136,14 @@ export function replayEvents(
             ps.currentStintStartedAtMs = undefined;
           }
           ps.status = 'blood';
+        }
+        if (replacementId) {
+          const rps = playerStates.get(replacementId);
+          if (rps) {
+            rps.activeGroup = ps?.activeGroup ?? playerMap.get(replacementId)?.defaultGroup ?? 'forward';
+            rps.status = 'on';
+            if (running) rps.currentStintStartedAtMs = evMs;
+          }
         }
         elapsedMs = evMs;
         break;
