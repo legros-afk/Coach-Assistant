@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, List } from 'lucide-react'
+import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, List, RefreshCw } from 'lucide-react'
 import { validateComposition } from '@/lib/domain/validateComposition'
 import { parseTeamSheet } from '@/lib/domain/parseTeamSheet'
 import type { ParsedSlot } from '@/lib/domain/parseTeamSheet'
@@ -7,6 +7,9 @@ import type { Group, ID, Player, TeamSheet } from '@/lib/events/types'
 import { useSquadStore } from '@/features/squad/useSquadStore'
 import { useFixtureStore } from './useFixtureStore'
 import type { Fixture } from '@/lib/events/types'
+import { FOLDER_ID_KEY } from '@/lib/drive/driveRead'
+import { OAUTH_ENABLED } from '@/lib/drive/driveAuth'
+import { publishFixture } from '@/lib/drive/drivePublish'
 
 const PURPLE      = '#782880'
 const PURPLE_DARK = '#5C1E63'
@@ -181,8 +184,13 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
     setMode('checklist')
   }
 
-  // ── review + save
+  // ── review + save + publish
+  const folderId = localStorage.getItem(FOLDER_ID_KEY)
+  const canPublish = OAUTH_ENABLED && !!folderId
+
   const [showReview, setShowReview] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [publishResult, setPublishResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
   const teamA = useMemo(() => countTeam('A', assignments, groupOverrides, players), [assignments, groupOverrides, players])
   const teamB = useMemo(() => countTeam('B', assignments, groupOverrides, players), [assignments, groupOverrides, players])
@@ -190,11 +198,11 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
   const hasAnyB = players.some(p => assignments.get(p.id) === 'B' || assignments.get(p.id) === 'bench-B')
   const canSave = opponent.trim() && (hasAnyA || hasAnyB)
 
-  const handleSave = async () => {
+  function buildFixture(): Fixture {
     const teamSheets: TeamSheet[] = []
     if (hasAnyA) teamSheets.push(buildSheet('A', assignments, groupOverrides, players))
     if (hasAnyB) teamSheets.push(buildSheet('B', assignments, groupOverrides, players))
-    const fixture: Fixture = {
+    return {
       id: existing?.id ?? newId(),
       date,
       opponent: opponent.trim(),
@@ -202,9 +210,24 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
       updatedAt: new Date().toISOString(),
       version: (existing?.version ?? 0) + 1,
     }
-    await saveFixture(fixture)
+  }
+
+  const handleSave = async () => {
+    await saveFixture(buildFixture())
     setShowReview(false)
     onSaved()
+  }
+
+  const handleSaveAndPublish = async () => {
+    if (!folderId) return
+    const fixture = buildFixture()
+    await saveFixture(fixture)
+    setPublishing(true)
+    setPublishResult(null)
+    const result = await publishFixture(fixture, folderId)
+    setPublishing(false)
+    setPublishResult({ ok: result.ok, msg: result.ok ? 'Published to Drive.' : result.error })
+    if (result.ok) setTimeout(() => { setShowReview(false); onSaved() }, 900)
   }
 
   // ── grouped players for checklist
@@ -523,11 +546,39 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
 
             <button
               onClick={handleSave}
-              className="tap-target w-full rounded-lg font-bold text-base active:scale-95 transition mt-2"
+              disabled={publishing}
+              className="tap-target w-full rounded-lg font-bold text-base active:scale-95 transition mt-2 disabled:opacity-40"
               style={{ background: PURPLE, color: 'white', minHeight: '52px' }}
             >
               Save fixture
             </button>
+
+            {canPublish && (
+              <button
+                onClick={handleSaveAndPublish}
+                disabled={publishing}
+                className="tap-target w-full rounded-lg font-bold text-base active:scale-95 transition mt-2 flex items-center justify-center gap-2 disabled:opacity-40"
+                style={{ background: '#059669', color: 'white', minHeight: '52px' }}
+              >
+                {publishing
+                  ? <RefreshCw size={16} className="animate-spin" />
+                  : <CloudUpload size={16} strokeWidth={2} />
+                }
+                Save & Publish to Drive
+              </button>
+            )}
+
+            {publishResult && (
+              <div
+                className="mt-2 text-sm text-center px-2 py-1.5 rounded-lg"
+                style={{
+                  background: publishResult.ok ? '#D1FAE5' : '#FEE2E2',
+                  color: publishResult.ok ? '#065F46' : '#991B1B',
+                }}
+              >
+                {publishResult.msg}
+              </div>
+            )}
           </div>
         </div>
       )}

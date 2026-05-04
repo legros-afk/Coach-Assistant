@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import {
-  AlertTriangle, ChevronLeft, CloudDownload,
+  AlertTriangle, ChevronLeft, CloudDownload, CloudUpload,
   Plus, RefreshCw, Trash2, UserPlus, Users,
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, Player } from '@/lib/events/types'
+import { FOLDER_ID_KEY } from '@/lib/drive/driveRead'
+import { OAUTH_ENABLED } from '@/lib/drive/driveAuth'
+import { publishSquad } from '@/lib/drive/drivePublish'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
 
 const PURPLE      = '#782880'
@@ -52,7 +55,11 @@ export default function SquadScreen({ onBack }: Props) {
   const [editTarget, setEditTarget] = useState<Player | 'new' | null>(null)
   const [form, setForm] = useState<PlayerForm>(emptyForm())
   const [pulling, setPulling] = useState(false)
+  const [publishing, setPublishing] = useState(false)
   const [banner, setBanner] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  const folderId = localStorage.getItem(FOLDER_ID_KEY)
+  const canPublish = OAUTH_ENABLED && !!folderId && !!squad
 
   useEffect(() => { if (!isHydrated) hydrate() }, [isHydrated, hydrate])
 
@@ -113,6 +120,14 @@ export default function SquadScreen({ onBack }: Props) {
     showBanner(result.ok, result.ok ? 'Squad pulled from Drive.' : result.error ?? 'Pull failed.')
   }
 
+  const handlePublish = async () => {
+    if (!squad || !folderId) return
+    setPublishing(true)
+    const result = await publishSquad(squad, folderId)
+    setPublishing(false)
+    showBanner(result.ok, result.ok ? 'Squad published to Drive.' : result.error)
+  }
+
   const handleLoadDemo = async () => {
     await store.loadDemoSquad()
     showBanner(true, 'Demo squad loaded.')
@@ -162,12 +177,16 @@ export default function SquadScreen({ onBack }: Props) {
             Pull from club
           </button>
           <button
-            disabled
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide opacity-30 cursor-not-allowed"
+            onClick={handlePublish}
+            disabled={!canPublish || publishing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide transition active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
             style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
-            title="Publishing available in a future update"
+            title={!OAUTH_ENABLED ? 'Add VITE_GOOGLE_OAUTH_CLIENT_ID to enable' : !folderId ? 'No Drive folder configured' : 'Publish squad to Drive'}
           >
-            <CloudDownload size={13} strokeWidth={2.5} className="rotate-180" />
+            {publishing
+              ? <RefreshCw size={13} className="animate-spin" />
+              : <CloudUpload size={13} strokeWidth={2.5} />
+            }
             Publish to club
           </button>
         </div>

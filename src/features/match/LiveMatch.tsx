@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Activity, AlertTriangle, ArrowRight, Check,
+  Activity, AlertTriangle, ArrowRight, Check, ChevronLeft,
   Heart, Pause, Play, Plus, Trophy, Undo2, Users, X,
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
@@ -219,11 +219,11 @@ function ScoreButton({
 
 // ── main screen ────────────────────────────────────────────────────────────────
 
-interface LiveMatchProps { onOpenSquad?: () => void }
+interface LiveMatchProps { onBack?: () => void; onOpenSquad?: () => void }
 
-export default function LiveMatch({ onOpenSquad }: LiveMatchProps) {
+export default function LiveMatch({ onBack, onOpenSquad }: LiveMatchProps) {
   const store = useMatchStore()
-  const { matchState, squad, clockRunning } = store
+  const { matchState, squad, clockRunning, opponent, teamSheet } = store
 
   // ── live clock ticker
   const [liveElapsedMs, setLiveElapsedMs] = useState(() => store.currentElapsedMs())
@@ -445,13 +445,23 @@ export default function LiveMatch({ onOpenSquad }: LiveMatchProps) {
           style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}
         >
           <div className="flex items-center gap-2">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition -ml-1"
+                style={{ background: 'rgba(255,255,255,0.15)' }}
+                aria-label="Home"
+              >
+                <ChevronLeft size={18} color="white" strokeWidth={2.5} />
+              </button>
+            )}
             <WoodfordMark size={22} color="white" />
             <div className="leading-tight">
               <div className="text-[13px] font-bold tracking-wide uppercase text-white">
                 Woodford U12
               </div>
               <div className="text-[10px] text-white/80 tracking-wider">
-                vs Saints · Team A
+                vs {opponent || '—'} · Team {teamSheet.label}
               </div>
             </div>
           </div>
