@@ -37,11 +37,11 @@ export const DEMO_SQUAD: Player[] = [
   { id: 'p31', name: 'Seth',      defaultGroup: 'back',      eligibleGroups: ['back'] },
   { id: 'p32', name: 'Teddy P',   defaultGroup: 'back',      eligibleGroups: ['back'] },
 
-  // Backs who can cover scrum-half (4)
-  { id: 'p33', name: 'Conor S',   defaultGroup: 'back',      eligibleGroups: ['back', 'scrumhalf'] },
-  { id: 'p34', name: 'Harry',     defaultGroup: 'back',      eligibleGroups: ['back', 'scrumhalf'] },
-  { id: 'p35', name: 'Hector',    defaultGroup: 'back',      eligibleGroups: ['back', 'scrumhalf'] },
-  { id: 'p36', name: 'Soli',      defaultGroup: 'back',      eligibleGroups: ['back', 'scrumhalf'] },
+  // Scrum-halves (4)
+  { id: 'p33', name: 'Conor S',   defaultGroup: 'scrumhalf', eligibleGroups: ['scrumhalf', 'back'] },
+  { id: 'p34', name: 'Harry',     defaultGroup: 'scrumhalf', eligibleGroups: ['scrumhalf', 'back'] },
+  { id: 'p35', name: 'Hector',    defaultGroup: 'scrumhalf', eligibleGroups: ['scrumhalf', 'forward'] },
+  { id: 'p36', name: 'Soli',      defaultGroup: 'scrumhalf', eligibleGroups: ['scrumhalf', 'back'] },
 ];
 
 // Demo Team A — illustrative selection, not a real fixture
