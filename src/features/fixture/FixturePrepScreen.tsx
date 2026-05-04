@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, List, RefreshCw } from 'lucide-react'
 import { validateComposition } from '@/lib/domain/validateComposition'
 import { parseTeamSheet } from '@/lib/domain/parseTeamSheet'
@@ -11,9 +11,9 @@ import { FOLDER_ID_KEY } from '@/lib/drive/driveRead'
 import { OAUTH_ENABLED } from '@/lib/drive/driveAuth'
 import { publishFixture } from '@/lib/drive/drivePublish'
 
-const PURPLE      = '#782880'
-const PURPLE_DARK = '#5C1E63'
-const INK         = '#201820'
+const PURPLE      = '#3D0066'
+const PURPLE_DARK = '#5B1A99'
+const INK         = '#1A1A1A'
 
 const GROUP_SHORT: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf: 'SH' }
 
@@ -30,7 +30,7 @@ const ASSIGN_STYLE: Record<NonNullable<Assignment>, { bg: string; color: string;
   'bench-A':     { bg: '#C084FC',   color: 'white',   label: 'bA' },
   'B':           { bg: '#1D4ED8',   color: 'white',   label: 'B' },
   'bench-B':     { bg: '#93C5FD',   color: INK,       label: 'bB' },
-  'unavailable': { bg: '#D6D3D1',   color: '#78716C', label: '✗' },
+  'unavailable': { bg: '#C8A0E8',   color: '#78716C', label: '✗' },
 }
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
@@ -246,7 +246,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
     const group = groupOverrides.get(p.id) ?? p.defaultGroup
     const isStarter = cur === 'A' || cur === 'B'
     return (
-      <div key={p.id} className="flex items-center gap-2 py-2 border-b last:border-0" style={{ borderColor: '#F5F3F0' }}>
+      <div key={p.id} className="flex items-center gap-2 py-2 border-b last:border-0" style={{ borderColor: '#F8F4FF' }}>
         <button onClick={() => isStarter && cycleGroup(p)} className={isStarter ? 'cursor-pointer' : 'cursor-default'}>
           <GroupBadge group={group} />
         </button>
@@ -257,7 +257,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
         <button
           onClick={() => assign(p.id, nextAssignment(cur))}
           className="w-10 h-8 rounded-lg text-xs font-bold flex items-center justify-center flex-shrink-0 active:scale-95 transition"
-          style={style ? { background: style.bg, color: style.color } : { background: '#F5F3F0', color: '#A8A29E' }}
+          style={style ? { background: style.bg, color: style.color } : { background: '#F8F4FF', color: '#7B5FA8' }}
         >
           {style ? style.label : '—'}
         </button>
@@ -268,7 +268,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
   const renderSection = (title: string, list: Player[]) => list.length === 0 ? null : (
     <div className="mb-2">
       <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 px-1 py-1.5">{title}</div>
-      <div className="bg-white rounded-lg px-3" style={{ border: '1px solid #E7E5E4' }}>
+      <div className="bg-white rounded-lg px-3" style={{ border: '1px solid #E4D0F5' }}>
         {list.map(renderPlayerRow)}
       </div>
     </div>
@@ -299,7 +299,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
                 key={c.id}
                 onClick={() => setResolutions(m => new Map(m).set(slot.token, c))}
                 className="flex items-center gap-2 w-full py-1 px-2 rounded text-sm active:scale-[0.99]"
-                style={{ background: cur === c ? '#D1FAE5' : '#F5F3F0', color: INK }}
+                style={{ background: cur === c ? '#D1FAE5' : '#F8F4FF', color: INK }}
               >
                 <GroupBadge group={c.defaultGroup} size="xs" />
                 {c.name}
@@ -343,7 +343,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
   )
 
   return (
-    <div className="min-h-screen pb-28" style={{ background: '#F5F3F0', color: INK }}>
+    <div className="min-h-screen pb-28" style={{ background: '#F8F4FF', color: INK }}>
 
       {/* Header */}
       <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
@@ -368,7 +368,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
 
       <div className="px-3 pt-3 space-y-3">
         {/* Fixture details */}
-        <div className="bg-white rounded-lg p-3 space-y-2" style={{ border: '1px solid #E7E5E4' }}>
+        <div className="bg-white rounded-lg p-3 space-y-2" style={{ border: '1px solid #E4D0F5' }}>
           <div className="flex gap-2">
             <div className="flex-1">
               <label className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 block mb-1">Date</label>
@@ -377,7 +377,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
                 value={date}
                 onChange={e => setDate(e.target.value)}
                 className="w-full px-2 py-2 rounded border text-sm outline-none"
-                style={{ borderColor: '#E7E5E4', color: INK }}
+                style={{ borderColor: '#E4D0F5', color: INK }}
               />
             </div>
             <div className="flex-1">
@@ -388,14 +388,14 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
                 onChange={e => setOpponent(e.target.value)}
                 placeholder="e.g. Saints"
                 className="w-full px-2 py-2 rounded border text-sm outline-none"
-                style={{ borderColor: '#E7E5E4', color: INK }}
+                style={{ borderColor: '#E4D0F5', color: INK }}
               />
             </div>
           </div>
         </div>
 
         {/* Mode tabs */}
-        <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E7E5E4' }}>
+        <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E4D0F5' }}>
           {(['checklist', 'paste'] as const).map(m => (
             <button
               key={m}
@@ -403,7 +403,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
               className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-1.5 transition"
               style={{
                 background: mode === m ? PURPLE : 'white',
-                color: mode === m ? 'white' : '#A8A29E',
+                color: mode === m ? 'white' : '#7B5FA8',
               }}
             >
               {m === 'checklist' ? <><List size={13} /> Checklist</> : <><ClipboardPaste size={13} /> Paste</>}
@@ -440,7 +440,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
               placeholder={"Team A: Alexander, Dylan, Elliott...\nBench: Dominic, Ethan\n\nTeam B: Archie, Arlo..."}
               rows={8}
               className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none bg-white"
-              style={{ border: '1px solid #E7E5E4', color: INK }}
+              style={{ border: '1px solid #E4D0F5', color: INK }}
             />
             <button
               onClick={handleParse}
@@ -454,7 +454,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
             {parseResult && (
               <div className="space-y-3">
                 {parseResult.blocks.map((block, bi) => (
-                  <div key={bi} className="bg-white rounded-lg p-3" style={{ border: '1px solid #E7E5E4' }}>
+                  <div key={bi} className="bg-white rounded-lg p-3" style={{ border: '1px solid #E4D0F5' }}>
                     <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: PURPLE }}>
                       {block.label}
                     </div>
@@ -478,7 +478,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
       {/* Save button */}
       <div
         className="fixed bottom-16 left-0 right-0 px-3 py-3 z-30"
-        style={{ background: '#F5F3F0', borderTop: '1px solid #D6D3D1' }}
+        style={{ background: '#F8F4FF', borderTop: '1px solid #C8A0E8' }}
       >
         <button
           onClick={() => setShowReview(true)}

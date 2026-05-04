@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import {
   AlertTriangle, ChevronLeft, CloudDownload, CloudUpload,
   Plus, RefreshCw, Trash2, UserPlus, Users,
@@ -11,10 +11,10 @@ import { publishSquad } from '@/lib/drive/drivePublish'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
 
-const PURPLE      = '#782880'
-const PURPLE_DARK = '#5C1E63'
+const PURPLE      = '#3D0066'
+const PURPLE_DARK = '#5B1A99'
 const PURPLE_SOFT = '#F4E8F5'
-const INK         = '#201820'
+const INK         = '#1A1A1A'
 
 const GROUP_LABEL: Record<Group, string> = { forward: 'Forward', back: 'Back', scrumhalf: 'Scrum-half' }
 const GROUP_SHORT: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf: 'SH' }
@@ -142,7 +142,7 @@ export default function SquadScreen({ onBack }: Props) {
   const isDemo = squad?.id === DEMO_SQUAD_ID
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#F5F3F0', color: INK }}>
+    <div className="min-h-screen pb-24" style={{ background: '#F8F4FF', color: INK }}>
 
       {/* Header */}
       <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
@@ -260,7 +260,7 @@ export default function SquadScreen({ onBack }: Props) {
                 key={p.id}
                 onClick={() => openEdit(p)}
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border active:scale-[0.99] transition text-left"
-                style={{ borderColor: '#E7E5E4' }}
+                style={{ borderColor: '#E4D0F5' }}
               >
                 <GroupBadge group={p.defaultGroup} />
                 <div className="flex-1 min-w-0">
@@ -325,7 +325,7 @@ export default function SquadScreen({ onBack }: Props) {
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="e.g. Henry W"
                   className="w-full px-3 py-3 rounded-lg border-2 text-sm outline-none"
-                  style={{ borderColor: '#E7E5E4', color: INK }}
+                  style={{ borderColor: '#E4D0F5', color: INK }}
                   autoFocus={editTarget === 'new'}
                 />
               </div>
@@ -342,9 +342,9 @@ export default function SquadScreen({ onBack }: Props) {
                       onClick={() => handleDefaultGroupChange(g)}
                       className="flex-1 py-2.5 rounded-lg text-sm font-bold transition active:scale-95"
                       style={{
-                        background: form.defaultGroup === g ? PURPLE : '#F5F3F0',
+                        background: form.defaultGroup === g ? PURPLE : '#F8F4FF',
                         color: form.defaultGroup === g ? 'white' : INK,
-                        border: `2px solid ${form.defaultGroup === g ? PURPLE : '#E7E5E4'}`,
+                        border: `2px solid ${form.defaultGroup === g ? PURPLE : '#E4D0F5'}`,
                       }}
                     >
                       {GROUP_SHORT[g]}
@@ -369,9 +369,9 @@ export default function SquadScreen({ onBack }: Props) {
                         disabled={isDefault}
                         className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition active:scale-95 disabled:opacity-50"
                         style={{
-                          background: checked ? '#D1FAE5' : '#F5F3F0',
-                          color: checked ? '#065F46' : '#A8A29E',
-                          border: `2px solid ${checked ? '#34D399' : '#E7E5E4'}`,
+                          background: checked ? '#D1FAE5' : '#F8F4FF',
+                          color: checked ? '#065F46' : '#7B5FA8',
+                          border: `2px solid ${checked ? '#34D399' : '#E4D0F5'}`,
                         }}
                       >
                         {GROUP_LABEL[g]}
@@ -392,7 +392,7 @@ export default function SquadScreen({ onBack }: Props) {
                   placeholder="e.g. strong carrier, works on passing"
                   rows={2}
                   className="w-full px-3 py-2.5 rounded-lg border-2 text-sm outline-none resize-none"
-                  style={{ borderColor: '#E7E5E4', color: INK }}
+                  style={{ borderColor: '#E4D0F5', color: INK }}
                 />
               </div>
             </div>

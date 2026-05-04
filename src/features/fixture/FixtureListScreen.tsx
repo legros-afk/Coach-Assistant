@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { Calendar, ChevronRight, Plus, RefreshCw } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Fixture, Match, TeamSheet } from '@/lib/events/types'
@@ -6,9 +6,9 @@ import { db } from '@/lib/db/db'
 import { useFixtureStore } from './useFixtureStore'
 import { useSyncStore, fmtSyncAge, driveConfigured } from '@/lib/drive/useSyncStore'
 
-const PURPLE      = '#782880'
-const PURPLE_DARK = '#5C1E63'
-const INK         = '#201820'
+const PURPLE      = '#3D0066'
+const PURPLE_DARK = '#5B1A99'
+const INK         = '#1A1A1A'
 
 interface Props {
   onNew: () => void
@@ -29,7 +29,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch }: Props)
   }, [isHydrated])
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#F5F3F0', color: INK }}>
+    <div className="min-h-screen pb-24" style={{ background: '#F8F4FF', color: INK }}>
       <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
         <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
           <Calendar size={18} color="white" strokeWidth={2} />
@@ -85,7 +85,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch }: Props)
                   key={f.id}
                   onClick={() => onEdit(f)}
                   className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border active:scale-[0.99] transition text-left"
-                  style={{ borderColor: '#E7E5E4' }}
+                  style={{ borderColor: '#E4D0F5' }}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm" style={{ color: INK }}>vs {f.opponent}</div>

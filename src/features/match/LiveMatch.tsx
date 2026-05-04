@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity, AlertTriangle, ArrowRight, Check, ChevronLeft,
   Heart, Pause, Play, Plus, Trophy, Undo2, Users, X,
@@ -10,11 +10,11 @@ import { useMatchStore } from './useMatchStore'
 
 // ── brand constants ────────────────────────────────────────────────────────────
 
-const PURPLE      = '#782880'
-const PURPLE_DARK = '#5C1E63'
+const PURPLE      = '#3D0066'
+const PURPLE_DARK = '#5B1A99'
 const PURPLE_SOFT = '#F4E8F5'
 const PURPLE_SOFTER = '#FAF3FB'
-const INK         = '#201820'
+const INK         = '#1A1A1A'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -99,7 +99,7 @@ function Section({
         </div>
         <span
           className="text-[10px] uppercase tracking-widest font-semibold"
-          style={{ color: hint ? PURPLE : '#A8A29E' }}
+          style={{ color: hint ? PURPLE : '#7B5FA8' }}
         >
           {hint ?? subtitle}
         </span>
@@ -152,7 +152,7 @@ function PlayerCard({
       className={`p-2.5 rounded-lg transition relative ${onTap ? 'active:scale-[0.98] cursor-pointer' : ''}`}
       style={{
         background: picked ? pickedBg : muted ? '#F5F5F4' : 'white',
-        border: picked ? `2px solid ${pickedBorder}` : '1px solid #E7E5E4',
+        border: picked ? `2px solid ${pickedBorder}` : '1px solid #E4D0F5',
         opacity: muted ? 0.7 : 1,
         minHeight: '88px',
       }}
@@ -436,7 +436,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
 
   // ── render
   return (
-    <div className="min-h-screen pb-44" style={{ background: '#F5F3F0', color: INK }}>
+    <div className="min-h-screen pb-44" style={{ background: '#F8F4FF', color: INK }}>
 
       {/* ── Brand strip */}
       <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
@@ -774,7 +774,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
       {/* ── Bottom bar */}
       <div
         className="fixed bottom-0 left-0 right-0 px-3 py-3 flex items-center gap-2 z-30"
-        style={{ background: '#F5F3F0', borderTop: '1px solid #D6D3D1' }}
+        style={{ background: '#F8F4FF', borderTop: '1px solid #C8A0E8' }}
       >
         {matchEnded ? (
           <button
@@ -791,7 +791,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
               onClick={handleUndoPress}
               disabled={!store.events.length}
               className="tap-target px-4 rounded-lg border-2 font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-95 transition"
-              style={{ borderColor: '#D6D3D1', color: INK }}
+              style={{ borderColor: '#C8A0E8', color: INK }}
             >
               <Undo2 size={18} strokeWidth={2.5} />
               Undo
@@ -842,7 +842,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                     setTryPickerOpen(false)
                   }}
                   className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
-                  style={{ borderColor: '#E7E5E4' }}
+                  style={{ borderColor: '#E4D0F5' }}
                 >
                   <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
                   <span className="font-semibold flex-1 text-left">{p.name}</span>
@@ -904,7 +904,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                     setBloodPickerFor(null)
                   }}
                   className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
-                  style={{ borderColor: '#E7E5E4' }}
+                  style={{ borderColor: '#E4D0F5' }}
                 >
                   <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
                   <span className="font-semibold flex-1 text-left">{p.name}</span>
@@ -967,7 +967,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                     setInjuryPickerFor(null)
                   }}
                   className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
-                  style={{ borderColor: '#E7E5E4' }}
+                  style={{ borderColor: '#E4D0F5' }}
                 >
                   <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
                   <span className="font-semibold flex-1 text-left">{p.name}</span>

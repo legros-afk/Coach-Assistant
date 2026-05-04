@@ -1,12 +1,12 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { CheckCircle, Link, Loader } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import { FOLDER_ID_KEY, listFolder, parseFolderId } from '@/lib/drive/driveRead'
 import { syncFromDrive } from '@/lib/drive/driveSync'
 
-const PURPLE      = '#782880'
-const PURPLE_DARK = '#5C1E63'
-const INK         = '#201820'
+const PURPLE      = '#3D0066'
+const PURPLE_DARK = '#5B1A99'
+const INK         = '#1A1A1A'
 const API_KEY     = import.meta.env.VITE_GOOGLE_DRIVE_API_KEY as string | undefined
 
 interface Props {
@@ -47,7 +47,7 @@ export default function SetupScreen({ onDone }: Props) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#F5F3F0' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: '#F8F4FF' }}>
       {/* Header */}
       <div style={{ background: PURPLE }} className="px-4 py-5 flex items-center gap-3">
         <WoodfordMark size={28} color="white" />
@@ -76,7 +76,7 @@ export default function SetupScreen({ onDone }: Props) {
           </label>
           <div className="flex gap-2">
             <div className="flex-1 flex items-center gap-2 px-3 rounded-lg border-2 bg-white"
-              style={{ borderColor: status === 'error' ? '#EF4444' : status === 'ok' ? '#10B981' : '#D6D3D1' }}
+              style={{ borderColor: status === 'error' ? '#EF4444' : status === 'ok' ? '#10B981' : '#C8A0E8' }}
             >
               <Link size={16} className="flex-shrink-0 text-stone-400" />
               <input

@@ -1,20 +1,31 @@
 interface Props {
   size?: number
-  color?: string
+  color?: string  // kept for API compat, unused with PNG logo
 }
 
-export function WoodfordMark({ size = 24, color = '#782880' }: Props) {
+export function WoodfordMark({ size = 24 }: Props) {
+  const inner = Math.round(size * 0.82)
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" aria-hidden>
-      <circle cx="50" cy="50" r="46" stroke={color} strokeWidth="3" fill="none" />
-      <ellipse cx="50" cy="42" rx="11" ry="14" fill={color} />
-      <path d="M 39 30 Q 50 25 61 30 L 60 36 Q 50 33 40 36 Z" fill={color} opacity="0.6" />
-      <path d="M 50 56 L 50 72" stroke={color} strokeWidth="3" strokeLinecap="round" />
-      <path
-        d="M 30 60 Q 22 65 25 75 Q 35 72 40 65 Z M 70 60 Q 78 65 75 75 Q 65 72 60 65 Z"
-        fill={color}
-        opacity="0.5"
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: 'white',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        overflow: 'hidden',
+      }}
+    >
+      <img
+        src="/logo.png"
+        alt="Woodford RFC"
+        width={inner}
+        height={inner}
+        style={{ objectFit: 'contain' }}
       />
-    </svg>
+    </div>
   )
 }

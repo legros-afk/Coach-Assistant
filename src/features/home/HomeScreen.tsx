@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+﻿import { useEffect } from 'react'
 import { Calendar, ChevronRight, Play, RefreshCw, RotateCcw } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import { useFixtureStore } from '@/features/fixture/useFixtureStore'
@@ -8,9 +8,9 @@ import { DEMO_SQUAD } from '@/features/match/mockData'
 import { useSyncStore, fmtSyncAge, driveConfigured } from '@/lib/drive/useSyncStore'
 import type { Fixture, TeamSheet } from '@/lib/events/types'
 
-const PURPLE      = '#782880'
-const PURPLE_DARK = '#5C1E63'
-const INK         = '#201820'
+const PURPLE      = '#3D0066'
+const PURPLE_DARK = '#5B1A99'
+const INK         = '#1A1A1A'
 
 interface Props {
   onMatch: () => void
@@ -64,7 +64,7 @@ export default function HomeScreen({ onMatch, onFixturePrep }: Props) {
   }
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#F5F3F0', color: INK }}>
+    <div className="min-h-screen pb-24" style={{ background: '#F8F4FF', color: INK }}>
       {/* Header */}
       <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
         <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
@@ -184,7 +184,7 @@ export default function HomeScreen({ onMatch, onFixturePrep }: Props) {
           <button
             onClick={pickDemo}
             className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border active:scale-[0.99] transition text-left"
-            style={{ borderColor: '#E7E5E4' }}
+            style={{ borderColor: '#E4D0F5' }}
           >
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -218,11 +218,11 @@ function FixtureCard({
   return (
     <div
       className="rounded-lg bg-white border overflow-hidden"
-      style={{ borderColor: '#E7E5E4' }}
+      style={{ borderColor: '#E4D0F5' }}
     >
       <div
         className="px-3 py-2 flex items-center gap-2"
-        style={{ borderBottom: hasSheets ? '1px solid #F5F3F0' : undefined }}
+        style={{ borderBottom: hasSheets ? '1px solid #F8F4FF' : undefined }}
       >
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-sm" style={{ color: INK }}>vs {fixture.opponent}</div>

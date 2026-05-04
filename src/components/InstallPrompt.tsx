@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { Download, X } from 'lucide-react'
 
 const DISMISSED_KEY = 'coach-install-dismissed'
-const PURPLE = '#782880'
+const PURPLE = '#3D0066'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
