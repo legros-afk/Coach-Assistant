@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 interface Env {
-  ANTHROPIC_API_KEY: string
+  GOOGLE_AI_API_KEY: string
 }
 
 interface SummariseRequest {
@@ -52,24 +52,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     `Try scorers: ${scorerLine}`,
   ].join('\n')
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const model = 'gemini-2.5-flash'
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GOOGLE_AI_API_KEY}`
+
+  const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      'x-api-key': env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
+    headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 200,
-      system: [
-        {
-          type: 'text',
-          text: SYSTEM_PROMPT,
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
-      messages: [{ role: 'user', content: userMessage }],
+      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents: [{ parts: [{ text: userMessage }] }],
+      generationConfig: { maxOutputTokens: 200, temperature: 0.9 },
     }),
   })
 
@@ -78,7 +70,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return Response.json({ error: err }, { status: 502 })
   }
 
-  const data = await res.json() as { content: Array<{ text: string }> }
-  const summary = data.content[0]?.text?.trim() ?? ''
+  const data = await res.json() as { candidates: Array<{ content: { parts: Array<{ text: string }> } }> }
+  const summary = data.candidates[0]?.content?.parts[0]?.text?.trim() ?? ''
   return Response.json({ summary })
 }
