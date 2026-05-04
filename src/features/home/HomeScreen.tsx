@@ -1,10 +1,11 @@
 import { useEffect } from 'react'
-import { Calendar, ChevronRight, Play, RotateCcw } from 'lucide-react'
+import { Calendar, ChevronRight, Play, RefreshCw, RotateCcw } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import { useFixtureStore } from '@/features/fixture/useFixtureStore'
 import { useSquadStore } from '@/features/squad/useSquadStore'
 import { useMatchStore } from '@/features/match/useMatchStore'
 import { DEMO_SQUAD } from '@/features/match/mockData'
+import { useSyncStore, fmtSyncAge, driveConfigured } from '@/lib/drive/useSyncStore'
 import type { Fixture, TeamSheet } from '@/lib/events/types'
 
 const PURPLE      = '#782880'
@@ -30,12 +31,14 @@ function fmtDate(iso: string): string {
 export default function HomeScreen({ onMatch, onFixturePrep }: Props) {
   const { fixtures, isHydrated: fixturesReady, hydrate: hydrateFixtures } = useFixtureStore()
   const { squad, isHydrated: squadReady, hydrate: hydrateSquad } = useSquadStore()
-  const initMatch     = useMatchStore(s => s.initMatch)
-  const initDemoMatch = useMatchStore(s => s.initDemoMatch)
-  const activeMatchId = useMatchStore(s => s.matchId)
-  const activeEvents  = useMatchStore(s => s.events)
+  const initMatch      = useMatchStore(s => s.initMatch)
+  const initDemoMatch  = useMatchStore(s => s.initDemoMatch)
+  const activeMatchId  = useMatchStore(s => s.matchId)
+  const activeEvents   = useMatchStore(s => s.events)
   const activeOpponent = useMatchStore(s => s.opponent)
   const activeTeamSheet = useMatchStore(s => s.teamSheet)
+  const { isSyncing, lastSyncedAt, lastError, syncAll } = useSyncStore()
+  const hasDrive = driveConfigured()
 
   useEffect(() => {
     if (!fixturesReady) hydrateFixtures()
@@ -67,8 +70,27 @@ export default function HomeScreen({ onMatch, onFixturePrep }: Props) {
         <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
           <div className="flex-1 leading-tight">
             <div className="text-[13px] font-bold tracking-wide uppercase text-white">Woodford RFC</div>
-            <div className="text-[10px] text-white/70">U12 · Coach Assistant</div>
+            <div className="text-[10px] text-white/70">
+              {isSyncing
+                ? 'Syncing…'
+                : lastError
+                  ? lastError
+                  : lastSyncedAt
+                    ? `Synced ${fmtSyncAge(lastSyncedAt)}`
+                    : 'U12 · Coach Assistant'}
+            </div>
           </div>
+          {hasDrive && (
+            <button
+              onClick={syncAll}
+              disabled={isSyncing}
+              className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition disabled:opacity-50"
+              style={{ background: 'rgba(255,255,255,0.15)' }}
+              aria-label="Sync from Drive"
+            >
+              <RefreshCw size={15} color="white" strokeWidth={2} className={isSyncing ? 'animate-spin' : ''} />
+            </button>
+          )}
           <WoodfordMark size={22} color="white" />
         </div>
       </div>

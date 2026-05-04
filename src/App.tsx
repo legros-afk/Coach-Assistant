@@ -10,11 +10,10 @@ import HomeScreen from '@/features/home/HomeScreen'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import InstallPrompt from '@/components/InstallPrompt'
 import { FOLDER_ID_KEY } from '@/lib/drive/driveRead'
-import { syncFromDrive } from '@/lib/drive/driveSync'
+import { useSyncStore } from '@/lib/drive/useSyncStore'
 import type { Fixture } from '@/lib/events/types'
 
-const API_KEY = import.meta.env.VITE_GOOGLE_DRIVE_API_KEY as string | undefined
-const PURPLE  = '#782880'
+const PURPLE = '#782880'
 
 type Screen = 'loading' | 'setup' | 'home' | 'match' | 'post-match' | 'squad' | 'fixtures' | 'fixture-prep'
 
@@ -25,7 +24,7 @@ export default function App() {
   useEffect(() => {
     const folderId = localStorage.getItem(FOLDER_ID_KEY)
     if (folderId) {
-      if (API_KEY) syncFromDrive(folderId, API_KEY)
+      useSyncStore.getState().syncAll()   // background sync, tracked in store
       setScreen('home')
     } else {
       setScreen('setup')

@@ -8,6 +8,7 @@ import type { Group, Player } from '@/lib/events/types'
 import { FOLDER_ID_KEY } from '@/lib/drive/driveRead'
 import { OAUTH_ENABLED } from '@/lib/drive/driveAuth'
 import { publishSquad } from '@/lib/drive/drivePublish'
+import { useSyncStore } from '@/lib/drive/useSyncStore'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
 
 const PURPLE      = '#782880'
@@ -54,9 +55,9 @@ export default function SquadScreen({ onBack }: Props) {
 
   const [editTarget, setEditTarget] = useState<Player | 'new' | null>(null)
   const [form, setForm] = useState<PlayerForm>(emptyForm())
-  const [pulling, setPulling] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [banner, setBanner] = useState<{ ok: boolean; msg: string } | null>(null)
+  const { isSyncing, syncAll } = useSyncStore()
 
   const folderId = localStorage.getItem(FOLDER_ID_KEY)
   const canPublish = OAUTH_ENABLED && !!folderId && !!squad
@@ -114,10 +115,9 @@ export default function SquadScreen({ onBack }: Props) {
   }
 
   const handlePull = async () => {
-    setPulling(true)
-    const result = await store.pullFromDrive()
-    setPulling(false)
-    showBanner(result.ok, result.ok ? 'Squad pulled from Drive.' : result.error ?? 'Pull failed.')
+    await syncAll()
+    const { lastError } = useSyncStore.getState()
+    showBanner(!lastError, lastError ?? 'Squad & fixtures synced from Drive.')
   }
 
   const handlePublish = async () => {
@@ -166,11 +166,11 @@ export default function SquadScreen({ onBack }: Props) {
         <div className="px-3 py-2 flex gap-2" style={{ background: INK }}>
           <button
             onClick={handlePull}
-            disabled={pulling}
+            disabled={isSyncing}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide transition active:scale-95 disabled:opacity-50"
             style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
           >
-            {pulling
+            {isSyncing
               ? <RefreshCw size={13} className="animate-spin" />
               : <CloudDownload size={13} strokeWidth={2.5} />
             }

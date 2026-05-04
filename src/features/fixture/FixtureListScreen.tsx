@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
-import { Calendar, ChevronRight, Plus } from 'lucide-react'
+import { Calendar, ChevronRight, Plus, RefreshCw } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Fixture } from '@/lib/events/types'
 import { useFixtureStore } from './useFixtureStore'
+import { useSyncStore, fmtSyncAge, driveConfigured } from '@/lib/drive/useSyncStore'
 
 const PURPLE      = '#782880'
 const PURPLE_DARK = '#5C1E63'
@@ -15,6 +16,8 @@ interface Props {
 
 export default function FixtureListScreen({ onNew, onEdit }: Props) {
   const { fixtures, isHydrated, hydrate } = useFixtureStore()
+  const { isSyncing, lastSyncedAt, syncAll } = useSyncStore()
+  const hasDrive = driveConfigured()
 
   useEffect(() => { if (!isHydrated) hydrate() }, [isHydrated, hydrate])
 
@@ -26,9 +29,24 @@ export default function FixtureListScreen({ onNew, onEdit }: Props) {
           <div className="flex-1 leading-tight">
             <div className="text-[13px] font-bold tracking-wide uppercase text-white">Fixtures</div>
             <div className="text-[10px] text-white/70">
-              {isHydrated ? `${fixtures.length} fixture${fixtures.length !== 1 ? 's' : ''}` : '…'}
+              {isSyncing
+                ? 'Syncing…'
+                : isHydrated
+                  ? `${fixtures.length} fixture${fixtures.length !== 1 ? 's' : ''}${lastSyncedAt ? ` · ${fmtSyncAge(lastSyncedAt)}` : ''}`
+                  : '…'}
             </div>
           </div>
+          {hasDrive && (
+            <button
+              onClick={syncAll}
+              disabled={isSyncing}
+              className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition disabled:opacity-50"
+              style={{ background: 'rgba(255,255,255,0.15)' }}
+              aria-label="Sync fixtures from Drive"
+            >
+              <RefreshCw size={15} color="white" strokeWidth={2} className={isSyncing ? 'animate-spin' : ''} />
+            </button>
+          )}
           <WoodfordMark size={22} color="white" />
         </div>
       </div>
