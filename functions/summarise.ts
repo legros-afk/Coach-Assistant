@@ -69,25 +69,54 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const model = 'gemini-2.5-flash'
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GOOGLE_AI_API_KEY}`
 
+  const requestBody = {
+    system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    contents: [{ parts: [{ text: userMessage }] }],
+    generationConfig: {
+      maxOutputTokens: 500, // gemini-2.5-flash thinking tokens count against this budget; actual output is ~60-90 tokens
+      temperature: 0.9,
+    },
+  }
+
+  console.log('[summarise] REQUEST', JSON.stringify({
+    model,
+    maxOutputTokens: requestBody.generationConfig.maxOutputTokens,
+    temperature: requestBody.generationConfig.temperature,
+    systemPromptLength: SYSTEM_PROMPT.length,
+    userMessage,
+  }))
+
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      contents: [{ parts: [{ text: userMessage }] }],
-      generationConfig: {
-        maxOutputTokens: 500, // gemini-2.5-flash thinking tokens count against this budget; actual output is ~60-90 tokens
-        temperature: 0.9,
-      },
-    }),
+    body: JSON.stringify(requestBody),
   })
 
   if (!res.ok) {
     const err = await res.text()
+    console.log('[summarise] ERROR', res.status, err)
     return Response.json({ error: err }, { status: 502 })
   }
 
-  const data = await res.json() as { candidates: Array<{ content: { parts: Array<{ text: string }> } }> }
+  const data = await res.json() as {
+    candidates: Array<{
+      content: { parts: Array<{ text: string }> }
+      finishReason: string
+    }>
+    usageMetadata?: {
+      promptTokenCount: number
+      candidatesTokenCount: number
+      totalTokenCount: number
+      thoughtsTokenCount?: number
+    }
+  }
+
+  console.log('[summarise] RESPONSE', JSON.stringify({
+    finishReason: data.candidates[0]?.finishReason,
+    usageMetadata: data.usageMetadata,
+    generatedText: data.candidates[0]?.content?.parts[0]?.text,
+  }))
+
   const summary = data.candidates[0]?.content?.parts[0]?.text?.trim() ?? ''
   return Response.json({ summary })
 }
