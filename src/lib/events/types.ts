@@ -59,7 +59,7 @@ export type MatchEvent =
   | { id: ID; ts: string; type: 'SUB_BATCH';      payload: { offIds: ID[]; onIds: ID[]; elapsedMs: number } }
   | { id: ID; ts: string; type: 'BLOOD_OFF';      payload: { playerId: ID; replacementId?: ID; elapsedMs: number } }
   | { id: ID; ts: string; type: 'BLOOD_RETURN';   payload: { playerId: ID; elapsedMs: number } }
-  | { id: ID; ts: string; type: 'INJURED_OFF';    payload: { playerId: ID; elapsedMs: number } }
+  | { id: ID; ts: string; type: 'INJURED_OFF';    payload: { playerId: ID; replacementId?: ID; elapsedMs: number } }
   | { id: ID; ts: string; type: 'INJURED_RETURN'; payload: { playerId: ID; elapsedMs: number } };
 
 export interface PlayerMatchState {

@@ -265,6 +265,9 @@ export default function LiveMatch() {
   // ── blood replacement picker
   const [bloodPickerFor, setBloodPickerFor] = useState<Player | null>(null)
 
+  // ── injury replacement picker
+  const [injuryPickerFor, setInjuryPickerFor] = useState<Player | null>(null)
+
   // ── undo confirmation
   const [pendingUndo, setPendingUndo] = useState(false)
 
@@ -589,7 +592,7 @@ export default function LiveMatch() {
                 onTap={subBuilderOpen ? () => togglePickOff(p) : undefined}
                 showActions={!subBuilderOpen}
                 onBlood={() => setBloodPickerFor(p)}
-                onInjury={() => { store.injuredOff(p.id); showToast(`${p.name} — injured`) }}
+                onInjury={() => setInjuryPickerFor(p)}
               />
             ))}
           </div>
@@ -881,6 +884,69 @@ export default function LiveMatch() {
                   store.bloodOff(bloodPickerFor.id)
                   showToast(`${bloodPickerFor.name} — blood (no replacement)`)
                   setBloodPickerFor(null)
+                }}
+                className="tap-target w-full px-3 italic active:scale-[0.98] transition opacity-60 text-sm"
+              >
+                Continue without replacement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Injury replacement picker */}
+      {injuryPickerFor && (
+        <div
+          className="fixed inset-0 z-40 flex items-end"
+          style={{ background: 'rgba(32,24,32,0.7)' }}
+          onClick={() => setInjuryPickerFor(null)}
+        >
+          <div
+            className="bg-white w-full rounded-t-2xl p-4 max-h-[70vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={22} style={{ color: INK }} />
+                <div className="text-2xl font-bold" style={{ color: INK }}>
+                  Injured — {injuryPickerFor.name}
+                </div>
+              </div>
+              <button
+                onClick={() => setInjuryPickerFor(null)}
+                className="tap-target w-12 flex items-center justify-center"
+              >
+                <X />
+              </button>
+            </div>
+            <p className="text-sm text-stone-400 mb-3">Who comes on as replacement?</p>
+            <div className="space-y-1.5">
+              {bench.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    store.injuredOff(injuryPickerFor.id, p.id)
+                    showToast(`${injuryPickerFor.name} — injured · ${p.name} on`)
+                    setInjuryPickerFor(null)
+                  }}
+                  className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
+                  style={{ borderColor: '#E7E5E4' }}
+                >
+                  <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
+                  <span className="font-semibold flex-1 text-left">{p.name}</span>
+                  <span className="mono text-xs opacity-50">
+                    {fmt(liveMinMs(matchState.playerStates.get(p.id)!, liveElapsedMs))}
+                  </span>
+                </button>
+              ))}
+              {bench.length === 0 && (
+                <p className="text-sm italic text-stone-400 px-3 py-2">No bench players available</p>
+              )}
+              <button
+                onClick={() => {
+                  store.injuredOff(injuryPickerFor.id)
+                  showToast(`${injuryPickerFor.name} — injured (no replacement)`)
+                  setInjuryPickerFor(null)
                 }}
                 className="tap-target w-full px-3 italic active:scale-[0.98] transition opacity-60 text-sm"
               >
