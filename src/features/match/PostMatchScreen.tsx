@@ -1,5 +1,5 @@
-﻿import { useMemo, useState } from 'react'
-import { ArrowRight, Check, ChevronLeft, Copy } from 'lucide-react'
+﻿import { useMemo, useRef, useState } from 'react'
+import { ArrowRight, Check, ChevronLeft, Copy, Sparkles } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, MatchEvent } from '@/lib/events/types'
 import { useMatchStore } from './useMatchStore'
@@ -68,8 +68,13 @@ function buildShareText(
 
 export default function PostMatchScreen({ onBack }: Props) {
   const { squad, teamSheet, opponent, matchState, events } = useMatchStore()
-  const [tab, setTab]       = useState<'share' | 'coach'>('share')
-  const [copied, setCopied] = useState(false)
+  const [tab, setTab]           = useState<'share' | 'coach'>('share')
+  const [copied, setCopied]     = useState(false)
+  const [aiSummary, setAiSummary]       = useState<string | null>(null)
+  const [aiCopied, setAiCopied]         = useState(false)
+  const [generating, setGenerating]     = useState(false)
+  const [aiError, setAiError]           = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   const playerMap = useMemo(() => new Map(squad.map(p => [p.id, p])), [squad])
 
@@ -131,6 +136,39 @@ export default function PostMatchScreen({ onBack }: Props) {
     } catch {
       // clipboard unavailable — text is visible in the box for manual copy
     }
+  }
+
+  const handleGenerate = async () => {
+    abortRef.current?.abort()
+    abortRef.current = new AbortController()
+    setGenerating(true)
+    setAiError(null)
+    setAiSummary(null)
+    const date = events[0]?.ts.slice(0, 10) ?? new Date().toISOString().slice(0, 10)
+    try {
+      const res = await fetch('/summarise', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ opponent, scoreUs, scoreThem, tryScorers, teamLabel: teamSheet.label, date }),
+        signal: abortRef.current.signal,
+      })
+      const data = await res.json() as { summary?: string; error?: string }
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Failed')
+      setAiSummary(data.summary ?? '')
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') setAiError('Couldn\'t generate — try again.')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleAiCopy = async () => {
+    if (!aiSummary) return
+    try {
+      await navigator.clipboard.writeText(aiSummary)
+      setAiCopied(true)
+      setTimeout(() => setAiCopied(false), 2200)
+    } catch { /* ignore */ }
   }
 
   const resultColor = result === 'Won' ? '#059669' : result === 'Lost' ? '#DC2626' : '#D97706'
@@ -200,6 +238,40 @@ export default function PostMatchScreen({ onBack }: Props) {
             {copied ? <Check size={16} strokeWidth={2.5} /> : <Copy size={16} strokeWidth={2} />}
             {copied ? 'Copied!' : 'Copy to clipboard'}
           </button>
+
+          {/* AI summary card */}
+          <div className="bg-white rounded-lg border overflow-hidden" style={{ borderColor: '#E4D0F5' }}>
+            <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: aiSummary ? '1px solid #E4D0F5' : undefined }}>
+              <span className="text-[11px] font-bold uppercase tracking-widest text-stone-400">AI match report</span>
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold active:scale-95 transition disabled:opacity-50"
+                style={{ background: PURPLE, color: 'white' }}
+              >
+                <Sparkles size={12} strokeWidth={2.5} />
+                {generating ? 'Writing…' : aiSummary ? 'Regenerate' : 'Generate'}
+              </button>
+            </div>
+            {aiError && (
+              <div className="px-4 py-3 text-sm text-red-500">{aiError}</div>
+            )}
+            {aiSummary && (
+              <>
+                <div className="px-4 py-3 text-sm leading-relaxed" style={{ color: INK }}>{aiSummary}</div>
+                <div className="px-4 pb-3">
+                  <button
+                    onClick={handleAiCopy}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold active:scale-95 transition"
+                    style={{ background: aiCopied ? '#059669' : '#F8F4FF', color: aiCopied ? 'white' : PURPLE, border: `1px solid #E4D0F5` }}
+                  >
+                    {aiCopied ? <Check size={12} strokeWidth={2.5} /> : <Copy size={12} strokeWidth={2} />}
+                    {aiCopied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
