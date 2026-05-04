@@ -1,33 +1,58 @@
 import type { Player, TeamSheet } from '@/lib/events/types';
 
 export const DEMO_SQUAD: Player[] = [
-  { id: 'f1',  name: 'Smith',     defaultGroup: 'forward',   eligibleGroups: ['forward'] },
-  { id: 'f2',  name: 'Jones',     defaultGroup: 'forward',   eligibleGroups: ['forward'] },
-  { id: 'f3',  name: 'Brown',     defaultGroup: 'forward',   eligibleGroups: ['forward', 'back'] },
-  { id: 'f4',  name: 'Davies',    defaultGroup: 'forward',   eligibleGroups: ['forward'] },
-  { id: 'f5',  name: 'Evans',     defaultGroup: 'forward',   eligibleGroups: ['forward'] },
-  { id: 'b1',  name: 'Khan',      defaultGroup: 'back',      eligibleGroups: ['back'] },
-  { id: 'b2',  name: 'Patel',     defaultGroup: 'back',      eligibleGroups: ['back'] },
-  { id: 'b3',  name: 'Lewis',     defaultGroup: 'back',      eligibleGroups: ['back', 'scrumhalf'] },
-  { id: 'b4',  name: 'Murphy',    defaultGroup: 'back',      eligibleGroups: ['back'] },
-  { id: 'b5',  name: 'Nolan',     defaultGroup: 'back',      eligibleGroups: ['back'] },
-  { id: 's1',  name: "O'Neill",   defaultGroup: 'scrumhalf', eligibleGroups: ['scrumhalf', 'back'] },
-  { id: 'bf1', name: 'Patterson', defaultGroup: 'forward',   eligibleGroups: ['forward'] },
-  { id: 'bf2', name: 'Quinn',     defaultGroup: 'forward',   eligibleGroups: ['forward'] },
-  { id: 'bb1', name: 'Roberts',   defaultGroup: 'back',      eligibleGroups: ['back'] },
-  { id: 'bb2', name: 'Singh',     defaultGroup: 'back',      eligibleGroups: ['back', 'forward'] },
-  { id: 'bs1', name: 'Taylor',    defaultGroup: 'scrumhalf', eligibleGroups: ['scrumhalf'] },
-  { id: 'bf3', name: 'Wilson',    defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  // Forwards (17)
+  { id: 'p01', name: 'Alexander', defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p02', name: 'Dominic',   defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p03', name: 'Dylan',     defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p04', name: 'Elias',     defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p05', name: 'Elliott',   defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p06', name: 'Ethan',     defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p07', name: 'Fyfe',      defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p08', name: 'Henry H',   defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p09', name: 'Henry T',   defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p10', name: 'Jack',      defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p11', name: 'Jacob',     defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p12', name: 'Matthew',   defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p13', name: 'Reis',      defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p14', name: 'Rene',      defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p15', name: 'Robin',     defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p16', name: 'Teddy C',   defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+  { id: 'p17', name: 'William',   defaultGroup: 'forward',   eligibleGroups: ['forward'] },
+
+  // Backs (15)
+  { id: 'p18', name: 'Angelo',    defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p19', name: 'Archie',    defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p20', name: 'Arlo',      defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p21', name: 'Connor B',  defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p22', name: 'Hayden',    defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p23', name: 'Henry W',   defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p24', name: 'James N',   defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p25', name: 'James V',   defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p26', name: 'Joshua',    defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p27', name: 'Juan',      defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p28', name: 'Lewis',     defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p29', name: 'Oscar',     defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p30', name: 'Seb',       defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p31', name: 'Seth',      defaultGroup: 'back',      eligibleGroups: ['back'] },
+  { id: 'p32', name: 'Teddy P',   defaultGroup: 'back',      eligibleGroups: ['back'] },
+
+  // Backs who can cover scrum-half (4)
+  { id: 'p33', name: 'Conor S',   defaultGroup: 'back',      eligibleGroups: ['back', 'scrumhalf'] },
+  { id: 'p34', name: 'Harry',     defaultGroup: 'back',      eligibleGroups: ['back', 'scrumhalf'] },
+  { id: 'p35', name: 'Hector',    defaultGroup: 'back',      eligibleGroups: ['back', 'scrumhalf'] },
+  { id: 'p36', name: 'Soli',      defaultGroup: 'back',      eligibleGroups: ['back', 'scrumhalf'] },
 ];
 
+// Demo Team A — illustrative selection, not a real fixture
 export const DEMO_TEAM_SHEET: TeamSheet = {
   id: 'demo-ts',
   label: 'A',
   starters: {
-    forwards:  ['f1', 'f2', 'f3', 'f4', 'f5'],
-    backs:     ['b1', 'b2', 'b3', 'b4', 'b5'],
-    scrumhalf: 's1',
+    forwards:  ['p01', 'p03', 'p05', 'p09', 'p10'],  // Alexander, Dylan, Elliott, Henry T, Jack
+    backs:     ['p18', 'p20', 'p23', 'p28', 'p29'],  // Angelo, Arlo, Henry W, Lewis, Oscar
+    scrumhalf: 'p33',                                  // Conor S
   },
-  bench: ['bf1', 'bf2', 'bb1', 'bb2', 'bs1', 'bf3'],
+  bench: ['p02', 'p06', 'p19', 'p24', 'p34', 'p12'], // Dominic, Ethan, Archie, James N, Harry, Matthew
   unavailable: [],
 };
