@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { useMatchStore } from '@/features/match/useMatchStore'
 import LiveMatch from '@/features/match/LiveMatch'
 import SetupScreen from '@/features/setup/SetupScreen'
+import SquadScreen from '@/features/squad/SquadScreen'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import { FOLDER_ID_KEY } from '@/lib/drive/driveRead'
 import { syncFromDrive } from '@/lib/drive/driveSync'
 
 const API_KEY = import.meta.env.VITE_GOOGLE_DRIVE_API_KEY as string | undefined
 
-type Screen = 'loading' | 'setup' | 'app'
+type Screen = 'loading' | 'setup' | 'match' | 'squad'
 
 export default function App() {
   const hydrate = useMatchStore(s => s.hydrate)
@@ -18,9 +19,8 @@ export default function App() {
     hydrate().then(() => {
       const folderId = localStorage.getItem(FOLDER_ID_KEY)
       if (folderId) {
-        // Background sync — never blocks the UI
         if (API_KEY) syncFromDrive(folderId, API_KEY)
-        setScreen('app')
+        setScreen('match')
       } else {
         setScreen('setup')
       }
@@ -39,8 +39,12 @@ export default function App() {
   }
 
   if (screen === 'setup') {
-    return <SetupScreen onDone={() => setScreen('app')} />
+    return <SetupScreen onDone={() => setScreen('match')} />
   }
 
-  return <LiveMatch />
+  if (screen === 'squad') {
+    return <SquadScreen onBack={() => setScreen('match')} />
+  }
+
+  return <LiveMatch onOpenSquad={() => setScreen('squad')} />
 }

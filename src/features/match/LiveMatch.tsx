@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity, AlertTriangle, ArrowRight, Check,
-  Heart, Pause, Play, Plus, Trophy, Undo2, X,
+  Heart, Pause, Play, Plus, Trophy, Undo2, Users, X,
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import { validateComposition, projectOnPitchGroups } from '@/lib/domain/validateComposition'
@@ -219,7 +219,9 @@ function ScoreButton({
 
 // ── main screen ────────────────────────────────────────────────────────────────
 
-export default function LiveMatch() {
+interface LiveMatchProps { onOpenSquad?: () => void }
+
+export default function LiveMatch({ onOpenSquad }: LiveMatchProps) {
   const store = useMatchStore()
   const { matchState, squad, clockRunning } = store
 
@@ -453,8 +455,20 @@ export default function LiveMatch() {
               </div>
             </div>
           </div>
-          <div className="text-[10px] uppercase tracking-widest text-white/70 italic">
-            Nunquam Respice
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-widest text-white/70 italic">
+              Nunquam Respice
+            </span>
+            {onOpenSquad && (
+              <button
+                onClick={onOpenSquad}
+                className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition"
+                style={{ background: 'rgba(255,255,255,0.15)' }}
+                aria-label="Squad"
+              >
+                <Users size={15} color="white" strokeWidth={2} />
+              </button>
+            )}
           </div>
         </div>
 
