@@ -219,9 +219,9 @@ function ScoreButton({
 
 // ── main screen ────────────────────────────────────────────────────────────────
 
-interface LiveMatchProps { onBack?: () => void; onOpenSquad?: () => void }
+interface LiveMatchProps { onBack?: () => void; onOpenSquad?: () => void; onSummary?: () => void }
 
-export default function LiveMatch({ onBack, onOpenSquad }: LiveMatchProps) {
+export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchProps) {
   const store = useMatchStore()
   const { matchState, squad, clockRunning, opponent, teamSheet } = store
 
@@ -520,7 +520,7 @@ export default function LiveMatch({ onBack, onOpenSquad }: LiveMatchProps) {
               <span className="text-white/50">—</span>
               <ScoreButton
                 label="Them" value={matchState.scoreThem}
-                onClick={() => { store.recordTryThem(); showToast('Try — Saints') }}
+                onClick={() => { store.recordTryThem(); showToast(`Try — ${opponent}`) }}
               />
             </div>
           </div>
@@ -538,7 +538,7 @@ export default function LiveMatch({ onBack, onOpenSquad }: LiveMatchProps) {
                 </button>
               ) : (
                 <button
-                  onClick={() => { store.endHalf(); showToast('Full time') }}
+                  onClick={() => { store.endMatch(); showToast('Full time') }}
                   className="text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded opacity-60 hover:opacity-90 transition"
                   style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
                 >
@@ -776,23 +776,36 @@ export default function LiveMatch({ onBack, onOpenSquad }: LiveMatchProps) {
         className="fixed bottom-0 left-0 right-0 px-3 py-3 flex items-center gap-2 z-30"
         style={{ background: '#F5F3F0', borderTop: '1px solid #D6D3D1' }}
       >
-        <button
-          onClick={handleUndoPress}
-          disabled={!store.events.length}
-          className="tap-target px-4 rounded-lg border-2 font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-95 transition"
-          style={{ borderColor: '#D6D3D1', color: INK }}
-        >
-          <Undo2 size={18} strokeWidth={2.5} />
-          Undo
-        </button>
-        {!subBuilderOpen && (
+        {matchEnded ? (
           <button
-            onClick={openSubBuilder}
-            className="tap-target flex-1 rounded-lg font-bold text-lg active:scale-95 transition"
+            onClick={onSummary}
+            className="tap-target flex-1 rounded-lg font-bold text-base active:scale-95 transition flex items-center justify-center gap-2"
             style={{ background: PURPLE, color: 'white' }}
           >
-            Build subs
+            <Trophy size={18} strokeWidth={2} />
+            Match summary
           </button>
+        ) : (
+          <>
+            <button
+              onClick={handleUndoPress}
+              disabled={!store.events.length}
+              className="tap-target px-4 rounded-lg border-2 font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-95 transition"
+              style={{ borderColor: '#D6D3D1', color: INK }}
+            >
+              <Undo2 size={18} strokeWidth={2.5} />
+              Undo
+            </button>
+            {!subBuilderOpen && (
+              <button
+                onClick={openSubBuilder}
+                className="tap-target flex-1 rounded-lg font-bold text-lg active:scale-95 transition"
+                style={{ background: PURPLE, color: 'white' }}
+              >
+                Build subs
+              </button>
+            )}
+          </>
         )}
       </div>
 

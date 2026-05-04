@@ -35,6 +35,7 @@ interface MatchStore {
   startClock: () => void;
   pauseClock: () => void;
   endHalf: () => void;
+  endMatch: () => void;
   recordTryUs: (scorerId?: ID) => void;
   recordTryThem: () => void;
   commitSubBatch: (offIds: ID[], onIds: ID[]) => void;
@@ -153,6 +154,15 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
       const elapsedMs = state.currentElapsedMs();
       const half = state.matchState.half;
       const event: MatchEvent = { id: newId(), ts: nowIso(), type: 'HALF_END', payload: { half, elapsedMs } };
+      const patch = withEvent(state, event);
+      set({ clockRunning: false, clockStartedAt: null, baseElapsedMs: elapsedMs, ...patch });
+      persist(patch.events);
+    },
+
+    endMatch: () => {
+      const state = get();
+      const elapsedMs = state.currentElapsedMs();
+      const event: MatchEvent = { id: newId(), ts: nowIso(), type: 'MATCH_END', payload: { elapsedMs } };
       const patch = withEvent(state, event);
       set({ clockRunning: false, clockStartedAt: null, baseElapsedMs: elapsedMs, ...patch });
       persist(patch.events);

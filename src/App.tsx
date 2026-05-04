@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Calendar, Home, Users } from 'lucide-react'
 import LiveMatch from '@/features/match/LiveMatch'
+import PostMatchScreen from '@/features/match/PostMatchScreen'
 import SetupScreen from '@/features/setup/SetupScreen'
 import SquadScreen from '@/features/squad/SquadScreen'
 import FixtureListScreen from '@/features/fixture/FixtureListScreen'
@@ -14,7 +15,7 @@ import type { Fixture } from '@/lib/events/types'
 const API_KEY = import.meta.env.VITE_GOOGLE_DRIVE_API_KEY as string | undefined
 const PURPLE  = '#782880'
 
-type Screen = 'loading' | 'setup' | 'home' | 'match' | 'squad' | 'fixtures' | 'fixture-prep'
+type Screen = 'loading' | 'setup' | 'home' | 'match' | 'post-match' | 'squad' | 'fixtures' | 'fixture-prep'
 
 export default function App() {
   const [screen, setScreen]               = useState<Screen>('loading')
@@ -61,7 +62,11 @@ export default function App() {
         <LiveMatch
           onBack={() => setScreen('home')}
           onOpenSquad={() => setScreen('squad')}
+          onSummary={() => setScreen('post-match')}
         />
+      )}
+      {screen === 'post-match' && (
+        <PostMatchScreen onBack={() => setScreen('home')} />
       )}
       {screen === 'squad' && (
         <SquadScreen onBack={() => setScreen('home')} />
