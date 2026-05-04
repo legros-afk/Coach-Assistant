@@ -149,7 +149,16 @@ export default function PostMatchScreen({ onBack }: Props) {
       const res = await fetch('/summarise', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ opponent, scoreUs, scoreThem, tryScorers, teamLabel: teamSheet.label, date }),
+        body: JSON.stringify({
+          opponent,
+          scoreUs,
+          scoreThem,
+          tryScorers,
+          teamLabel: teamSheet.label,
+          date,
+          subsCount: subLog.length,
+          playersUsed: coachRows.length,
+        }),
         signal: abortRef.current.signal,
       })
       const data = await res.json() as { summary?: string; error?: string }

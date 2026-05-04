@@ -11,6 +11,8 @@ interface SummariseRequest {
   tryScorers: string[]
   teamLabel: string
   date: string
+  subsCount: number
+  playersUsed: number
 }
 
 const SYSTEM_PROMPT = `You are writing a short, fun match summary for a grassroots U12 rugby \
@@ -22,13 +24,15 @@ about the kids.
 
 Style:
 - Two to four short sentences. Tight, punchy.
-- Always name the scorers if there are any.
+- You MUST mention the opponent's name and the final score (in tries) every time.
+- Always name the try scorers if there are any.
 - If we won, celebrate without gloating. If we lost, find the positive \
 without being saccharine. If it was close, say so.
+- If subs were made, you may mention the squad rotation briefly.
 - One emoji maximum, only if it lands naturally.
 - Refer to the team as "the boys" or "the lads" or by club name. \
-Never use the children's names except to credit scorers.
-- Don't invent events. Only use the facts in the data.
+Never use the children's names except to credit try scorers.
+- Don't invent events. Only use the facts provided.
 
 Output: just the summary text. No preamble, no quotation marks, no \
 "here's a draft."`
@@ -42,14 +46,18 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const scorerLine = body.tryScorers.length > 0
     ? body.tryScorers.join(', ')
-    : 'none recorded'
+    : 'none'
+
+  const tryWord = (n: number) => n === 1 ? '1 try' : `${n} tries`
 
   const userMessage = [
     `Date: ${body.date}`,
-    `Match: Woodford RFC U12 Team ${body.teamLabel} vs ${body.opponent}`,
+    `Woodford RFC U12 (Team ${body.teamLabel}) vs ${body.opponent}`,
     `Result: ${result}`,
-    `Score: Woodford ${body.scoreUs} tries – ${body.opponent} ${body.scoreThem} tries`,
+    `Final score: Woodford ${tryWord(body.scoreUs)} – ${body.opponent} ${tryWord(body.scoreThem)}`,
     `Try scorers: ${scorerLine}`,
+    `Players used: ${body.playersUsed}`,
+    `Substitutions made: ${body.subsCount}`,
   ].join('\n')
 
   const model = 'gemini-2.5-flash'
