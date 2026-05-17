@@ -241,20 +241,25 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, onB
   const pureForwards = forwards.filter(p => !p.eligibleGroups.includes('scrumhalf'))
 
   // ── render helpers
-  const renderPlayerRow = (p: Player) => {
+  const renderPlayerRow = (p: Player, autoGroup?: Group) => {
     const cur = assignments.get(p.id) ?? null
     const group = groupOverrides.get(p.id) ?? p.defaultGroup
     const isStarter = cur === 'A' || cur === 'B'
 
+    const assignStarter = (id: ID, val: 'A' | 'B') => {
+      assign(id, val)
+      if (autoGroup) setGroupOverrides(m => new Map(m).set(id, autoGroup))
+    }
+
     const handleA = () => {
       if (cur === 'A') assign(p.id, 'bench-A')
       else if (cur === 'bench-A') assign(p.id, null)
-      else assign(p.id, 'A')
+      else assignStarter(p.id, 'A')
     }
     const handleB = () => {
       if (cur === 'B') assign(p.id, 'bench-B')
       else if (cur === 'bench-B') assign(p.id, null)
-      else assign(p.id, 'B')
+      else assignStarter(p.id, 'B')
     }
     const handleUnavail = () => assign(p.id, cur === 'unavailable' ? null : 'unavailable')
 
@@ -294,11 +299,11 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, onB
     )
   }
 
-  const renderSection = (title: string, list: Player[]) => list.length === 0 ? null : (
+  const renderSection = (title: string, list: Player[], autoGroup?: Group) => list.length === 0 ? null : (
     <div className="mb-2">
       <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 px-1 py-1.5">{title}</div>
       <div className="bg-white rounded-lg px-3" style={{ border: '1px solid #E4D0F5' }}>
-        {list.map(renderPlayerRow)}
+        {list.map(p => renderPlayerRow(p, autoGroup))}
       </div>
     </div>
   )
@@ -482,7 +487,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, onB
                 </div>
                 {renderSection('Forwards', pureForwards)}
                 {renderSection('Backs', backs)}
-                {renderSection('SH / cover', shSection)}
+                {renderSection('SH / cover', shSection, 'scrumhalf')}
               </>
             )}
           </div>
