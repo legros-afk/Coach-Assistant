@@ -32,6 +32,22 @@ const todayIso = () => new Date().toISOString().slice(0, 10)
 let _seq = 0
 const newId = () => `f-${Date.now()}-${++_seq}`
 
+// F/B limits per players-per-side (SH is always 1). Based on 12=5F+6B+1SH, scaled proportionally.
+const TEAM_LIMITS: Record<number, { f: number; b: number }> = {
+  12: { f: 5, b: 6 },
+  11: { f: 5, b: 5 },
+  10: { f: 4, b: 5 },
+   9: { f: 4, b: 4 },
+   8: { f: 3, b: 4 },
+   7: { f: 3, b: 3 },
+   6: { f: 2, b: 3 },
+   5: { f: 2, b: 2 },
+   4: { f: 1, b: 2 },
+   3: { f: 1, b: 1 },
+   2: { f: 0, b: 1 },
+   1: { f: 0, b: 0 },
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 function countTeam(team: 'A' | 'B', assignments: Map<ID, Assignment>, groupOverrides: Map<ID, Group>, squad: Player[]) {
   const starters = squad.filter(p => assignments.get(p.id) === team)
@@ -90,8 +106,9 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
   )
 
   // ── fixture fields
-  const [date, setDate]         = useState(existing?.date ?? todayIso())
-  const [opponent, setOpponent] = useState(existing?.opponent ?? '')
+  const [date, setDate]               = useState(existing?.date ?? todayIso())
+  const [opponent, setOpponent]       = useState(existing?.opponent ?? '')
+  const [playersPerSide, setPlayersPerSide] = useState(existing?.playersPerSide ?? 12)
 
   // ── mode
   const [mode, setMode] = useState<'checklist' | 'paste'>('checklist')
@@ -202,6 +219,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
       date,
       opponent: opponent.trim(),
       teamSheets,
+      playersPerSide,
       updatedAt: new Date().toISOString(),
       version: (existing?.version ?? 0) + 1,
     }
@@ -354,16 +372,33 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
     )
   }
 
-  const CompositionBadge = ({ label, stats }: { label: string; stats: ReturnType<typeof countTeam> }) => (
-    <div className="flex-1 px-2 py-1.5 rounded" style={{ background: stats.comp.valid ? '#D1FAE5' : '#FEF3C7' }}>
-      <div className="text-[11px] font-bold" style={{ color: stats.comp.valid ? '#065F46' : '#92400E' }}>
-        Team {label}
+  const limits = TEAM_LIMITS[playersPerSide] ?? TEAM_LIMITS[12]
+
+  const CompositionBadge = ({ label, stats }: { label: string; stats: ReturnType<typeof countTeam> }) => {
+    const fOver = stats.f > limits.f
+    const bOver = stats.b > limits.b
+    const shOver = stats.sh > 1
+    const anyOver = fOver || bOver || shOver
+    const allFull = stats.f === limits.f && stats.b === limits.b && stats.sh === 1
+    const bg = anyOver ? '#FEE2E2' : allFull ? '#D1FAE5' : '#F8F4FF'
+    const titleColor = anyOver ? '#991B1B' : allFull ? '#065F46' : INK
+    const slotColor = (n: number, max: number) =>
+      n > max ? '#DC2626' : n === max ? '#059669' : '#78716C'
+    return (
+      <div className="flex-1 px-2 py-1.5 rounded" style={{ background: bg }}>
+        <div className="text-[11px] font-bold" style={{ color: titleColor }}>Team {label}</div>
+        <div className="text-[11px] flex gap-1">
+          <span style={{ color: slotColor(stats.f, limits.f) }}>{stats.f}/{limits.f}F</span>
+          <span style={{ color: '#C8A0E8' }}>·</span>
+          <span style={{ color: slotColor(stats.b, limits.b) }}>{stats.b}/{limits.b}B</span>
+          <span style={{ color: '#C8A0E8' }}>·</span>
+          <span style={{ color: slotColor(stats.sh, 1) }}>{stats.sh}/1SH</span>
+          <span style={{ color: '#C8A0E8' }}>·</span>
+          <span style={{ color: '#78716C' }}>{stats.bench} bench</span>
+        </div>
       </div>
-      <div className="text-[11px]" style={{ color: stats.comp.valid ? '#065F46' : '#92400E' }}>
-        {stats.f}F · {stats.b}B · {stats.sh}SH · {stats.bench} bench
-      </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div className="min-h-screen pb-28" style={{ background: '#F8F4FF', color: INK }}>
@@ -413,6 +448,24 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
                 className="w-full px-2 py-2 rounded border text-sm outline-none"
                 style={{ borderColor: '#E4D0F5', color: INK }}
               />
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-0.5">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">
+              Players per side
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPlayersPerSide(n => Math.max(1, n - 1))}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold active:scale-95 transition"
+                style={{ background: '#F8F4FF', color: PURPLE }}
+              >−</button>
+              <span className="w-5 text-center text-sm font-bold" style={{ color: INK }}>{playersPerSide}</span>
+              <button
+                onClick={() => setPlayersPerSide(n => Math.min(12, n + 1))}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold active:scale-95 transition"
+                style={{ background: '#F8F4FF', color: PURPLE }}
+              >+</button>
             </div>
           </div>
         </div>

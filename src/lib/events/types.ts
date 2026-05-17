@@ -33,6 +33,7 @@ export interface Fixture {
   date: string;
   opponent: string;
   teamSheets: TeamSheet[];
+  playersPerSide?: number;
   publishedAt?: string;
   updatedAt: string;
   version: number;
