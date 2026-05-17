@@ -29,13 +29,13 @@ export const DEMO_SQUAD: Player[] = [
   { id: 'p23', name: 'Henry W',   defaultGroup: 'back',      eligibleGroups: ['back'] },
   { id: 'p24', name: 'James N',   defaultGroup: 'back',      eligibleGroups: ['back'] },
   { id: 'p25', name: 'James V',   defaultGroup: 'forward',   eligibleGroups: ['forward'] },
-  { id: 'p26', name: 'Joshua',    defaultGroup: 'back',      eligibleGroups: ['back'] },
+
   { id: 'p27', name: 'Juan',      defaultGroup: 'back',      eligibleGroups: ['back'] },
   { id: 'p28', name: 'Lewis',     defaultGroup: 'back',      eligibleGroups: ['back'] },
   { id: 'p29', name: 'Oscar',     defaultGroup: 'back',      eligibleGroups: ['back'] },
   { id: 'p30', name: 'Seb',       defaultGroup: 'back',      eligibleGroups: ['back', 'scrumhalf'] },
   { id: 'p31', name: 'Seth',      defaultGroup: 'back',      eligibleGroups: ['back'] },
-  { id: 'p32', name: 'Teddy P',   defaultGroup: 'back',      eligibleGroups: ['back'] },
+
 
   // Backs/forward who can cover scrum-half (4)
   { id: 'p33', name: 'Conor S',   defaultGroup: 'back',      eligibleGroups: ['back', 'scrumhalf'] },
