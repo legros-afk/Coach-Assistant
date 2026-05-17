@@ -19,11 +19,6 @@ const GROUP_SHORT: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf:
 
 // ── assignment model ─────────────────────────────────────────────────────────
 type Assignment = 'A' | 'bench-A' | 'B' | 'bench-B' | 'unavailable' | null
-const CYCLE: Assignment[] = ['A', 'bench-A', 'B', 'bench-B', 'unavailable', null]
-const nextAssignment = (cur: Assignment): Assignment => {
-  const idx = CYCLE.indexOf(cur)
-  return CYCLE[(idx + 1) % CYCLE.length]
-}
 
 const ASSIGN_STYLE: Record<NonNullable<Assignment>, { bg: string; color: string; label: string }> = {
   'A':           { bg: PURPLE,      color: 'white',   label: 'A' },
@@ -242,24 +237,52 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
   // ── render helpers
   const renderPlayerRow = (p: Player) => {
     const cur = assignments.get(p.id) ?? null
-    const style = cur ? ASSIGN_STYLE[cur] : null
     const group = groupOverrides.get(p.id) ?? p.defaultGroup
     const isStarter = cur === 'A' || cur === 'B'
+
+    const handleA = () => {
+      if (cur === 'A') assign(p.id, 'bench-A')
+      else if (cur === 'bench-A') assign(p.id, null)
+      else assign(p.id, 'A')
+    }
+    const handleB = () => {
+      if (cur === 'B') assign(p.id, 'bench-B')
+      else if (cur === 'bench-B') assign(p.id, null)
+      else assign(p.id, 'B')
+    }
+    const handleUnavail = () => assign(p.id, cur === 'unavailable' ? null : 'unavailable')
+
+    const aStyle = cur === 'A' ? ASSIGN_STYLE['A'] : cur === 'bench-A' ? ASSIGN_STYLE['bench-A'] : null
+    const bStyle = cur === 'B' ? ASSIGN_STYLE['B'] : cur === 'bench-B' ? ASSIGN_STYLE['bench-B'] : null
+
     return (
-      <div key={p.id} className="flex items-center gap-2 py-2 border-b last:border-0" style={{ borderColor: '#F8F4FF' }}>
+      <div key={p.id} className="flex items-center gap-2 py-1.5 border-b last:border-0" style={{ borderColor: '#F8F4FF' }}>
         <button onClick={() => isStarter && cycleGroup(p)} className={isStarter ? 'cursor-pointer' : 'cursor-default'}>
           <GroupBadge group={group} />
         </button>
-        <span className="flex-1 text-sm font-medium truncate" style={{ color: INK }}>{p.name}</span>
-        {isStarter && p.eligibleGroups.length > 1 && (
-          <span className="text-[10px] text-stone-400">tap badge</span>
-        )}
+        <span className="flex-1 text-sm font-medium truncate" style={{ color: cur === 'unavailable' ? '#A8A29E' : INK }}>{p.name}</span>
         <button
-          onClick={() => assign(p.id, nextAssignment(cur))}
+          onClick={handleA}
           className="w-10 h-8 rounded-lg text-xs font-bold flex items-center justify-center flex-shrink-0 active:scale-95 transition"
-          style={style ? { background: style.bg, color: style.color } : { background: '#F8F4FF', color: '#7B5FA8' }}
+          style={aStyle ? { background: aStyle.bg, color: aStyle.color } : { background: '#F8F4FF', color: '#7B5FA8' }}
         >
-          {style ? style.label : '—'}
+          {aStyle ? aStyle.label : 'A'}
+        </button>
+        <button
+          onClick={handleB}
+          className="w-10 h-8 rounded-lg text-xs font-bold flex items-center justify-center flex-shrink-0 active:scale-95 transition"
+          style={bStyle ? { background: bStyle.bg, color: bStyle.color } : { background: '#F8F4FF', color: '#7B5FA8' }}
+        >
+          {bStyle ? bStyle.label : 'B'}
+        </button>
+        <button
+          onClick={handleUnavail}
+          className="w-7 h-8 rounded-lg text-xs flex items-center justify-center flex-shrink-0 active:scale-95 transition"
+          style={cur === 'unavailable'
+            ? { background: ASSIGN_STYLE['unavailable'].bg, color: ASSIGN_STYLE['unavailable'].color }
+            : { background: '#F8F4FF', color: '#C8A0E8' }}
+        >
+          ✗
         </button>
       </div>
     )
@@ -415,7 +438,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
         {mode === 'checklist' && (
           <div>
             <div className="text-[10px] text-stone-400 mb-2 px-1">
-              Tap the pill to cycle: A → bench A → B → bench B → Out. Tap group badge on starters to change position.
+              Tap A or B to assign starter, tap again for bench, again to clear. ✗ = unavailable. Tap group badge on starters to change position.
             </div>
             {players.length === 0 ? (
               <div className="py-8 text-center text-sm text-stone-400">
@@ -423,6 +446,13 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
               </div>
             ) : (
               <>
+                <div className="flex items-center gap-2 px-4 pb-1">
+                  <div className="w-6 flex-shrink-0" />
+                  <div className="flex-1" />
+                  <div className="w-10 text-center text-[10px] font-bold uppercase tracking-widest text-stone-400">A</div>
+                  <div className="w-10 text-center text-[10px] font-bold uppercase tracking-widest text-stone-400">B</div>
+                  <div className="w-7" />
+                </div>
                 {renderSection('Forwards', pureForwards)}
                 {renderSection('Backs', backs)}
                 {renderSection('SH / cover', shSection)}
