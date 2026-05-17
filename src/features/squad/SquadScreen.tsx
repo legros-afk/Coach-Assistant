@@ -282,7 +282,7 @@ export default function SquadScreen({ onBack }: Props) {
 
       {/* Add player FAB — only when squad exists */}
       {players.length > 0 && (
-        <div className="fixed bottom-6 right-4 z-20">
+        <div className="fixed bottom-20 right-4 z-20">
           <button
             onClick={openNew}
             className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition"
