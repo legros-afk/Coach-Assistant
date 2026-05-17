@@ -77,11 +77,12 @@ function GroupBadge({ group, size = 'sm' }: { group: Group; size?: 'sm' | 'xs' }
 
 interface Props {
   existing?: Fixture
+  initialPlayersPerSide?: number
   onBack: () => void
   onSaved: () => void
 }
 
-export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) {
+export default function FixturePrepScreen({ existing, initialPlayersPerSide, onBack, onSaved }: Props) {
   const { squad, isHydrated: squadReady, hydrate: hydrateSquad } = useSquadStore()
   const { saveFixture } = useFixtureStore()
 
@@ -95,7 +96,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
   // ── fixture fields
   const [date, setDate]               = useState(existing?.date ?? todayIso())
   const [opponent, setOpponent]       = useState(existing?.opponent ?? '')
-  const [playersPerSide, setPlayersPerSide] = useState(existing?.playersPerSide ?? 12)
+  const [playersPerSide] = useState(existing?.playersPerSide ?? initialPlayersPerSide ?? 12)
 
   // ── mode
   const [mode, setMode] = useState<'checklist' | 'paste'>('checklist')
@@ -438,22 +439,8 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
             </div>
           </div>
           <div className="flex items-center justify-between pt-0.5">
-            <label className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">
-              Players per side
-            </label>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPlayersPerSide(n => Math.max(1, n - 1))}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold active:scale-95 transition"
-                style={{ background: '#F8F4FF', color: PURPLE }}
-              >−</button>
-              <span className="w-5 text-center text-sm font-bold" style={{ color: INK }}>{playersPerSide}</span>
-              <button
-                onClick={() => setPlayersPerSide(n => Math.min(12, n + 1))}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold active:scale-95 transition"
-                style={{ background: '#F8F4FF', color: PURPLE }}
-              >+</button>
-            </div>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Players per side</span>
+            <span className="text-sm font-bold" style={{ color: INK }}>{playersPerSide}</span>
           </div>
         </div>
 

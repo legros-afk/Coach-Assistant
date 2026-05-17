@@ -10,8 +10,10 @@ const PURPLE      = '#3D0066'
 const PURPLE_DARK = '#5B1A99'
 const INK         = '#1A1A1A'
 
+const PPS_KEY = 'coach-players-per-side'
+
 interface Props {
-  onNew: () => void
+  onNew: (playersPerSide: number) => void
   onEdit: (fixture: Fixture) => void
   onViewMatch: (match: Match, teamSheet: TeamSheet) => void
 }
@@ -21,6 +23,16 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch }: Props)
   const { isSyncing, lastSyncedAt, syncAll } = useSyncStore()
   const hasDrive = driveConfigured()
   const [matchMap, setMatchMap] = useState<Map<string, Match>>(new Map())
+  const [playersPerSide, setPlayersPerSideState] = useState<number>(() => {
+    const stored = localStorage.getItem(PPS_KEY)
+    return stored ? parseInt(stored, 10) : 12
+  })
+
+  const setPlayersPerSide = (n: number) => {
+    const clamped = Math.min(12, Math.max(1, n))
+    localStorage.setItem(PPS_KEY, String(clamped))
+    setPlayersPerSideState(clamped)
+  }
 
   useEffect(() => { if (!isHydrated) hydrate() }, [isHydrated, hydrate])
 
@@ -56,6 +68,24 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch }: Props)
           )}
           <WoodfordMark size={22} color="white" />
         </div>
+
+        {/* Players per side */}
+        <div className="px-3 py-2 flex items-center justify-between" style={{ background: INK }}>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-white/60">Players per side</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPlayersPerSide(playersPerSide - 1)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold active:scale-95 transition"
+              style={{ background: 'rgba(255,255,255,0.12)', color: 'white' }}
+            >−</button>
+            <span className="w-5 text-center text-sm font-bold text-white">{playersPerSide}</span>
+            <button
+              onClick={() => setPlayersPerSide(playersPerSide + 1)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold active:scale-95 transition"
+              style={{ background: 'rgba(255,255,255,0.12)', color: 'white' }}
+            >+</button>
+          </div>
+        </div>
       </div>
 
       <div className="px-3 pt-3">
@@ -69,7 +99,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch }: Props)
               <div className="text-sm text-stone-400">Create a fixture to start building team sheets.</div>
             </div>
             <button
-              onClick={onNew}
+              onClick={() => onNew(playersPerSide)}
               className="tap-target px-5 rounded-lg font-bold text-sm flex items-center gap-2 active:scale-95 transition"
               style={{ background: PURPLE, color: 'white', minHeight: '48px' }}
             >
@@ -122,7 +152,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch }: Props)
 
       <div className="fixed bottom-20 right-4 z-20">
         <button
-          onClick={onNew}
+          onClick={() => onNew(playersPerSide)}
           className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition"
           style={{ background: PURPLE, color: 'white' }}
         >

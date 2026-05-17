@@ -21,8 +21,9 @@ const PURPLE = '#3D0066'
 type Screen = 'loading' | 'setup' | 'home' | 'match' | 'post-match' | 'squad' | 'fixtures' | 'fixture-prep'
 
 export default function App() {
-  const [screen, setScreen]               = useState<Screen>('loading')
-  const [editingFixture, setEditingFixture] = useState<Fixture | undefined>()
+  const [screen, setScreen]                     = useState<Screen>('loading')
+  const [editingFixture, setEditingFixture]       = useState<Fixture | undefined>()
+  const [newFixturePPS, setNewFixturePPS]         = useState<number>(12)
 
   useEffect(() => {
     const folderId = localStorage.getItem(FOLDER_ID_KEY)
@@ -34,8 +35,9 @@ export default function App() {
     }
   }, [])
 
-  const openFixturePrep = (fixture?: Fixture) => {
+  const openFixturePrep = (fixture?: Fixture, pps?: number) => {
     setEditingFixture(fixture)
+    if (pps !== undefined) setNewFixturePPS(pps)
     setScreen('fixture-prep')
   }
 
@@ -101,7 +103,7 @@ export default function App() {
       )}
       {screen === 'fixtures' && (
         <FixtureListScreen
-          onNew={() => openFixturePrep()}
+          onNew={pps => openFixturePrep(undefined, pps)}
           onEdit={f => openFixturePrep(f)}
           onViewMatch={openStoredMatch}
         />
@@ -109,6 +111,7 @@ export default function App() {
       {screen === 'fixture-prep' && (
         <FixturePrepScreen
           existing={editingFixture}
+          initialPlayersPerSide={newFixturePPS}
           onBack={() => setScreen('fixtures')}
           onSaved={() => setScreen('fixtures')}
         />
