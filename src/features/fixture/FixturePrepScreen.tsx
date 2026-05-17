@@ -32,21 +32,8 @@ const todayIso = () => new Date().toISOString().slice(0, 10)
 let _seq = 0
 const newId = () => `f-${Date.now()}-${++_seq}`
 
-// F/B limits per players-per-side (SH is always 1). Based on 12=5F+6B+1SH, scaled proportionally.
-const TEAM_LIMITS: Record<number, { f: number; b: number }> = {
-  12: { f: 5, b: 6 },
-  11: { f: 5, b: 5 },
-  10: { f: 4, b: 5 },
-   9: { f: 4, b: 4 },
-   8: { f: 3, b: 4 },
-   7: { f: 3, b: 3 },
-   6: { f: 2, b: 3 },
-   5: { f: 2, b: 2 },
-   4: { f: 1, b: 2 },
-   3: { f: 1, b: 1 },
-   2: { f: 0, b: 1 },
-   1: { f: 0, b: 0 },
-}
+// Forwards are always 5 (scrum requirement), SH always 1, backs fill the rest.
+const teamLimits = (n: number) => ({ f: 5, b: Math.max(0, n - 6) })
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function countTeam(team: 'A' | 'B', assignments: Map<ID, Assignment>, groupOverrides: Map<ID, Group>, squad: Player[]) {
@@ -372,7 +359,7 @@ export default function FixturePrepScreen({ existing, onBack, onSaved }: Props) 
     )
   }
 
-  const limits = TEAM_LIMITS[playersPerSide] ?? TEAM_LIMITS[12]
+  const limits = teamLimits(playersPerSide)
 
   const CompositionBadge = ({ label, stats }: { label: string; stats: ReturnType<typeof countTeam> }) => {
     const fOver = stats.f > limits.f
