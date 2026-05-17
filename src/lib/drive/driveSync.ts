@@ -1,6 +1,7 @@
 import { db } from '@/lib/db/db';
 import type { Fixture, Match, Squad } from '@/lib/events/types';
 import { DriveError, fetchFileJson, listFolder } from './driveRead';
+import { fetchSquadPositions, applyPositions } from './sheetsSync';
 
 export type SyncResult =
   | { ok: true;  squadUpdated: boolean; fixturesUpdated: number; matchesUpdated: number }
@@ -15,6 +16,21 @@ export async function syncFromDrive(folderId: string, apiKey: string): Promise<S
     if (squadFile) {
       const squad = await fetchFileJson<Squad>(squadFile.id, apiKey);
       await db.squads.put(squad);
+    }
+
+    // Always refresh positions from the squad spreadsheet
+    try {
+      const positions = await fetchSquadPositions(apiKey);
+      const all = await db.squads.toArray();
+      const squad = all.length ? all[all.length - 1] : null;
+      if (squad && positions.length > 0) {
+        const { players, changed } = applyPositions(squad.players, positions);
+        if (changed > 0) {
+          await db.squads.put({ ...squad, players, updatedAt: new Date().toISOString(), version: squad.version + 1 });
+        }
+      }
+    } catch {
+      // Sheets API unavailable — positions stay as-is, don't fail the whole sync
     }
 
     // fixtures/ subfolder
