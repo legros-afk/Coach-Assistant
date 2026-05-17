@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity, AlertTriangle, ArrowRight, Check, ChevronLeft,
-  Heart, Pause, Play, Plus, Trophy, Undo2, Users, X,
+  Pause, Play, Plus, Trophy, Undo2, Users, X,
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import { validateComposition, projectOnPitchGroups } from '@/lib/domain/validateComposition'
@@ -110,15 +110,15 @@ function Section({
 }
 
 function MiniAction({
-  onClick, color, icon, label,
-}: { onClick: () => void; color: string; icon?: React.ReactNode; label: string }) {
+  onClick, color, label,
+}: { onClick: () => void; color: string; label: string }) {
   return (
     <button
       onClick={e => { e.stopPropagation(); onClick() }}
-      className="flex-1 py-1.5 rounded text-[11px] font-bold uppercase tracking-wide flex items-center justify-center gap-1 active:scale-95 transition"
+      className="flex-1 py-1 rounded text-[10px] font-bold uppercase tracking-wide flex items-center justify-center active:scale-95 transition"
       style={{ background: color, color: 'white' }}
     >
-      {icon}{label}
+      {label}
     </button>
   )
 }
@@ -180,7 +180,7 @@ function PlayerCard({
 
       {showActions && (
         <div className="flex gap-1 mt-1.5">
-          <MiniAction onClick={onBlood!} color="#DC2626" icon={<Heart size={12} strokeWidth={2.5} />} label="Blood" />
+          <MiniAction onClick={onBlood!} color="#DC2626" label="Tmp" />
           <MiniAction onClick={onInjury!} color={INK} label="Inj" />
         </div>
       )}
@@ -252,14 +252,12 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
     return () => clearInterval(id)
   }, [clockRunning, matchState])
 
-  // ── sub builder
-  const [subBuilderOpen, setSubBuilderOpen] = useState(false)
+  // ── sub selection
   const [comingOffIds, setComingOffIds] = useState<ID[]>([])
   const [comingOnIds,  setComingOnIds]  = useState<ID[]>([])
+  const subMode = comingOffIds.length > 0 || comingOnIds.length > 0
 
-  const closeSubBuilder = () => {
-    setSubBuilderOpen(false); setComingOffIds([]); setComingOnIds([])
-  }
+  const clearSubs = () => { setComingOffIds([]); setComingOnIds([]) }
 
   // ── try picker
   const [tryPickerOpen, setTryPickerOpen] = useState(false)
@@ -320,7 +318,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
     }, 0) / active.length
   }, [squad, matchState, liveElapsedMs])
 
-  // ── sub builder pairings + composition
+  // ── sub pairings + composition
   const pairings = useMemo(() => {
     type Entry = { player: Player; ps: PlayerMatchState }
     const offQueue: Entry[] = comingOffIds.map(id => ({
@@ -370,8 +368,6 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
     return validateComposition(groups)
   }, [comingOffIds, comingOnIds, pairings, matchState])
 
-  const canConfirm = comingOffIds.length > 0 && compositionCheck.valid
-
   // ── handlers
   const togglePickOff = (p: Player) => {
     if (comingOffIds.includes(p.id)) {
@@ -386,18 +382,27 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
   const togglePickOn = (p: Player) => {
     if (comingOnIds.includes(p.id)) {
       setComingOnIds(comingOnIds.filter(id => id !== p.id))
-    } else if (comingOnIds.length < 3) {
-      setComingOnIds([...comingOnIds, p.id])
-    } else {
-      showToast('Max 3 subs at once')
+      return
     }
-  }
-
-  const confirmSubs = () => {
-    if (!canConfirm) return
-    store.commitSubBatch(comingOffIds, comingOnIds)
-    showToast(`${comingOffIds.length} sub${comingOffIds.length > 1 ? 's' : ''} confirmed`)
-    closeSubBuilder()
+    if (comingOffIds.length === 0) return
+    if (comingOnIds.length >= comingOffIds.length) {
+      showToast('Tap a player to come off first')
+      return
+    }
+    const newOnIds = [...comingOnIds, p.id]
+    if (newOnIds.length === comingOffIds.length) {
+      // Auto-confirm — check for position mismatch first
+      const mismatch = comingOffIds.some(offId => {
+        const offActive = matchState.playerStates.get(offId)?.activeGroup
+        if (!offActive) return false
+        return !newOnIds.some(onId => playerMap.get(onId)?.eligibleGroups.includes(offActive))
+      })
+      store.commitSubBatch(comingOffIds, newOnIds)
+      clearSubs()
+      showToast(mismatch ? '⚠ Position mismatch — sub done' : 'Sub confirmed')
+    } else {
+      setComingOnIds(newOnIds)
+    }
   }
 
   const handleUndoPress = () => {
@@ -418,15 +423,11 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
     showToast('Undone')
   }
 
-  const openSubBuilder = () => {
-    setSubBuilderOpen(true); setNudgeDismissed(true)
-  }
-
   const applyNudge = () => {
     if (!nudge) return
-    setComingOffIds([nudge.off.id])
-    setComingOnIds([nudge.on.id])
-    openSubBuilder()
+    store.commitSubBatch([nudge.off.id], [nudge.on.id])
+    showToast(`Sub: ${nudge.off.name} ↔ ${nudge.on.name}`)
+    setNudgeDismissed(true)
   }
 
   // half-end state
@@ -550,23 +551,8 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
         </div>
       </div>
 
-      {/* ── Sub builder helper bar */}
-      {subBuilderOpen && (
-        <div
-          className="sticky z-10 px-3 py-2 shadow-md flex items-center justify-between"
-          style={{ top: '92px', background: PURPLE, color: 'white' }}
-        >
-          <div className="text-xs font-bold uppercase tracking-wide">
-            Sub builder · tap to pick
-          </div>
-          <button onClick={closeSubBuilder} className="opacity-80">
-            <X size={16} />
-          </button>
-        </div>
-      )}
-
       {/* ── Coach nudge */}
-      {nudge && !nudgeDismissed && !subBuilderOpen && (
+      {nudge && !nudgeDismissed && !subMode && (
         <div
           className="mx-3 mt-3 rounded-lg p-3 flex items-start gap-3"
           style={{ background: PURPLE_SOFTER, border: `1px solid ${PURPLE_SOFT}` }}
@@ -601,7 +587,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
       <div className="px-3 pt-3 space-y-4">
         <Section
           title="On pitch" count={onPitch.length} subtitle="most played first"
-          hint={subBuilderOpen ? 'tap to take off' : undefined}
+          hint={subMode ? 'tap to take off' : undefined}
         >
           <div className="grid grid-cols-2 gap-2">
             {onPitch.map(p => (
@@ -613,8 +599,8 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                 liveElapsedMs={liveElapsedMs}
                 picked={comingOffIds.includes(p.id)}
                 pickedTone="rose"
-                onTap={subBuilderOpen ? () => togglePickOff(p) : undefined}
-                showActions={!subBuilderOpen}
+                onTap={() => togglePickOff(p)}
+                showActions={!subMode}
                 onBlood={() => setBloodPickerFor(p)}
                 onInjury={() => setInjuryPickerFor(p)}
               />
@@ -624,7 +610,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
 
         <Section
           title="Bench" count={bench.length} subtitle="least played first"
-          hint={subBuilderOpen ? 'tap to bring on' : undefined}
+          hint={comingOffIds.length > comingOnIds.length ? 'tap replacement' : undefined}
         >
           <div className="grid grid-cols-2 gap-2">
             {bench.map(p => (
@@ -636,7 +622,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                 liveElapsedMs={liveElapsedMs}
                 picked={comingOnIds.includes(p.id)}
                 pickedTone="emerald"
-                onTap={subBuilderOpen ? () => togglePickOn(p) : undefined}
+                onTap={comingOffIds.length > comingOnIds.length ? () => togglePickOn(p) : undefined}
                 showActions={false}
               />
             ))}
@@ -669,80 +655,44 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
         )}
       </div>
 
-      {/* ── Sub builder tray */}
-      {subBuilderOpen && (
+      {/* ── Sub status tray */}
+      {subMode && (
         <div
-          className="fixed bottom-[76px] left-0 right-0 px-3 py-3 shadow-2xl z-30"
+          className="fixed bottom-[76px] left-0 right-0 px-3 py-2.5 shadow-2xl z-30"
           style={{ background: INK, color: 'white', borderTop: `2px solid ${PURPLE}` }}
         >
-          {!comingOffIds.length && !comingOnIds.length ? (
-            <div className="text-sm py-3 text-center italic opacity-60">
-              Tap players above to build your subs
-            </div>
-          ) : (
-            <div className="space-y-1.5 mb-3">
-              {pairings.map((pr, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm py-1">
-                  <div className="flex-1 flex items-center gap-1.5 min-w-0">
-                    {pr.off ? (
-                      <>
-                        <GroupBadge group={pr.off.ps.activeGroup} size="sm" />
-                        <span className="font-semibold truncate" style={{ color: '#FCA5A5' }}>
-                          {pr.off.player.name}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="opacity-50 italic text-xs">— pick someone off —</span>
-                    )}
-                  </div>
-                  <ArrowRight size={14} className="opacity-40 flex-shrink-0" />
-                  <div className="flex-1 flex items-center gap-1.5 min-w-0">
-                    {pr.on ? (
-                      <>
-                        <GroupBadge group={pr.onGroup} size="sm" />
-                        <span className="font-semibold truncate" style={{ color: '#86EFAC' }}>
-                          {pr.on.player.name}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="opacity-50 italic text-xs">— pick someone on —</span>
-                    )}
-                  </div>
-                  <div className="w-4 flex-shrink-0">
-                    {pr.off && pr.on && (
-                      pr.match
-                        ? <Check size={16} style={{ color: '#10B981' }} strokeWidth={3} />
-                        : <AlertTriangle size={16} style={{ color: '#F59E0B' }} strokeWidth={2.5} />
-                    )}
-                  </div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] uppercase tracking-widest font-semibold opacity-60">
+              {comingOffIds.length > comingOnIds.length ? 'Now tap a replacement' : 'Sub in progress'}
+            </span>
+            <button onClick={clearSubs} className="opacity-60 active:opacity-100">
+              <X size={16} />
+            </button>
+          </div>
+          <div className="space-y-1">
+            {pairings.map((pr, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm">
+                <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                  {pr.off
+                    ? <><GroupBadge group={pr.off.ps.activeGroup} size="sm" /><span className="font-semibold truncate" style={{ color: '#FCA5A5' }}>{pr.off.player.name}</span></>
+                    : <span className="opacity-40 italic text-xs">—</span>}
                 </div>
-              ))}
-            </div>
-          )}
-
-          {!compositionCheck.valid && (comingOffIds.length + comingOnIds.length) > 0 && (
-            <div
-              className="text-xs rounded p-2 mb-2 flex items-start gap-2"
-              style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#FCD34D' }}
-            >
-              <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
-              <span>{compositionCheck.message}</span>
-            </div>
-          )}
-
-          <button
-            onClick={confirmSubs}
-            disabled={!canConfirm}
-            className={`tap-target w-full rounded-lg font-bold text-lg active:scale-95 transition ${canConfirm ? 'pulse-ready' : 'cursor-not-allowed'}`}
-            style={{
-              background: canConfirm ? PURPLE : '#3F3F46',
-              color:      canConfirm ? 'white' : '#71717A',
-            }}
-          >
-            {!comingOffIds.length
-              ? 'Pick players to sub'
-              : `Confirm ${comingOffIds.length} sub${comingOffIds.length > 1 ? 's' : ''}`}
-          </button>
+                <ArrowRight size={13} className="opacity-40 flex-shrink-0" />
+                <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                  {pr.on
+                    ? <><GroupBadge group={pr.onGroup} size="sm" /><span className="font-semibold truncate" style={{ color: '#86EFAC' }}>{pr.on.player.name}</span></>
+                    : <span className="opacity-40 italic text-xs">tap bench →</span>}
+                </div>
+                <div className="w-4 flex-shrink-0">
+                  {pr.off && pr.on && (
+                    pr.match
+                      ? <Check size={14} style={{ color: '#10B981' }} strokeWidth={3} />
+                      : <AlertTriangle size={14} style={{ color: '#EF4444' }} strokeWidth={2.5} />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -796,15 +746,9 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
               <Undo2 size={18} strokeWidth={2.5} />
               Undo
             </button>
-            {!subBuilderOpen && (
-              <button
-                onClick={openSubBuilder}
-                className="tap-target flex-1 rounded-lg font-bold text-lg active:scale-95 transition"
-                style={{ background: PURPLE, color: 'white' }}
-              >
-                Build subs
-              </button>
-            )}
+            <div className="flex-1 text-center text-xs text-stone-400 italic">
+              {subMode ? 'tap bench to sub' : 'tap a player to sub'}
+            </div>
           </>
         )}
       </div>
