@@ -1,10 +1,14 @@
-﻿import { useEffect, useState } from 'react'
-import { Calendar, ChevronRight, Plus, RefreshCw } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Calendar, ChevronRight, Link2, Plus, RefreshCw } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Fixture, Match, TeamSheet } from '@/lib/events/types'
 import { db } from '@/lib/db/db'
 import { useFixtureStore } from './useFixtureStore'
 import { useSyncStore, fmtSyncAge, driveConfigured } from '@/lib/drive/useSyncStore'
+import SpondSheet from '@/features/spond/SpondSheet'
+import { spondConfigured, getSpondCreds, extractOpponent } from '@/lib/spond/spondStore'
+import { spondGetEvents, type SpondEvent } from '@/lib/spond/spondApi'
+import { ensureToken } from '@/lib/spond/spondSync'
 
 const PURPLE      = '#3D0066'
 const PURPLE_DARK = '#5B1A99'
@@ -16,9 +20,10 @@ interface Props {
   onNew: (playersPerSide: number) => void
   onEdit: (fixture: Fixture) => void
   onViewMatch: (match: Match, teamSheet: TeamSheet) => void
+  onImportSpond: (spondEventId: string, opponent: string, date: string, pps: number) => void
 }
 
-export default function FixtureListScreen({ onNew, onEdit, onViewMatch }: Props) {
+export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImportSpond }: Props) {
   const { fixtures, isHydrated, hydrate } = useFixtureStore()
   const { isSyncing, lastSyncedAt, syncAll } = useSyncStore()
   const hasDrive = driveConfigured()
@@ -27,6 +32,10 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch }: Props)
     const stored = localStorage.getItem(PPS_KEY)
     return stored ? parseInt(stored, 10) : 12
   })
+
+  const [showSpondSheet, setShowSpondSheet]   = useState(false)
+  const [spondEvents,    setSpondEvents]       = useState<SpondEvent[]>([])
+  const [spondLoading,   setSpondLoading]      = useState(false)
 
   const setPlayersPerSide = (n: number) => {
     const clamped = Math.min(12, Math.max(1, n))
@@ -39,6 +48,30 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch }: Props)
   useEffect(() => {
     db.matches.toArray().then(all => setMatchMap(new Map(all.map(m => [m.id, m]))))
   }, [isHydrated])
+
+  const loadSpondEvents = async () => {
+    if (!spondConfigured()) return
+    setSpondLoading(true)
+    try {
+      const token = await ensureToken()
+      const { groupId } = getSpondCreds()
+      if (!groupId) return
+      const events = await spondGetEvents(token, groupId)
+      setSpondEvents(events)
+    } catch {
+      // token expired or network error — silently ignore; user can reconnect
+    } finally {
+      setSpondLoading(false)
+    }
+  }
+
+  useEffect(() => { loadSpondEvents() }, [])
+
+  const importedSpondIds = new Set(fixtures.filter(f => f.spondEventId).map(f => f.spondEventId!))
+  const isSpondLinked = spondConfigured()
+
+  const fmtEventDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
 
   return (
     <div className="min-h-screen pb-24" style={{ background: '#F8F4FF', color: INK }}>
@@ -66,6 +99,15 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch }: Props)
               <RefreshCw size={15} color="white" strokeWidth={2} className={isSyncing ? 'animate-spin' : ''} />
             </button>
           )}
+          {/* Spond button — green tint when connected */}
+          <button
+            onClick={() => setShowSpondSheet(true)}
+            className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition"
+            style={{ background: isSpondLinked ? 'rgba(74,222,128,0.25)' : 'rgba(255,255,255,0.15)' }}
+            aria-label="Spond settings"
+          >
+            <Link2 size={15} color={isSpondLinked ? '#4ade80' : 'rgba(255,255,255,0.6)'} strokeWidth={2} />
+          </button>
           <WoodfordMark size={22} color="white" />
         </div>
 
@@ -148,6 +190,52 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch }: Props)
             })}
           </div>
         )}
+
+        {/* ── Spond upcoming events */}
+        {isSpondLinked && (
+          <div className="mt-4">
+            <div className="flex items-center justify-between px-1 mb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">
+                From Spond
+              </span>
+              {spondLoading && <RefreshCw size={12} className="text-stone-300 animate-spin" />}
+            </div>
+            {spondEvents.length === 0 && !spondLoading ? (
+              <div className="py-4 text-center text-sm text-stone-400">No upcoming events</div>
+            ) : (
+              <div className="space-y-1.5">
+                {spondEvents.map(ev => {
+                  const opponent = extractOpponent(ev.heading)
+                  const date     = ev.startTimestamp.slice(0, 10)
+                  const imported = importedSpondIds.has(ev.id)
+                  return (
+                    <div
+                      key={ev.id}
+                      className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border"
+                      style={{ borderColor: '#E4D0F5' }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm" style={{ color: INK }}>vs {opponent}</div>
+                        <div className="text-xs text-stone-400">{fmtEventDate(ev.startTimestamp)}</div>
+                      </div>
+                      {imported ? (
+                        <span className="text-[11px] font-semibold text-emerald-600 flex-shrink-0">✓ Imported</span>
+                      ) : (
+                        <button
+                          onClick={() => onImportSpond(ev.id, opponent, date, playersPerSide)}
+                          className="px-3 py-1.5 rounded-lg text-[11px] font-bold active:scale-95 transition flex-shrink-0"
+                          style={{ background: PURPLE, color: 'white' }}
+                        >
+                          Import
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="fixed bottom-20 right-4 z-20">
@@ -159,6 +247,13 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch }: Props)
           <Plus size={26} strokeWidth={2.5} />
         </button>
       </div>
+
+      {showSpondSheet && (
+        <SpondSheet
+          onClose={() => setShowSpondSheet(false)}
+          onConnected={loadSpondEvents}
+        />
+      )}
     </div>
   )
 }

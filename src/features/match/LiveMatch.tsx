@@ -4,7 +4,6 @@ import {
   Pause, Play, Plus, Trophy, Undo2, Users, X,
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
-import { validateComposition, projectOnPitchGroups } from '@/lib/domain/validateComposition'
 import type { Group, ID, Player, PlayerMatchState } from '@/lib/events/types'
 import { useMatchStore } from './useMatchStore'
 
@@ -350,23 +349,6 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
     return result
   }, [comingOffIds, comingOnIds, matchState, playerMap])
 
-  const compositionCheck = useMemo(() => {
-    if (!comingOffIds.length && !comingOnIds.length) return { valid: true, message: '' }
-    if (comingOffIds.length !== comingOnIds.length) {
-      return {
-        valid: false,
-        message: comingOffIds.length > comingOnIds.length
-          ? 'Pick someone to come on'
-          : 'Pick someone to come off',
-      }
-    }
-    const onGroups = new Map<ID, Group>()
-    for (const p of pairings) {
-      if (p.on) onGroups.set(p.on.player.id, p.onGroup)
-    }
-    const groups = projectOnPitchGroups(matchState.playerStates, comingOffIds, onGroups)
-    return validateComposition(groups)
-  }, [comingOffIds, comingOnIds, pairings, matchState])
 
   // ── handlers
   const togglePickOff = (p: Player) => {
@@ -825,9 +807,8 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
           >
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
-                <Heart size={22} style={{ color: '#DC2626' }} />
                 <div className="text-2xl font-bold" style={{ color: INK }}>
-                  Blood — {bloodPickerFor.name}
+                  Tmp — {bloodPickerFor.name}
                 </div>
               </div>
               <button

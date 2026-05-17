@@ -1,5 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, List, RefreshCw } from 'lucide-react'
+import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, List, RefreshCw, Zap } from 'lucide-react'
+import { getSpondUnavailablePlayers } from '@/lib/spond/spondSync'
+import { spondConfigured } from '@/lib/spond/spondStore'
 import { validateComposition } from '@/lib/domain/validateComposition'
 import { parseTeamSheet } from '@/lib/domain/parseTeamSheet'
 import type { ParsedSlot } from '@/lib/domain/parseTeamSheet'
@@ -78,11 +80,14 @@ function GroupBadge({ group, size = 'sm' }: { group: Group; size?: 'sm' | 'xs' }
 interface Props {
   existing?: Fixture
   initialPlayersPerSide?: number
+  initialOpponent?: string
+  initialDate?: string
+  initialSpondEventId?: string
   onBack: () => void
   onSaved: () => void
 }
 
-export default function FixturePrepScreen({ existing, initialPlayersPerSide, onBack, onSaved }: Props) {
+export default function FixturePrepScreen({ existing, initialPlayersPerSide, initialOpponent, initialDate, initialSpondEventId, onBack, onSaved }: Props) {
   const { squad, isHydrated: squadReady, hydrate: hydrateSquad } = useSquadStore()
   const { saveFixture } = useFixtureStore()
 
@@ -94,9 +99,40 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, onB
   )
 
   // ── fixture fields
-  const [date, setDate]               = useState(existing?.date ?? todayIso())
-  const [opponent, setOpponent]       = useState(existing?.opponent ?? '')
-  const [playersPerSide] = useState(existing?.playersPerSide ?? initialPlayersPerSide ?? 12)
+  const [date, setDate]           = useState(existing?.date ?? initialDate ?? todayIso())
+  const [opponent, setOpponent]   = useState(existing?.opponent ?? initialOpponent ?? '')
+  const [playersPerSide]          = useState(existing?.playersPerSide ?? initialPlayersPerSide ?? 12)
+  const [spondEventId]            = useState(existing?.spondEventId ?? initialSpondEventId)
+
+  // ── spond availability sync
+  const [spondSyncing, setSpondSyncing] = useState(false)
+  const [spondToast,   setSpondToast]   = useState('')
+  const showSpondToast = (msg: string) => {
+    setSpondToast(msg)
+    setTimeout(() => setSpondToast(''), 3000)
+  }
+
+  const syncSpondAvailability = async () => {
+    if (!spondEventId) return
+    setSpondSyncing(true)
+    try {
+      const unavailIds = await getSpondUnavailablePlayers(spondEventId, players)
+      if (unavailIds.length === 0) {
+        showSpondToast('No declines found in Spond')
+        return
+      }
+      setAssignments(m => {
+        const next = new Map(m)
+        for (const id of unavailIds) next.set(id, 'unavailable')
+        return next
+      })
+      showSpondToast(`${unavailIds.length} player${unavailIds.length !== 1 ? 's' : ''} marked unavailable`)
+    } catch (e) {
+      showSpondToast(e instanceof Error ? e.message : 'Spond sync failed')
+    } finally {
+      setSpondSyncing(false)
+    }
+  }
 
   // ── mode
   const [mode, setMode] = useState<'checklist' | 'paste'>('checklist')
@@ -208,6 +244,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, onB
       opponent: opponent.trim(),
       teamSheets,
       playersPerSide,
+      spondEventId,
       updatedAt: new Date().toISOString(),
       version: (existing?.version ?? 0) + 1,
     }
@@ -408,7 +445,27 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, onB
             </div>
             <div className="text-[10px] text-white/70">Team sheet prep</div>
           </div>
+          {spondEventId && spondConfigured() && (
+            <button
+              onClick={syncSpondAvailability}
+              disabled={spondSyncing}
+              className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition disabled:opacity-50"
+              style={{ background: 'rgba(74,222,128,0.25)' }}
+              aria-label="Sync availability from Spond"
+            >
+              {spondSyncing
+                ? <RefreshCw size={15} color="#4ade80" strokeWidth={2} className="animate-spin" />
+                : <Zap size={15} color="#4ade80" strokeWidth={2} />}
+            </button>
+          )}
         </div>
+
+        {/* Spond toast */}
+        {spondToast && (
+          <div className="px-3 py-1.5 text-center text-xs font-semibold" style={{ background: '#1A3A2A', color: '#4ade80' }}>
+            {spondToast}
+          </div>
+        )}
 
         {/* Composition bar */}
         <div className="px-3 py-2 flex gap-2" style={{ background: INK }}>

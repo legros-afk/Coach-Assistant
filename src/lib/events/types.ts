@@ -34,6 +34,7 @@ export interface Fixture {
   opponent: string;
   teamSheets: TeamSheet[];
   playersPerSide?: number;
+  spondEventId?: string;
   publishedAt?: string;
   updatedAt: string;
   version: number;

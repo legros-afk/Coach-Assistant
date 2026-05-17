@@ -24,6 +24,7 @@ export default function App() {
   const [screen, setScreen]                     = useState<Screen>('loading')
   const [editingFixture, setEditingFixture]       = useState<Fixture | undefined>()
   const [newFixturePPS, setNewFixturePPS]         = useState<number>(12)
+  const [newFixtureSpond, setNewFixtureSpond]     = useState<{ id: string; opponent: string; date: string } | undefined>()
 
   useEffect(() => {
     const folderId = localStorage.getItem(FOLDER_ID_KEY)
@@ -38,6 +39,14 @@ export default function App() {
   const openFixturePrep = (fixture?: Fixture, pps?: number) => {
     setEditingFixture(fixture)
     if (pps !== undefined) setNewFixturePPS(pps)
+    setNewFixtureSpond(undefined)
+    setScreen('fixture-prep')
+  }
+
+  const importSpondFixture = (spondEventId: string, opponent: string, date: string, pps: number) => {
+    setEditingFixture(undefined)
+    setNewFixturePPS(pps)
+    setNewFixtureSpond({ id: spondEventId, opponent, date })
     setScreen('fixture-prep')
   }
 
@@ -106,12 +115,16 @@ export default function App() {
           onNew={pps => openFixturePrep(undefined, pps)}
           onEdit={f => openFixturePrep(f)}
           onViewMatch={openStoredMatch}
+          onImportSpond={importSpondFixture}
         />
       )}
       {screen === 'fixture-prep' && (
         <FixturePrepScreen
           existing={editingFixture}
           initialPlayersPerSide={newFixturePPS}
+          initialOpponent={newFixtureSpond?.opponent}
+          initialDate={newFixtureSpond?.date}
+          initialSpondEventId={newFixtureSpond?.id}
           onBack={() => setScreen('fixtures')}
           onSaved={() => setScreen('fixtures')}
         />
