@@ -515,6 +515,17 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       </div>
 
       <div className="px-3 pt-3 space-y-3">
+        {/* Unmatched Spond members warning */}
+        {spondAvailability && spondAvailability.unmatched.length > 0 && (
+          <div className="flex items-start gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A' }}>
+            <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" strokeWidth={2} />
+            <span>
+              <span className="font-semibold">{spondAvailability.unmatched.length} Spond {spondAvailability.unmatched.length === 1 ? 'member' : 'members'} not matched:</span>
+              {' '}{spondAvailability.unmatched.join(', ')}
+            </span>
+          </div>
+        )}
+
         {/* Fixture details */}
         <div className="bg-white rounded-lg p-3 space-y-2" style={{ border: '1px solid #E4D0F5' }}>
           <div className="flex gap-2">

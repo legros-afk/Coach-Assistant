@@ -35,6 +35,7 @@ export interface SpondAvailability {
   accepted: string[]    // app player IDs who accepted
   declined: string[]    // app player IDs who declined
   unanswered: string[]  // app player IDs who haven't responded
+  unmatched: string[]   // Spond member display names that couldn't be matched to a squad player
 }
 
 export async function getSpondAvailability(
@@ -42,7 +43,7 @@ export async function getSpondAvailability(
   players: Player[],
 ): Promise<SpondAvailability> {
   const { groupId } = getSpondCreds()
-  if (!groupId) return { accepted: [], declined: [], unanswered: [] }
+  if (!groupId) return { accepted: [], declined: [], unanswered: [], unmatched: [] }
 
   const [groups, events] = await withFreshToken(token =>
     Promise.all([spondGetGroups(token), spondGetEvents(token, groupId)])
@@ -50,20 +51,35 @@ export async function getSpondAvailability(
 
   const group = groups.find(g => g.id === groupId)
   const event = events.find(e => e.id === spondEventId)
-  if (!group || !event) return { accepted: [], declined: [], unanswered: [] }
+  if (!group || !event) return { accepted: [], declined: [], unanswered: [], unmatched: [] }
 
-  const toPlayerIds = (ids: string[]) => {
-    const set = new Set(ids)
-    return group.members
-      .filter(m => set.has(m.id))
-      .map(m => matchMember(m, players))
-      .filter((p): p is Player => p !== undefined)
-      .map(p => p.id)
+  // Single pass: match every member who has a response, collect unmatched names.
+  const allResponseIds = new Set([
+    ...event.responses.acceptedIds,
+    ...event.responses.declinedIds,
+    ...event.responses.unansweredIds,
+  ])
+  const memberToPlayerId = new Map<string, string>()
+  const unmatchedNames: string[] = []
+
+  for (const member of group.members) {
+    if (!allResponseIds.has(member.id)) continue
+    const player = matchMember(member, players)
+    if (player) {
+      memberToPlayerId.set(member.id, player.id)
+    } else {
+      const name = [member.profile.firstName, member.profile.lastName].filter(Boolean).join(' ').trim()
+      if (name) unmatchedNames.push(name)
+    }
   }
 
+  const idsFor = (memberIds: string[]) =>
+    memberIds.map(id => memberToPlayerId.get(id)).filter((id): id is string => id !== undefined)
+
   return {
-    accepted:   toPlayerIds(event.responses.acceptedIds),
-    declined:   toPlayerIds(event.responses.declinedIds),
-    unanswered: toPlayerIds(event.responses.unansweredIds),
+    accepted:   idsFor(event.responses.acceptedIds),
+    declined:   idsFor(event.responses.declinedIds),
+    unanswered: idsFor(event.responses.unansweredIds),
+    unmatched:  unmatchedNames,
   }
 }
