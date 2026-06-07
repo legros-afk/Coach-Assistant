@@ -7,14 +7,14 @@ export type SyncResult =
   | { ok: true;  squadUpdated: boolean; fixturesUpdated: number; matchesUpdated: number }
   | { ok: false; error: string };
 
-export async function syncFromDrive(folderId: string, apiKey: string): Promise<SyncResult> {
+export async function syncFromDrive(folderId: string, _apiKey?: string): Promise<SyncResult> {
   try {
-    const rootFiles = await listFolder(folderId, apiKey);
+    const rootFiles = await listFolder(folderId);
 
     // squad.json
     const squadFile = rootFiles.find(f => f.name === 'squad.json');
     if (squadFile) {
-      const squad = await fetchFileJson<Squad>(squadFile.id, apiKey);
+      const squad = await fetchFileJson<Squad>(squadFile.id);
       await db.squads.put(squad);
     }
 
@@ -40,10 +40,10 @@ export async function syncFromDrive(folderId: string, apiKey: string): Promise<S
     );
     let fixturesUpdated = 0;
     if (fixturesFolder) {
-      const fixtureFiles = await listFolder(fixturesFolder.id, apiKey);
+      const fixtureFiles = await listFolder(fixturesFolder.id);
       for (const ff of fixtureFiles) {
         if (!ff.name.endsWith('.json')) continue;
-        const fixture = await fetchFileJson<Fixture>(ff.id, apiKey);
+        const fixture = await fetchFileJson<Fixture>(ff.id);
         await db.fixtures.put(fixture);
         fixturesUpdated++;
       }
@@ -54,10 +54,10 @@ export async function syncFromDrive(folderId: string, apiKey: string): Promise<S
     );
     let matchesUpdated = 0;
     if (matchesFolder) {
-      const matchFiles = await listFolder(matchesFolder.id, apiKey);
+      const matchFiles = await listFolder(matchesFolder.id);
       for (const mf of matchFiles) {
         if (!mf.name.endsWith('.json')) continue;
-        const match = await fetchFileJson<Match>(mf.id, apiKey);
+        const match = await fetchFileJson<Match>(mf.id);
         await db.matches.put(match);
         matchesUpdated++;
       }

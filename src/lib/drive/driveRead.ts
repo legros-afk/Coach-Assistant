@@ -1,5 +1,3 @@
-const BASE = 'https://www.googleapis.com/drive/v3';
-
 export interface DriveFile {
   id: string;
   name: string;
@@ -13,20 +11,25 @@ export class DriveError extends Error {
   }
 }
 
-export async function listFolder(folderId: string, apiKey: string): Promise<DriveFile[]> {
-  const q = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
-  const url = `${BASE}/files?q=${q}&fields=files(id,name,mimeType)&key=${apiKey}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new DriveError(res.status, await res.text());
-  const data = await res.json() as { files: DriveFile[] };
-  return data.files;
+async function driveGet<T>(path: string): Promise<T> {
+  const res = await fetch(`/drive?path=${encodeURIComponent(path)}`)
+  if (!res.ok) {
+    const body = await res.text()
+    throw new DriveError(res.status, body)
+  }
+  return res.json() as Promise<T>
 }
 
-export async function fetchFileJson<T>(fileId: string, apiKey: string): Promise<T> {
-  const url = `${BASE}/files/${fileId}?alt=media&key=${apiKey}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new DriveError(res.status, await res.text());
-  return res.json() as Promise<T>;
+export async function listFolder(folderId: string, _apiKey?: string): Promise<DriveFile[]> {
+  const q    = `'${folderId}' in parents and trashed = false`
+  const data = await driveGet<{ files: DriveFile[] }>(
+    `files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType)`
+  )
+  return data.files
+}
+
+export async function fetchFileJson<T>(fileId: string, _apiKey?: string): Promise<T> {
+  return driveGet<T>(`files/${fileId}?alt=media`)
 }
 
 // Accepts a full Drive folder URL or a bare folder ID

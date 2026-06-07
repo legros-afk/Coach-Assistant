@@ -1,7 +1,6 @@
 import type { Group, Player } from '@/lib/events/types'
 
 const SHEET_ID = '15BoH0eWQ5-1vxTMq7iL0f2bbG_MCTGLl2GbYD0jvBAg'
-const BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
 
 interface SheetPosition {
   name: string
@@ -9,9 +8,9 @@ interface SheetPosition {
   eligibleGroups: Group[]
 }
 
-export async function fetchSquadPositions(apiKey: string): Promise<SheetPosition[]> {
-  const url = `${BASE}/${SHEET_ID}/values/A:D?key=${apiKey}`
-  const res = await fetch(url)
+export async function fetchSquadPositions(_apiKey?: string): Promise<SheetPosition[]> {
+  const path = `${SHEET_ID}/values/A:D`
+  const res  = await fetch(`/sheets?path=${encodeURIComponent(path)}`)
   if (!res.ok) throw new Error(`Sheets API ${res.status}`)
   const data = await res.json() as { values?: string[][] }
   const rows = data.values ?? []

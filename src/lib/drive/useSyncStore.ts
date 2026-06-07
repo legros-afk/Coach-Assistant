@@ -4,7 +4,6 @@ import { useFixtureStore } from '@/features/fixture/useFixtureStore';
 import { FOLDER_ID_KEY } from './driveRead';
 import { syncFromDrive } from './driveSync';
 
-const API_KEY        = import.meta.env.VITE_GOOGLE_DRIVE_API_KEY as string | undefined;
 const LAST_SYNCED_KEY = 'coach-last-synced';
 
 interface SyncStore {
@@ -25,10 +24,9 @@ export const useSyncStore = create<SyncStore>()((set) => ({
   syncAll: async () => {
     const folderId = localStorage.getItem(FOLDER_ID_KEY);
     if (!folderId) { set({ lastError: 'No Drive folder configured.' }); return; }
-    if (!API_KEY)  { set({ lastError: 'API key not configured.' });      return; }
 
     set({ isSyncing: true, lastError: null });
-    const result = await syncFromDrive(folderId, API_KEY);
+    const result = await syncFromDrive(folderId);
 
     if (result.ok) {
       // Re-read Dexie into both stores so UI picks up fresh data
@@ -56,5 +54,5 @@ export function fmtSyncAge(epochMs: number): string {
 }
 
 export function driveConfigured(): boolean {
-  return !!localStorage.getItem(FOLDER_ID_KEY) && !!API_KEY;
+  return !!localStorage.getItem(FOLDER_ID_KEY);
 }

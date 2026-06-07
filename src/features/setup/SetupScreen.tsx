@@ -7,7 +7,6 @@ import { syncFromDrive } from '@/lib/drive/driveSync'
 const PURPLE      = '#3D0066'
 const PURPLE_DARK = '#5B1A99'
 const INK         = '#1A1A1A'
-const API_KEY     = import.meta.env.VITE_GOOGLE_DRIVE_API_KEY as string | undefined
 
 interface Props {
   onDone: () => void
@@ -21,7 +20,7 @@ export default function SetupScreen({ onDone }: Props) {
 
   const saveAndProceed = (folderId: string) => {
     localStorage.setItem(FOLDER_ID_KEY, folderId)
-    if (API_KEY) syncFromDrive(folderId, API_KEY)
+    syncFromDrive(folderId)
     setStatus('ok')
     setTimeout(onDone, 800)
   }
@@ -34,7 +33,7 @@ export default function SetupScreen({ onDone }: Props) {
       setCanForce(false)
       return
     }
-    if (!API_KEY || force) {
+    if (force) {
       saveAndProceed(folderId)
       return
     }
@@ -104,11 +103,6 @@ export default function SetupScreen({ onDone }: Props) {
           {status === 'ok' && (
             <p className="text-xs text-emerald-600 flex items-center gap-1">
               <CheckCircle size={12} strokeWidth={2.5} /> Connected — syncing data…
-            </p>
-          )}
-          {!API_KEY && (
-            <p className="text-xs text-amber-600">
-              API key not configured — folder will be saved but automatic sync is disabled.
             </p>
           )}
         </div>
