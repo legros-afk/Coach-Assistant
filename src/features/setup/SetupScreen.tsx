@@ -17,32 +17,37 @@ export default function SetupScreen({ onDone }: Props) {
   const [input, setInput]     = useState('')
   const [status, setStatus]   = useState<'idle' | 'checking' | 'ok' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  const [canForce, setCanForce] = useState(false)
 
-  const handleConnect = async () => {
+  const saveAndProceed = (folderId: string) => {
+    localStorage.setItem(FOLDER_ID_KEY, folderId)
+    if (API_KEY) syncFromDrive(folderId, API_KEY)
+    setStatus('ok')
+    setTimeout(onDone, 800)
+  }
+
+  const handleConnect = async (force = false) => {
     const folderId = parseFolderId(input)
     if (!folderId) {
       setStatus('error')
       setErrorMsg('That doesn\'t look like a valid folder link or ID.')
+      setCanForce(false)
       return
     }
-    if (!API_KEY) {
-      // No API key — save folder ID but skip verification
-      localStorage.setItem(FOLDER_ID_KEY, folderId)
-      setStatus('ok')
-      setTimeout(onDone, 800)
+    if (!API_KEY || force) {
+      saveAndProceed(folderId)
       return
     }
     setStatus('checking')
+    setCanForce(false)
     try {
       await listFolder(folderId, API_KEY)
-      localStorage.setItem(FOLDER_ID_KEY, folderId)
-      // Fire-and-forget full sync in background
-      syncFromDrive(folderId, API_KEY)
-      setStatus('ok')
-      setTimeout(onDone, 800)
-    } catch {
+      saveAndProceed(folderId)
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : String(e)
       setStatus('error')
-      setErrorMsg("Couldn't read this folder. Make sure the link is correct and the folder is set to 'Anyone with the link can view'.")
+      setErrorMsg(`Couldn't verify the folder (${detail}). If you're sure the folder is shared correctly, tap "Connect anyway".`)
+      setCanForce(true)
     }
   }
 
@@ -83,7 +88,7 @@ export default function SetupScreen({ onDone }: Props) {
                 type="text"
                 value={input}
                 onChange={e => { setInput(e.target.value); setStatus('idle') }}
-                onKeyDown={e => e.key === 'Enter' && handleConnect()}
+                onKeyDown={e => e.key === 'Enter' && handleConnect(false)}
                 placeholder="https://drive.google.com/drive/folders/…"
                 className="flex-1 py-3 text-sm outline-none bg-transparent"
                 style={{ color: INK }}
@@ -109,7 +114,7 @@ export default function SetupScreen({ onDone }: Props) {
         </div>
 
         <button
-          onClick={handleConnect}
+          onClick={() => handleConnect(false)}
           disabled={!input.trim() || status === 'checking' || status === 'ok'}
           className="tap-target w-full rounded-lg font-bold text-base flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition"
           style={{ background: PURPLE, color: 'white', minHeight: '56px' }}
@@ -117,6 +122,16 @@ export default function SetupScreen({ onDone }: Props) {
           {status === 'checking' && <Loader size={18} className="animate-spin" />}
           {status === 'checking' ? 'Checking…' : 'Connect'}
         </button>
+
+        {canForce && (
+          <button
+            onClick={() => handleConnect(true)}
+            className="tap-target w-full rounded-lg font-bold text-base flex items-center justify-center active:scale-95 transition"
+            style={{ background: '#78716C', color: 'white', minHeight: '48px' }}
+          >
+            Connect anyway
+          </button>
+        )}
 
         <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-stone-200" />
