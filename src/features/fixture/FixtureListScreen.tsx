@@ -36,6 +36,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
   const [showSpondSheet, setShowSpondSheet]   = useState(false)
   const [spondEvents,    setSpondEvents]       = useState<SpondEvent[]>([])
   const [spondLoading,   setSpondLoading]      = useState(false)
+  const [spondError,     setSpondError]        = useState('')
 
   const setPlayersPerSide = (n: number) => {
     const clamped = Math.min(12, Math.max(1, n))
@@ -52,14 +53,18 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
   const loadSpondEvents = async () => {
     if (!spondConfigured()) return
     setSpondLoading(true)
+    setSpondError('')
     try {
       const token = await ensureToken()
       const { groupId } = getSpondCreds()
       if (!groupId) return
       const events = await spondGetEvents(token, groupId)
       setSpondEvents(events)
-    } catch {
-      // token expired or network error — silently ignore; user can reconnect
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Spond error'
+      const isAuth = msg.includes('401') || msg.toLowerCase().includes('unauthorized')
+        || msg.toLowerCase().includes('credentials not set')
+      setSpondError(isAuth ? 'session-expired' : 'network-error')
     } finally {
       setSpondLoading(false)
     }
@@ -200,14 +205,29 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
               </span>
               {spondLoading && <RefreshCw size={12} className="text-stone-300 animate-spin" />}
             </div>
-            {spondEvents.length === 0 && !spondLoading ? (
+            {spondError ? (
+              <button
+                onClick={() => setShowSpondSheet(true)}
+                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left active:scale-[0.99] transition"
+                style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}
+              >
+                <span className="text-xs font-semibold text-red-600 flex-1">
+                  {spondError === 'session-expired'
+                    ? 'Spond session expired — tap to reconnect'
+                    : 'Could not reach Spond — tap to retry'}
+                </span>
+                <RefreshCw size={13} className="text-red-400 flex-shrink-0" />
+              </button>
+            ) : spondEvents.length === 0 && !spondLoading ? (
               <div className="py-4 text-center text-sm text-stone-400">No upcoming events</div>
             ) : (
               <div className="space-y-1.5">
                 {spondEvents.map(ev => {
-                  const opponent = extractOpponent(ev.heading)
-                  const date     = ev.startTimestamp.slice(0, 10)
-                  const imported = importedSpondIds.has(ev.id)
+                  const opponent  = extractOpponent(ev.heading)
+                  const date      = ev.startTimestamp.slice(0, 10)
+                  const imported  = importedSpondIds.has(ev.id)
+                  const { acceptedIds, declinedIds, unansweredIds } = ev.responses
+                  const hasResponses = acceptedIds.length + declinedIds.length + unansweredIds.length > 0
                   return (
                     <div
                       key={ev.id}
@@ -217,6 +237,25 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm" style={{ color: INK }}>vs {opponent}</div>
                         <div className="text-xs text-stone-400">{fmtEventDate(ev.startTimestamp)}</div>
+                        {hasResponses && (
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {acceptedIds.length > 0 && (
+                              <span className="text-[11px] font-semibold" style={{ color: '#16a34a' }}>
+                                {acceptedIds.length} ✓
+                              </span>
+                            )}
+                            {declinedIds.length > 0 && (
+                              <span className="text-[11px] font-semibold" style={{ color: '#dc2626' }}>
+                                {declinedIds.length} ✗
+                              </span>
+                            )}
+                            {unansweredIds.length > 0 && (
+                              <span className="text-[11px] font-semibold" style={{ color: '#a8a29e' }}>
+                                {unansweredIds.length} ?
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                       {imported ? (
                         <span className="text-[11px] font-semibold text-emerald-600 flex-shrink-0">✓ Imported</span>
@@ -250,7 +289,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
 
       {showSpondSheet && (
         <SpondSheet
-          onClose={() => setShowSpondSheet(false)}
+          onClose={() => { setShowSpondSheet(false); loadSpondEvents() }}
           onConnected={loadSpondEvents}
         />
       )}

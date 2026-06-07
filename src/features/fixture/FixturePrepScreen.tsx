@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, List, RefreshCw, Zap } from 'lucide-react'
-import { getSpondUnavailablePlayers } from '@/lib/spond/spondSync'
+import { getSpondAvailability, type SpondAvailability } from '@/lib/spond/spondSync'
 import { spondConfigured } from '@/lib/spond/spondStore'
 import { validateComposition } from '@/lib/domain/validateComposition'
 import { parseTeamSheet } from '@/lib/domain/parseTeamSheet'
@@ -105,28 +105,35 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const [spondEventId]            = useState(existing?.spondEventId ?? initialSpondEventId)
 
   // ── spond availability sync
-  const [spondSyncing, setSpondSyncing] = useState(false)
-  const [spondToast,   setSpondToast]   = useState('')
+  const [spondSyncing,      setSpondSyncing]      = useState(false)
+  const [spondToast,        setSpondToast]        = useState('')
+  const [spondAvailability, setSpondAvailability] = useState<SpondAvailability | null>(null)
+
   const showSpondToast = (msg: string) => {
     setSpondToast(msg)
-    setTimeout(() => setSpondToast(''), 3000)
+    setTimeout(() => setSpondToast(''), 3500)
   }
 
   const syncSpondAvailability = async () => {
     if (!spondEventId) return
     setSpondSyncing(true)
     try {
-      const unavailIds = await getSpondUnavailablePlayers(spondEventId, players)
-      if (unavailIds.length === 0) {
-        showSpondToast('No declines found in Spond')
-        return
+      const avail = await getSpondAvailability(spondEventId, players)
+      setSpondAvailability(avail)
+      // Mark declined players as unavailable; leave accepted/unanswered alone
+      if (avail.declined.length > 0) {
+        setAssignments(m => {
+          const next = new Map(m)
+          for (const id of avail.declined) next.set(id, 'unavailable')
+          return next
+        })
       }
-      setAssignments(m => {
-        const next = new Map(m)
-        for (const id of unavailIds) next.set(id, 'unavailable')
-        return next
-      })
-      showSpondToast(`${unavailIds.length} player${unavailIds.length !== 1 ? 's' : ''} marked unavailable`)
+      const parts = [
+        avail.accepted.length   > 0 && `${avail.accepted.length} ✓`,
+        avail.declined.length   > 0 && `${avail.declined.length} ✗`,
+        avail.unanswered.length > 0 && `${avail.unanswered.length} ?`,
+      ].filter(Boolean).join('  ')
+      showSpondToast(parts || 'No responses yet')
     } catch (e) {
       showSpondToast(e instanceof Error ? e.message : 'Spond sync failed')
     } finally {
@@ -303,12 +310,32 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     const aStyle = cur === 'A' ? ASSIGN_STYLE['A'] : cur === 'bench-A' ? ASSIGN_STYLE['bench-A'] : null
     const bStyle = cur === 'B' ? ASSIGN_STYLE['B'] : cur === 'bench-B' ? ASSIGN_STYLE['bench-B'] : null
 
+    const spondStatus = spondAvailability
+      ? spondAvailability.accepted.includes(p.id)   ? 'accepted'
+      : spondAvailability.declined.includes(p.id)   ? 'declined'
+      : spondAvailability.unanswered.includes(p.id) ? 'unanswered'
+      : null
+      : null
+
     return (
       <div key={p.id} className="flex items-center gap-2 py-1.5 border-b last:border-0" style={{ borderColor: '#F8F4FF' }}>
         <button onClick={() => isStarter && cycleGroup(p)} className={isStarter ? 'cursor-pointer' : 'cursor-default'}>
           <GroupBadge group={group} />
         </button>
         <span className="flex-1 text-sm font-medium truncate" style={{ color: cur === 'unavailable' ? '#A8A29E' : INK }}>{p.name}</span>
+        {spondStatus && (
+          <span
+            className="text-[10px] font-bold w-4 text-center flex-shrink-0"
+            style={{
+              color: spondStatus === 'accepted' ? '#16a34a'
+                   : spondStatus === 'declined' ? '#dc2626'
+                   : '#a8a29e',
+            }}
+            title={spondStatus}
+          >
+            {spondStatus === 'accepted' ? '✓' : spondStatus === 'declined' ? '✗' : '?'}
+          </span>
+        )}
         <button
           onClick={handleA}
           className="w-10 h-8 rounded-lg text-xs font-bold flex items-center justify-center flex-shrink-0 active:scale-95 transition"
@@ -443,24 +470,37 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
             <div className="text-[13px] font-bold tracking-wide uppercase text-white">
               {existing ? `vs ${existing.opponent}` : 'New fixture'}
             </div>
-            <div className="text-[10px] text-white/70">Team sheet prep</div>
+            {spondAvailability ? (
+              <div className="text-[10px] font-semibold flex items-center gap-1.5" style={{ color: '#4ade80' }}>
+                <Zap size={9} strokeWidth={2.5} />
+                <span>
+                  {spondAvailability.accepted.length} ✓
+                  {' · '}{spondAvailability.declined.length} ✗
+                  {' · '}{spondAvailability.unanswered.length} ?
+                </span>
+              </div>
+            ) : (
+              <div className="text-[10px] text-white/70">
+                {spondEventId && spondConfigured() ? 'Tap ⚡ to sync availability' : 'Team sheet prep'}
+              </div>
+            )}
           </div>
           {spondEventId && spondConfigured() && (
             <button
               onClick={syncSpondAvailability}
               disabled={spondSyncing}
               className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition disabled:opacity-50"
-              style={{ background: 'rgba(74,222,128,0.25)' }}
+              style={{ background: spondAvailability ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.15)' }}
               aria-label="Sync availability from Spond"
             >
               {spondSyncing
                 ? <RefreshCw size={15} color="#4ade80" strokeWidth={2} className="animate-spin" />
-                : <Zap size={15} color="#4ade80" strokeWidth={2} />}
+                : <Zap size={15} color={spondAvailability ? '#4ade80' : 'rgba(255,255,255,0.6)'} strokeWidth={2} />}
             </button>
           )}
         </div>
 
-        {/* Spond toast */}
+        {/* Spond toast — only shown on error now */}
         {spondToast && (
           <div className="px-3 py-1.5 text-center text-xs font-semibold" style={{ background: '#1A3A2A', color: '#4ade80' }}>
             {spondToast}

@@ -42,6 +42,10 @@ export function saveSpondGroup(id: string, name: string) {
   localStorage.setItem(SPOND_GROUP_NAME_KEY, name)
 }
 
+export function clearSpondToken() {
+  localStorage.removeItem(SPOND_TOKEN_KEY)
+}
+
 export function clearSpondCreds() {
   [SPOND_EMAIL_KEY, SPOND_PASS_KEY, SPOND_TOKEN_KEY, SPOND_GROUP_ID_KEY, SPOND_GROUP_NAME_KEY]
     .forEach(k => localStorage.removeItem(k))
