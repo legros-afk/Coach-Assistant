@@ -27,16 +27,16 @@ async function proxy<T>(path: string, options?: {
 }
 
 export interface SpondLoginResult {
-  loginToken: string
-  apiToken?: string
+  accessToken?: { token: string }
+  loginToken?: string
 }
 
 export async function spondLogin(email: string, password: string): Promise<string> {
-  const data = await proxy<SpondLoginResult>('login', {
+  const data = await proxy<SpondLoginResult>('auth2/login', {
     method: 'POST',
     body: { email, password },
   })
-  const token = data.loginToken ?? data.apiToken
+  const token = data.accessToken?.token ?? data.loginToken
   if (!token) throw new Error('Spond login succeeded but returned no token')
   return token
 }
