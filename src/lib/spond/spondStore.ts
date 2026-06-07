@@ -58,6 +58,7 @@ export function spondConfigured(): boolean {
 // Match a Spond member to an app player by name.
 // Spond has firstName + lastName; app uses short names like "Henry W".
 export function matchMember(member: SpondMember, players: Player[]): Player | undefined {
+  if (!member.profile) return undefined
   const { firstName, lastName } = member.profile
   if (!firstName) return undefined
   const fullLower  = `${firstName} ${lastName}`.toLowerCase().trim()

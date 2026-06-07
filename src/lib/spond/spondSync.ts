@@ -67,7 +67,7 @@ export async function getSpondAvailability(
     const player = matchMember(member, players)
     if (player) {
       memberToPlayerId.set(member.id, player.id)
-    } else {
+    } else if (member.profile) {
       const name = [member.profile.firstName, member.profile.lastName].filter(Boolean).join(' ').trim()
       if (name) unmatchedNames.push(name)
     }

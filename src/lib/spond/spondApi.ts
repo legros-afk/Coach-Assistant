@@ -43,7 +43,7 @@ export async function spondLogin(email: string, password: string): Promise<strin
 
 export interface SpondMember {
   id: string
-  profile: {
+  profile?: {
     id: string
     firstName: string
     lastName: string
