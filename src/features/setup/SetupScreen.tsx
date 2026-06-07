@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { CheckCircle, Link, Loader } from 'lucide-react'
+import { CheckCircle, ChevronLeft, Link, Loader } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import { FOLDER_ID_KEY, listFolder, parseFolderId } from '@/lib/drive/driveRead'
 import { syncFromDrive } from '@/lib/drive/driveSync'
@@ -10,10 +10,11 @@ const INK         = '#1A1A1A'
 
 interface Props {
   onDone: () => void
+  onBack?: () => void
 }
 
-export default function SetupScreen({ onDone }: Props) {
-  const [input, setInput]     = useState('')
+export default function SetupScreen({ onDone, onBack }: Props) {
+  const [input, setInput]     = useState(() => localStorage.getItem(FOLDER_ID_KEY) ?? '')
   const [status, setStatus]   = useState<'idle' | 'checking' | 'ok' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [canForce, setCanForce] = useState(false)
@@ -54,12 +55,18 @@ export default function SetupScreen({ onDone }: Props) {
     <div className="min-h-screen flex flex-col" style={{ background: '#F8F4FF' }}>
       {/* Header */}
       <div style={{ background: PURPLE }} className="px-4 py-5 flex items-center gap-3">
-        <WoodfordMark size={28} color="white" />
+        {onBack ? (
+          <button onClick={onBack} className="tap-target flex items-center justify-center -ml-1">
+            <ChevronLeft size={24} color="white" strokeWidth={2.5} />
+          </button>
+        ) : (
+          <WoodfordMark size={28} color="white" />
+        )}
         <div className="leading-tight">
           <div className="text-sm font-bold tracking-wide uppercase text-white">
-            Woodford RFC
+            {onBack ? 'Drive folder' : 'Woodford RFC'}
           </div>
-          <div className="text-xs text-white/70">Coach Assistant</div>
+          <div className="text-xs text-white/70">{onBack ? 'Change connected folder' : 'Coach Assistant'}</div>
         </div>
       </div>
 

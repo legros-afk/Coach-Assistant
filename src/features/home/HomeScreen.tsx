@@ -15,6 +15,7 @@ const INK         = '#1A1A1A'
 interface Props {
   onMatch: () => void
   onFixturePrep: (fixture: Fixture) => void
+  onOpenSetup: () => void
 }
 
 function todayStr(): string {
@@ -28,7 +29,7 @@ function fmtDate(iso: string): string {
   })
 }
 
-export default function HomeScreen({ onMatch, onFixturePrep }: Props) {
+export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Props) {
   const { fixtures, isHydrated: fixturesReady, hydrate: hydrateFixtures } = useFixtureStore()
   const { squad, isHydrated: squadReady, hydrate: hydrateSquad } = useSquadStore()
   const initMatch      = useMatchStore(s => s.initMatch)
@@ -91,7 +92,9 @@ export default function HomeScreen({ onMatch, onFixturePrep }: Props) {
               <RefreshCw size={15} color="white" strokeWidth={2} className={isSyncing ? 'animate-spin' : ''} />
             </button>
           )}
-          <WoodfordMark size={22} color="white" />
+          <button onClick={onOpenSetup} className="tap-target flex items-center justify-center" aria-label="Drive settings">
+            <WoodfordMark size={22} color="white" />
+          </button>
         </div>
       </div>
 

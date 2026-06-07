@@ -86,7 +86,13 @@ export default function App() {
   }
 
   if (screen === 'setup') {
-    return <SetupScreen onDone={() => setScreen('home')} />
+    const fromNav = !!localStorage.getItem(FOLDER_ID_KEY)
+    return (
+      <SetupScreen
+        onDone={() => setScreen('home')}
+        onBack={fromNav ? () => setScreen('home') : undefined}
+      />
+    )
   }
 
   return (
@@ -95,6 +101,7 @@ export default function App() {
         <HomeScreen
           onMatch={() => setScreen('match')}
           onFixturePrep={f => openFixturePrep(f)}
+          onOpenSetup={() => setScreen('setup')}
         />
       )}
       {screen === 'match' && (
