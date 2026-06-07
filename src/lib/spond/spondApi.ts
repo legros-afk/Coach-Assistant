@@ -15,14 +15,20 @@ async function proxy<T>(path: string, options?: {
       token: options?.token,
     }),
   })
-  const data = await res.json() as T & { error?: string }
-  if (!res.ok) throw new Error((data as { error?: string }).error ?? `Spond error ${res.status}`)
+  const data = await res.json() as T & { error?: string; message?: string }
+  if (!res.ok) {
+    const d = data as Record<string, unknown>
+    const detail = (typeof d.error === 'string' && d.error)
+      || (typeof d.message === 'string' && d.message)
+      || JSON.stringify(d)
+    throw new Error(`Spond ${res.status}: ${detail}`)
+  }
   return data
 }
 
 export interface SpondLoginResult {
-  apiToken: string
   loginToken: string
+  apiToken?: string
 }
 
 export async function spondLogin(email: string, password: string): Promise<string> {
@@ -30,7 +36,9 @@ export async function spondLogin(email: string, password: string): Promise<strin
     method: 'POST',
     body: { email, password },
   })
-  return data.apiToken
+  const token = data.loginToken ?? data.apiToken
+  if (!token) throw new Error('Spond login succeeded but returned no token')
+  return token
 }
 
 export interface SpondMember {
