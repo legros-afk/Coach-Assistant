@@ -288,7 +288,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
 
   // ── try picker + post-try conversion prompt
   const [tryPickerOpen, setTryPickerOpen] = useState(false)
-  const [conversionPromptOpen, setConversionPromptOpen] = useState(false)
+  const [conversionFor, setConversionFor] = useState<'us' | 'them' | null>(null)
 
   // ── penalty / drop goal pickers
   const [penPickerOpen, setPenPickerOpen] = useState(false)
@@ -550,7 +550,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
               <span className="text-white/50">—</span>
               <ScoreButton
                 label="Them" value={matchState.scoreThem}
-                onClick={() => { store.recordTryThem(); showToast(`Try — ${opponent}`); setConversionPromptOpen(true) }}
+                onClick={() => { store.recordTryThem(); showToast(`Try — ${opponent}`); setConversionFor('them') }}
               />
             </div>
           </div>
@@ -862,7 +862,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                     store.recordTryUs(p.id)
                     showToast(`Try — ${p.name}`)
                     setTryPickerOpen(false)
-                    setConversionPromptOpen(true)
+                    setConversionFor('us')
                   }}
                   className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
                   style={{ borderColor: '#C5D8F5' }}
@@ -881,7 +881,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                   store.recordTryUs()
                   showToast('Try (unattributed)')
                   setTryPickerOpen(false)
-                  setConversionPromptOpen(true)
+                  setConversionFor('us')
                 }}
                 className="tap-target w-full px-3 italic active:scale-[0.98] transition opacity-70"
               >
@@ -1018,33 +1018,30 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
       )}
 
       {/* ── Conversion prompt (after any try) */}
-      {conversionPromptOpen && (
+      {conversionFor && (
         <div
           className="fixed inset-0 z-40 flex items-end"
           style={{ background: 'rgba(32,24,32,0.7)' }}
-          onClick={() => setConversionPromptOpen(false)}
+          onClick={() => setConversionFor(null)}
         >
           <div className="bg-white w-full rounded-t-2xl p-4" onClick={e => e.stopPropagation()}>
             <div className="text-xl font-bold mb-1" style={{ color: INK }}>Conversion kicked?</div>
             <p className="text-sm text-stone-400 mb-4">+2 pts</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => { store.recordConversionUs(); showToast('Conversion — +2'); setConversionPromptOpen(false) }}
-                className="flex-1 tap-target rounded-lg font-bold text-base active:scale-95 transition"
-                style={{ background: BLUE, color: 'white' }}
-              >
-                Yes — converted
-              </button>
-              <button
-                onClick={() => { store.recordConversionThem(); showToast(`Conversion — ${opponent}`); setConversionPromptOpen(false) }}
-                className="flex-1 tap-target rounded-lg font-bold text-base active:scale-95 transition"
-                style={{ background: '#E5E7EB', color: INK }}
-              >
-                Them converted
-              </button>
-            </div>
             <button
-              onClick={() => setConversionPromptOpen(false)}
+              onClick={() => {
+                conversionFor === 'us'
+                  ? store.recordConversionUs()
+                  : store.recordConversionThem()
+                showToast('Conversion — +2')
+                setConversionFor(null)
+              }}
+              className="w-full tap-target rounded-lg font-bold text-base active:scale-95 transition"
+              style={{ background: BLUE, color: 'white' }}
+            >
+              Converted
+            </button>
+            <button
+              onClick={() => setConversionFor(null)}
               className="w-full mt-2 py-2 text-sm text-stone-400"
             >
               Missed / no kick
