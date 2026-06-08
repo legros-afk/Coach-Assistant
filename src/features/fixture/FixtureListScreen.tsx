@@ -30,7 +30,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
   const [matchMap, setMatchMap] = useState<Map<string, Match>>(new Map())
   const [playersPerSide, setPlayersPerSideState] = useState<number>(() => {
     const stored = localStorage.getItem(PPS_KEY)
-    return stored ? parseInt(stored, 10) : 12
+    return stored ? parseInt(stored, 10) : 15
   })
 
   const [showSpondSheet, setShowSpondSheet]   = useState(false)
@@ -39,7 +39,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
   const [spondError,     setSpondError]        = useState('')
 
   const setPlayersPerSide = (n: number) => {
-    const clamped = Math.min(12, Math.max(1, n))
+    const clamped = Math.min(15, Math.max(1, n))
     localStorage.setItem(PPS_KEY, String(clamped))
     setPlayersPerSideState(clamped)
   }

@@ -9,10 +9,10 @@ export interface CompositionResult {
 export function validateComposition(groups: Group[]): CompositionResult {
   const counts = { forward: 0, back: 0, scrumhalf: 0 };
   for (const g of groups) counts[g]++;
-  const valid = counts.forward === 5 && counts.back === 5 && counts.scrumhalf === 1;
+  const valid = counts.forward === 8 && counts.back === 6 && counts.scrumhalf === 1;
   const message = valid
     ? ''
-    : `Would result in ${counts.forward}F · ${counts.back}B · ${counts.scrumhalf}SH (need 5·5·1)`;
+    : `Would result in ${counts.forward}F · ${counts.back}B · ${counts.scrumhalf}SH (need 8·6·1)`;
   return { valid, message, counts };
 }
 

@@ -34,8 +34,8 @@ const todayIso = () => new Date().toISOString().slice(0, 10)
 let _seq = 0
 const newId = () => `f-${Date.now()}-${++_seq}`
 
-// Forwards are always 5 (scrum requirement), SH always 1, backs fill the rest.
-const teamLimits = (n: number) => ({ f: 5, b: Math.max(0, n - 6) })
+// 15-a-side: 8 forwards, 1 scrumhalf, 6 backs (+ bench fills remainder)
+const teamLimits = (n: number) => ({ f: 8, b: Math.max(0, n - 9) })
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function countTeam(team: 'A' | 'B', assignments: Map<ID, Assignment>, groupOverrides: Map<ID, Group>, squad: Player[]) {

@@ -40,7 +40,7 @@ function liveMinMs(ps: PlayerMatchState, elapsedMs: number): number {
 interface SwapSuggestion { off: Player; on: Player; group: Group }
 
 // 10% of a 40-minute game = 4 minutes tolerance per player
-const TOTAL_GAME_MS  = 40 * 60_000
+const TOTAL_GAME_MS  = 80 * 60_000
 const TOLERANCE_MS   = TOTAL_GAME_MS * 0.1
 
 function computeNudgePlan(
