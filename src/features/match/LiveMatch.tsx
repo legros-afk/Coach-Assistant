@@ -317,6 +317,10 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
     }, 0) / active.length
   }, [squad, matchState, liveElapsedMs])
 
+  // ── short-pitch detection (fewer on pitch than the original starter count)
+  const starterCount = teamSheet.starters.forwards.length + teamSheet.starters.backs.length + 1
+  const isShortPitch = !subMode && onPitch.length < starterCount
+
   // ── sub pairings + composition
   const pairings = useMemo(() => {
     type Entry = { player: Player; ps: PlayerMatchState }
@@ -366,7 +370,14 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
       setComingOnIds(comingOnIds.filter(id => id !== p.id))
       return
     }
-    if (comingOffIds.length === 0) return
+    if (comingOffIds.length === 0) {
+      // Pitch is short — send directly on with no one coming off
+      if (onPitch.length < starterCount) {
+        store.commitSubBatch([], [p.id])
+        showToast(`${p.name} — on`)
+      }
+      return
+    }
     if (comingOnIds.length >= comingOffIds.length) {
       showToast('Tap a player to come off first')
       return
@@ -592,7 +603,13 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
 
         <Section
           title="Bench" count={bench.length} subtitle="least played first"
-          hint={comingOffIds.length > comingOnIds.length ? 'tap replacement' : undefined}
+          hint={
+            comingOffIds.length > comingOnIds.length
+              ? 'tap replacement'
+              : isShortPitch
+                ? 'tap to send on'
+                : undefined
+          }
         >
           <div className="grid grid-cols-2 gap-2">
             {bench.map(p => (
@@ -604,7 +621,11 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                 liveElapsedMs={liveElapsedMs}
                 picked={comingOnIds.includes(p.id)}
                 pickedTone="emerald"
-                onTap={comingOffIds.length > comingOnIds.length ? () => togglePickOn(p) : undefined}
+                onTap={
+                  comingOffIds.length > comingOnIds.length || isShortPitch
+                    ? () => togglePickOn(p)
+                    : undefined
+                }
                 showActions={false}
               />
             ))}
