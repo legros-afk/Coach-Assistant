@@ -1,18 +1,17 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import {
   Activity, AlertTriangle, ArrowRight, Check, ChevronLeft,
   Pause, Play, Plus, Trophy, Undo2, Users, X,
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
-import type { Group, ID, Player, PlayerMatchState, TeamSheet } from '@/lib/events/types'
+import type { Group, ID, Player, PlayerMatchState } from '@/lib/events/types'
 import { useMatchStore } from './useMatchStore'
 
 // ── brand constants ────────────────────────────────────────────────────────────
 
 const BLUE        = '#1565C0'
 const BLUE_DARK   = '#0D47A1'
-const BLUE_SOFT   = '#E3EEFF'
-const BLUE_SOFTER = '#F0F5FF'
+
 const INK         = '#1A1A1A'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -35,64 +34,6 @@ function liveMinMs(ps: PlayerMatchState, elapsedMs: number): number {
   return ps.status === 'on' && ps.currentStintStartedAtMs !== undefined
     ? ps.minutesPlayed + (elapsedMs - ps.currentStintStartedAtMs)
     : ps.minutesPlayed
-}
-
-interface SwapSuggestion { off: Player; on: Player; group: Group }
-
-// 10% of a 40-minute game = 4 minutes tolerance per player
-const TOTAL_GAME_MS  = 80 * 60_000
-const TOLERANCE_MS   = TOTAL_GAME_MS * 0.1
-
-function computeNudgePlan(
-  squad: Player[],
-  teamSheet: TeamSheet,
-  playerStates: ReturnType<typeof useMatchStore.getState>['matchState']['playerStates'],
-  elapsedMs: number,
-): SwapSuggestion[] {
-  if (elapsedMs < 60_000) return []
-
-  const groupConfigs: { group: Group; starterCount: number }[] = [
-    { group: 'forward',   starterCount: teamSheet.starters.forwards.length },
-    { group: 'back',      starterCount: teamSheet.starters.backs.length    },
-    { group: 'scrumhalf', starterCount: 1                                  },
-  ]
-
-  const swaps: SwapSuggestion[] = []
-  const usedBenchIds = new Set<ID>()
-
-  for (const { group, starterCount } of groupConfigs) {
-    const onInGroup = squad.filter(p => {
-      const ps = playerStates.get(p.id)
-      return ps?.status === 'on' && ps.activeGroup === group
-    })
-    const benchInGroup = squad.filter(p => {
-      const ps = playerStates.get(p.id)
-      return ps?.status === 'bench' && p.defaultGroup === group && !usedBenchIds.has(p.id)
-    })
-    if (onInGroup.length === 0 || benchInGroup.length === 0) continue
-
-    const totalInGroup  = onInGroup.length + benchInGroup.length
-    const fairShareMs   = elapsedMs * starterCount / totalInGroup
-    const getTime = (p: Player) => liveMinMs(playerStates.get(p.id)!, elapsedMs)
-
-    // Most time on pitch first (candidates to come off)
-    const sortedOn    = [...onInGroup   ].sort((a, b) => getTime(b) - getTime(a))
-    // Least time first (candidates to come on)
-    const sortedBench = [...benchInGroup].sort((a, b) => getTime(a) - getTime(b))
-
-    let benchIdx = 0
-    for (const offPlayer of sortedOn) {
-      if (benchIdx >= sortedBench.length) break
-      if (getTime(offPlayer) <= fairShareMs + TOLERANCE_MS) break  // sorted desc, rest are fine too
-      const onPlayer = sortedBench[benchIdx]
-      if (getTime(onPlayer) >= fairShareMs - TOLERANCE_MS) break   // sorted asc, rest are fine too
-      swaps.push({ off: offPlayer, on: onPlayer, group })
-      usedBenchIds.add(onPlayer.id)
-      benchIdx++
-    }
-  }
-
-  return swaps
 }
 
 // ── sub-components ─────────────────────────────────────────────────────────────
@@ -260,24 +201,6 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
     const id = setInterval(() => setLiveElapsedMs(store.currentElapsedMs()), 250)
     return () => clearInterval(id)
   }, [clockRunning, store.clockStartedAt])
-
-  // ── coach nudge (re-evaluate every 60s of clock time)
-  const [nudgeSwaps, setNudgeSwaps] = useState<SwapSuggestion[]>([])
-  const [nudgeDismissed, setNudgeDismissed] = useState(false)
-  const lastNudgeEvalMs = useRef(-60_001)
-  useEffect(() => {
-    if (!clockRunning) return
-    const id = setInterval(() => {
-      const elapsed = store.currentElapsedMs()
-      if (elapsed - lastNudgeEvalMs.current >= 60_000) {
-        lastNudgeEvalMs.current = elapsed
-        const swaps = computeNudgePlan(squad, teamSheet, matchState.playerStates, elapsed)
-        setNudgeSwaps(swaps)
-        if (swaps.length > 0) setNudgeDismissed(false)
-      }
-    }, 1000)
-    return () => clearInterval(id)
-  }, [clockRunning, matchState])
 
   // ── sub selection
   const [comingOffIds, setComingOffIds] = useState<ID[]>([])
@@ -449,16 +372,6 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
     showToast('Undone')
   }
 
-  const applyNudge = () => {
-    if (nudgeSwaps.length === 0) return
-    store.commitSubBatch(nudgeSwaps.map(s => s.off.id), nudgeSwaps.map(s => s.on.id))
-    const label = nudgeSwaps.length === 1
-      ? `${nudgeSwaps[0].off.name} → ${nudgeSwaps[0].on.name}`
-      : `${nudgeSwaps.length} subs confirmed`
-    showToast(label)
-    setNudgeDismissed(true)
-  }
-
   // half-end state
   const halfEnded = store.events.some(e => e.type === 'HALF_END')
   const matchEnded = store.events.some(e => e.type === 'MATCH_END')
@@ -611,45 +524,6 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
           )}
         </div>
       </div>
-
-      {/* ── Coach nudge */}
-      {nudgeSwaps.length > 0 && !nudgeDismissed && !subMode && (
-        <div
-          className="mx-3 mt-3 rounded-lg p-3 flex items-start gap-3"
-          style={{ background: BLUE_SOFTER, border: `1px solid ${BLUE_SOFT}` }}
-        >
-          <AlertTriangle size={18} style={{ color: BLUE }} className="flex-shrink-0 mt-0.5" strokeWidth={2.5} />
-          <div className="flex-1 text-sm min-w-0">
-            <div className="font-bold mb-1" style={{ color: BLUE_DARK }}>Subs to equalise time</div>
-            <div className="space-y-1">
-              {nudgeSwaps.map((swap, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-[13px]" style={{ color: BLUE }}>
-                  <GroupBadge group={swap.group} size="sm" />
-                  <span className="font-semibold truncate">{swap.off.name}</span>
-                  <ArrowRight size={10} className="flex-shrink-0 opacity-50" />
-                  <span className="font-semibold truncate">{swap.on.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-col gap-1 flex-shrink-0">
-            <button
-              onClick={applyNudge}
-              className="text-xs font-bold px-2.5 py-1 rounded whitespace-nowrap"
-              style={{ background: BLUE, color: 'white' }}
-            >
-              {nudgeSwaps.length > 1 ? 'Apply all' : 'Apply'}
-            </button>
-            <button
-              onClick={() => setNudgeDismissed(true)}
-              className="text-xs px-2 py-1 text-center"
-              style={{ color: BLUE }}
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ── Player sections */}
       <div className="px-3 pt-3 space-y-4">
