@@ -21,7 +21,7 @@ export function WoodfordMark({ size = 24 }: Props) {
     >
       <img
         src="/logo.png"
-        alt="Woodford RFC"
+        alt="Sheffield Oaks RUFC"
         width={inner}
         height={inner}
         style={{ objectFit: 'contain' }}

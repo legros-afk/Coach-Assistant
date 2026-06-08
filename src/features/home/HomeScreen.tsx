@@ -8,8 +8,8 @@ import { DEMO_SQUAD } from '@/features/match/mockData'
 import { useSyncStore, fmtSyncAge, driveConfigured } from '@/lib/drive/useSyncStore'
 import type { Fixture, TeamSheet } from '@/lib/events/types'
 
-const PURPLE      = '#3D0066'
-const PURPLE_DARK = '#5B1A99'
+const BLUE        = '#1565C0'
+const BLUE_DARK   = '#0D47A1'
 const INK         = '#1A1A1A'
 
 interface Props {
@@ -65,12 +65,12 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
   }
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#F8F4FF', color: INK }}>
+    <div className="min-h-screen pb-24" style={{ background: '#F0F5FF', color: INK }}>
       {/* Header */}
-      <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
-        <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
+      <div className="sticky top-0 z-20" style={{ background: BLUE }}>
+        <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${BLUE_DARK}` }}>
           <div className="flex-1 leading-tight">
-            <div className="text-[13px] font-bold tracking-wide uppercase text-white">Woodford RFC</div>
+            <div className="text-[13px] font-bold tracking-wide uppercase text-white">Sheffield Oaks RUFC</div>
             <div className="text-[10px] text-white/70">
               {isSyncing
                 ? 'Syncing…'
@@ -78,7 +78,7 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
                   ? lastError
                   : lastSyncedAt
                     ? `Synced ${fmtSyncAge(lastSyncedAt)}`
-                    : 'U12 · Coach Assistant'}
+                    : 'Seniors · Coach Assistant'}
             </div>
           </div>
           {hasDrive && (
@@ -106,23 +106,23 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
             <button
               onClick={onMatch}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-lg border active:scale-[0.99] transition text-left"
-              style={{ background: '#FDF4FF', borderColor: PURPLE }}
+              style={{ background: '#EEF4FF', borderColor: BLUE }}
             >
               <div
                 className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: PURPLE }}
+                style={{ background: BLUE }}
               >
                 <RotateCcw size={16} color="white" strokeWidth={2.5} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm" style={{ color: PURPLE }}>
+                <div className="font-semibold text-sm" style={{ color: BLUE }}>
                   Resume match
                 </div>
                 <div className="text-xs text-stone-400">
                   vs {activeOpponent} · Team {activeTeamSheet.label} · {activeEvents.length} event{activeEvents.length !== 1 ? 's' : ''}
                 </div>
               </div>
-              <ChevronRight size={16} strokeWidth={2} style={{ color: PURPLE, flexShrink: 0 }} />
+              <ChevronRight size={16} strokeWidth={2} style={{ color: BLUE, flexShrink: 0 }} />
             </button>
           </section>
         )}
@@ -187,13 +187,13 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
           <button
             onClick={pickDemo}
             className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border active:scale-[0.99] transition text-left"
-            style={{ borderColor: '#E4D0F5' }}
+            style={{ borderColor: '#C5D8F5' }}
           >
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ background: '#F4E8F5' }}
             >
-              <Play size={16} color={PURPLE} strokeWidth={2.5} />
+              <Play size={16} color={BLUE} strokeWidth={2.5} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-sm" style={{ color: INK }}>Demo match</div>
@@ -221,7 +221,7 @@ function FixtureCard({
   return (
     <div
       className="rounded-lg bg-white border overflow-hidden"
-      style={{ borderColor: '#E4D0F5' }}
+      style={{ borderColor: '#C5D8F5' }}
     >
       <div
         className="px-3 py-2 flex items-center gap-2"
@@ -239,7 +239,7 @@ function FixtureCard({
               key={ts.id}
               onClick={() => onPickTeam(ts)}
               className="flex items-center gap-1.5 px-3 rounded-lg font-bold text-xs active:scale-95 transition"
-              style={{ background: PURPLE, color: 'white', minHeight: '36px' }}
+              style={{ background: BLUE, color: 'white', minHeight: '36px' }}
             >
               <Play size={11} strokeWidth={2.5} />
               Team {ts.label}
@@ -252,7 +252,7 @@ function FixtureCard({
           className="w-full px-3 py-2 flex items-center gap-2 text-left active:bg-stone-50 transition"
         >
           <div className="text-xs text-stone-400 flex-1">No team sheets yet</div>
-          <span className="text-xs font-semibold" style={{ color: PURPLE }}>Prep →</span>
+          <span className="text-xs font-semibold" style={{ color: BLUE }}>Prep →</span>
         </button>
       )}
     </div>

@@ -2,7 +2,7 @@
 import { Download, X } from 'lucide-react'
 
 const DISMISSED_KEY = 'coach-install-dismissed'
-const PURPLE = '#3D0066'
+const PURPLE = '#1565C0'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
@@ -66,3 +66,4 @@ export default function InstallPrompt() {
     </div>
   )
 }
+

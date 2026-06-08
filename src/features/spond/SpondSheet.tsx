@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { X, CheckCircle, ChevronRight, Loader } from 'lucide-react'
 import { spondLogin, spondGetGroups, type SpondGroup } from '@/lib/spond/spondApi'
 import {
@@ -6,7 +6,7 @@ import {
   clearSpondCreds, spondConfigured,
 } from '@/lib/spond/spondStore'
 
-const PURPLE = '#3D0066'
+const PURPLE = '#1565C0'
 const INK    = '#1A1A1A'
 
 type View = 'status' | 'creds' | 'groups'
@@ -78,14 +78,14 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
 
         <div className="px-4 py-4 overflow-y-auto space-y-3">
 
-          {/* ── Connected status */}
+          {/* â”€â”€ Connected status */}
           {view === 'status' && (
             <>
               <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: '#F0FDF4' }}>
                 <CheckCircle size={18} color="#16a34a" strokeWidth={2} />
                 <div className="min-w-0">
                   <div className="text-sm font-semibold truncate" style={{ color: INK }}>{creds.email}</div>
-                  <div className="text-xs text-stone-400">Team: {creds.groupName || '—'}</div>
+                  <div className="text-xs text-stone-400">Team: {creds.groupName || 'â€”'}</div>
                 </div>
               </div>
               <button
@@ -105,7 +105,7 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
             </>
           )}
 
-          {/* ── Credentials form */}
+          {/* â”€â”€ Credentials form */}
           {view === 'creds' && (
             <>
               <div>
@@ -118,7 +118,7 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
                   onChange={e => setEmail(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && connect()}
                   className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none"
-                  style={{ borderColor: '#E4D0F5', color: INK }}
+                  style={{ borderColor: '#C5D8F5', color: INK }}
                   placeholder="your@email.com"
                   autoCapitalize="off"
                   autoCorrect="off"
@@ -134,8 +134,8 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
                   onChange={e => setPassword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && connect()}
                   className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none"
-                  style={{ borderColor: '#E4D0F5', color: INK }}
-                  placeholder="••••••••"
+                  style={{ borderColor: '#C5D8F5', color: INK }}
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 />
               </div>
               {error && <p className="text-xs text-red-500">{error}</p>}
@@ -146,12 +146,12 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
                 style={{ background: PURPLE, color: 'white' }}
               >
                 {loading && <Loader size={14} className="animate-spin" />}
-                {loading ? 'Connecting…' : 'Connect to Spond'}
+                {loading ? 'Connectingâ€¦' : 'Connect to Spond'}
               </button>
             </>
           )}
 
-          {/* ── Group picker */}
+          {/* â”€â”€ Group picker */}
           {view === 'groups' && (
             <>
               <p className="text-sm text-stone-500">Choose your team from Spond:</p>
@@ -160,7 +160,7 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
                   key={g.id}
                   onClick={() => pickGroup(g)}
                   className="w-full flex items-center gap-3 px-3 py-3 rounded-xl border active:scale-[0.99] transition text-left"
-                  style={{ borderColor: '#E4D0F5' }}
+                  style={{ borderColor: '#C5D8F5' }}
                 >
                   <div className="flex-1">
                     <div className="text-sm font-semibold" style={{ color: INK }}>{g.name}</div>
@@ -177,3 +177,4 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
     </div>
   )
 }
+

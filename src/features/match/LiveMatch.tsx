@@ -9,10 +9,10 @@ import { useMatchStore } from './useMatchStore'
 
 // ── brand constants ────────────────────────────────────────────────────────────
 
-const PURPLE      = '#3D0066'
-const PURPLE_DARK = '#5B1A99'
-const PURPLE_SOFT = '#F4E8F5'
-const PURPLE_SOFTER = '#FAF3FB'
+const BLUE        = '#1565C0'
+const BLUE_DARK   = '#0D47A1'
+const BLUE_SOFT   = '#E3EEFF'
+const BLUE_SOFTER = '#F0F5FF'
 const INK         = '#1A1A1A'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -100,7 +100,7 @@ function computeNudgePlan(
 const GROUP_LABEL: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf: 'SH' }
 
 function GroupBadge({ group, size = 'md' }: { group: Group; size?: 'md' | 'sm' }) {
-  const bg = group === 'forward' ? INK : group === 'back' ? PURPLE : PURPLE_DARK
+  const bg = group === 'forward' ? INK : group === 'back' ? BLUE : BLUE_DARK
   const cls = size === 'sm'
     ? 'text-[10px] w-5 h-5'
     : 'text-xs w-7 h-7'
@@ -126,7 +126,7 @@ function Section({
         </div>
         <span
           className="text-[10px] uppercase tracking-widest font-semibold"
-          style={{ color: hint ? PURPLE : '#7B5FA8' }}
+          style={{ color: hint ? BLUE : '#5580C0' }}
         >
           {hint ?? subtitle}
         </span>
@@ -197,7 +197,7 @@ function PlayerCard({
             />
             <span className="mono text-xs tabular-nums opacity-70">{fmt(mins)}</span>
             {ps.triesScored > 0 && (
-              <span className="mono text-xs font-bold" style={{ color: PURPLE }}>
+              <span className="mono text-xs font-bold" style={{ color: BLUE }}>
                 {ps.triesScored}T
               </span>
             )}
@@ -286,8 +286,13 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
 
   const clearSubs = () => { setComingOffIds([]); setComingOnIds([]) }
 
-  // ── try picker
+  // ── try picker + post-try conversion prompt
   const [tryPickerOpen, setTryPickerOpen] = useState(false)
+  const [conversionPromptOpen, setConversionPromptOpen] = useState(false)
+
+  // ── penalty / drop goal pickers
+  const [penPickerOpen, setPenPickerOpen] = useState(false)
+  const [dgPickerOpen, setDgPickerOpen] = useState(false)
 
   // ── blood replacement picker
   const [bloodPickerFor, setBloodPickerFor] = useState<Player | null>(null)
@@ -461,13 +466,13 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
 
   // ── render
   return (
-    <div className="min-h-screen pb-44" style={{ background: '#F8F4FF', color: INK }}>
+    <div className="min-h-screen pb-44" style={{ background: '#F0F5FF', color: INK }}>
 
       {/* ── Brand strip */}
-      <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
+      <div className="sticky top-0 z-20" style={{ background: BLUE }}>
         <div
           className="px-3 py-2 flex items-center justify-between"
-          style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}
+          style={{ borderBottom: `1px solid ${BLUE_DARK}` }}
         >
           <div className="flex items-center gap-2">
             {onBack && (
@@ -483,7 +488,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
             <WoodfordMark size={22} color="white" />
             <div className="leading-tight">
               <div className="text-[13px] font-bold tracking-wide uppercase text-white">
-                Woodford U12
+                Sheffield Oaks
               </div>
               <div className="text-[10px] text-white/80 tracking-wider">
                 vs {opponent || '—'} · Team {teamSheet.label}
@@ -492,7 +497,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] uppercase tracking-widest text-white/70 italic">
-              Nunquam Respice
+              Sheffield Oaks RUFC
             </span>
             {onOpenSquad && (
               <button
@@ -545,9 +550,41 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
               <span className="text-white/50">—</span>
               <ScoreButton
                 label="Them" value={matchState.scoreThem}
-                onClick={() => { store.recordTryThem(); showToast(`Try — ${opponent}`) }}
+                onClick={() => { store.recordTryThem(); showToast(`Try — ${opponent}`); setConversionPromptOpen(true) }}
               />
             </div>
+          </div>
+
+          {/* Penalty / Drop Goal row */}
+          <div className="flex gap-1.5 mt-2">
+            <button
+              onClick={() => setPenPickerOpen(true)}
+              className="flex-1 py-1 rounded text-[10px] font-bold uppercase tracking-wide active:scale-95 transition"
+              style={{ background: 'rgba(255,255,255,0.12)', color: 'white' }}
+            >
+              +3 Pen Us
+            </button>
+            <button
+              onClick={() => { store.recordPenaltyThem(); showToast(`Penalty — ${opponent}`) }}
+              className="flex-1 py-1 rounded text-[10px] font-bold uppercase tracking-wide active:scale-95 transition"
+              style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)' }}
+            >
+              +3 Pen Them
+            </button>
+            <button
+              onClick={() => setDgPickerOpen(true)}
+              className="flex-1 py-1 rounded text-[10px] font-bold uppercase tracking-wide active:scale-95 transition"
+              style={{ background: 'rgba(255,255,255,0.12)', color: 'white' }}
+            >
+              +3 DG Us
+            </button>
+            <button
+              onClick={() => { store.recordDropGoalThem(); showToast(`Drop goal — ${opponent}`) }}
+              className="flex-1 py-1 rounded text-[10px] font-bold uppercase tracking-wide active:scale-95 transition"
+              style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)' }}
+            >
+              +3 DG Them
+            </button>
           </div>
 
           {/* Half-end row — visible only when clock is paused and game has started */}
@@ -579,14 +616,14 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
       {nudgeSwaps.length > 0 && !nudgeDismissed && !subMode && (
         <div
           className="mx-3 mt-3 rounded-lg p-3 flex items-start gap-3"
-          style={{ background: PURPLE_SOFTER, border: `1px solid ${PURPLE_SOFT}` }}
+          style={{ background: BLUE_SOFTER, border: `1px solid ${BLUE_SOFT}` }}
         >
-          <AlertTriangle size={18} style={{ color: PURPLE }} className="flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+          <AlertTriangle size={18} style={{ color: BLUE }} className="flex-shrink-0 mt-0.5" strokeWidth={2.5} />
           <div className="flex-1 text-sm min-w-0">
-            <div className="font-bold mb-1" style={{ color: PURPLE_DARK }}>Subs to equalise time</div>
+            <div className="font-bold mb-1" style={{ color: BLUE_DARK }}>Subs to equalise time</div>
             <div className="space-y-1">
               {nudgeSwaps.map((swap, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-[13px]" style={{ color: PURPLE }}>
+                <div key={i} className="flex items-center gap-1.5 text-[13px]" style={{ color: BLUE }}>
                   <GroupBadge group={swap.group} size="sm" />
                   <span className="font-semibold truncate">{swap.off.name}</span>
                   <ArrowRight size={10} className="flex-shrink-0 opacity-50" />
@@ -599,14 +636,14 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
             <button
               onClick={applyNudge}
               className="text-xs font-bold px-2.5 py-1 rounded whitespace-nowrap"
-              style={{ background: PURPLE, color: 'white' }}
+              style={{ background: BLUE, color: 'white' }}
             >
               {nudgeSwaps.length > 1 ? 'Apply all' : 'Apply'}
             </button>
             <button
               onClick={() => setNudgeDismissed(true)}
               className="text-xs px-2 py-1 text-center"
-              style={{ color: PURPLE }}
+              style={{ color: BLUE }}
             >
               Dismiss
             </button>
@@ -700,7 +737,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
       {subMode && (
         <div
           className="fixed bottom-[76px] left-0 right-0 px-3 py-2.5 shadow-2xl z-30"
-          style={{ background: INK, color: 'white', borderTop: `2px solid ${PURPLE}` }}
+          style={{ background: INK, color: 'white', borderTop: `2px solid ${BLUE}` }}
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] uppercase tracking-widest font-semibold opacity-60">
@@ -765,13 +802,13 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
       {/* ── Bottom bar */}
       <div
         className="fixed bottom-0 left-0 right-0 px-3 py-3 flex items-center gap-2 z-30"
-        style={{ background: '#F8F4FF', borderTop: '1px solid #C8A0E8' }}
+        style={{ background: '#F0F5FF', borderTop: '1px solid #C8A0E8' }}
       >
         {matchEnded ? (
           <button
             onClick={onSummary}
             className="tap-target flex-1 rounded-lg font-bold text-base active:scale-95 transition flex items-center justify-center gap-2"
-            style={{ background: PURPLE, color: 'white' }}
+            style={{ background: BLUE, color: 'white' }}
           >
             <Trophy size={18} strokeWidth={2} />
             Match summary
@@ -807,7 +844,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Trophy size={22} style={{ color: PURPLE }} />
+                <Trophy size={22} style={{ color: BLUE }} />
                 <div className="text-2xl font-bold" style={{ color: INK }}>Who scored?</div>
               </div>
               <button
@@ -825,9 +862,10 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                     store.recordTryUs(p.id)
                     showToast(`Try — ${p.name}`)
                     setTryPickerOpen(false)
+                    setConversionPromptOpen(true)
                   }}
                   className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
-                  style={{ borderColor: '#E4D0F5' }}
+                  style={{ borderColor: '#C5D8F5' }}
                 >
                   <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
                   <span className="font-semibold flex-1 text-left">{p.name}</span>
@@ -843,6 +881,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                   store.recordTryUs()
                   showToast('Try (unattributed)')
                   setTryPickerOpen(false)
+                  setConversionPromptOpen(true)
                 }}
                 className="tap-target w-full px-3 italic active:scale-[0.98] transition opacity-70"
               >
@@ -888,7 +927,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                     setBloodPickerFor(null)
                   }}
                   className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
-                  style={{ borderColor: '#E4D0F5' }}
+                  style={{ borderColor: '#C5D8F5' }}
                 >
                   <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
                   <span className="font-semibold flex-1 text-left">{p.name}</span>
@@ -951,7 +990,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                     setInjuryPickerFor(null)
                   }}
                   className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
-                  style={{ borderColor: '#E4D0F5' }}
+                  style={{ borderColor: '#C5D8F5' }}
                 >
                   <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
                   <span className="font-semibold flex-1 text-left">{p.name}</span>
@@ -972,6 +1011,112 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                 className="tap-target w-full px-3 italic active:scale-[0.98] transition opacity-60 text-sm"
               >
                 Continue without replacement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Conversion prompt (after any try) */}
+      {conversionPromptOpen && (
+        <div
+          className="fixed inset-0 z-40 flex items-end"
+          style={{ background: 'rgba(32,24,32,0.7)' }}
+          onClick={() => setConversionPromptOpen(false)}
+        >
+          <div className="bg-white w-full rounded-t-2xl p-4" onClick={e => e.stopPropagation()}>
+            <div className="text-xl font-bold mb-1" style={{ color: INK }}>Conversion kicked?</div>
+            <p className="text-sm text-stone-400 mb-4">+2 pts</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { store.recordConversionUs(); showToast('Conversion — +2'); setConversionPromptOpen(false) }}
+                className="flex-1 tap-target rounded-lg font-bold text-base active:scale-95 transition"
+                style={{ background: BLUE, color: 'white' }}
+              >
+                Yes — converted
+              </button>
+              <button
+                onClick={() => { store.recordConversionThem(); showToast(`Conversion — ${opponent}`); setConversionPromptOpen(false) }}
+                className="flex-1 tap-target rounded-lg font-bold text-base active:scale-95 transition"
+                style={{ background: '#E5E7EB', color: INK }}
+              >
+                Them converted
+              </button>
+            </div>
+            <button
+              onClick={() => setConversionPromptOpen(false)}
+              className="w-full mt-2 py-2 text-sm text-stone-400"
+            >
+              Missed / no kick
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Penalty picker (us) */}
+      {penPickerOpen && (
+        <div
+          className="fixed inset-0 z-40 flex items-end"
+          style={{ background: 'rgba(32,24,32,0.7)' }}
+          onClick={() => setPenPickerOpen(false)}
+        >
+          <div className="bg-white w-full rounded-t-2xl p-4 max-h-[70vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-2xl font-bold" style={{ color: INK }}>Penalty — who kicked?</div>
+              <button onClick={() => setPenPickerOpen(false)} className="tap-target w-12 flex items-center justify-center"><X /></button>
+            </div>
+            <div className="space-y-1.5">
+              {onPitch.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => { store.recordPenaltyUs(p.id); showToast(`Penalty — ${p.name} +3`); setPenPickerOpen(false) }}
+                  className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
+                  style={{ borderColor: '#C5D8F5' }}
+                >
+                  <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
+                  <span className="font-semibold flex-1 text-left">{p.name}</span>
+                </button>
+              ))}
+              <button
+                onClick={() => { store.recordPenaltyUs(); showToast('Penalty +3'); setPenPickerOpen(false) }}
+                className="tap-target w-full px-3 italic active:scale-[0.98] transition opacity-70"
+              >
+                Unattributed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Drop goal picker (us) */}
+      {dgPickerOpen && (
+        <div
+          className="fixed inset-0 z-40 flex items-end"
+          style={{ background: 'rgba(32,24,32,0.7)' }}
+          onClick={() => setDgPickerOpen(false)}
+        >
+          <div className="bg-white w-full rounded-t-2xl p-4 max-h-[70vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-2xl font-bold" style={{ color: INK }}>Drop goal — who scored?</div>
+              <button onClick={() => setDgPickerOpen(false)} className="tap-target w-12 flex items-center justify-center"><X /></button>
+            </div>
+            <div className="space-y-1.5">
+              {onPitch.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => { store.recordDropGoalUs(p.id); showToast(`Drop goal — ${p.name} +3`); setDgPickerOpen(false) }}
+                  className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
+                  style={{ borderColor: '#C5D8F5' }}
+                >
+                  <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
+                  <span className="font-semibold flex-1 text-left">{p.name}</span>
+                </button>
+              ))}
+              <button
+                onClick={() => { store.recordDropGoalUs(); showToast('Drop goal +3'); setDgPickerOpen(false) }}
+                className="tap-target w-full px-3 italic active:scale-[0.98] transition opacity-70"
+              >
+                Unattributed
               </button>
             </div>
           </div>

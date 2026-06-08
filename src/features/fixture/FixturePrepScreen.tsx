@@ -13,8 +13,8 @@ import { FOLDER_ID_KEY } from '@/lib/drive/driveRead'
 import { OAUTH_ENABLED } from '@/lib/drive/driveAuth'
 import { publishFixture } from '@/lib/drive/drivePublish'
 
-const PURPLE      = '#3D0066'
-const PURPLE_DARK = '#5B1A99'
+const PURPLE      = '#1565C0'
+const PURPLE_DARK = '#0D47A1'
 const INK         = '#1A1A1A'
 
 const GROUP_SHORT: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf: 'SH' }
@@ -318,7 +318,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       : null
 
     return (
-      <div key={p.id} className="flex items-center gap-2 py-1.5 border-b last:border-0" style={{ borderColor: '#F8F4FF' }}>
+      <div key={p.id} className="flex items-center gap-2 py-1.5 border-b last:border-0" style={{ borderColor: '#F0F5FF' }}>
         <button onClick={() => isStarter && cycleGroup(p)} className={isStarter ? 'cursor-pointer' : 'cursor-default'}>
           <GroupBadge group={group} />
         </button>
@@ -339,14 +339,14 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
         <button
           onClick={handleA}
           className="w-10 h-8 rounded-lg text-xs font-bold flex items-center justify-center flex-shrink-0 active:scale-95 transition"
-          style={aStyle ? { background: aStyle.bg, color: aStyle.color } : { background: '#F8F4FF', color: '#7B5FA8' }}
+          style={aStyle ? { background: aStyle.bg, color: aStyle.color } : { background: '#F0F5FF', color: '#7B5FA8' }}
         >
           {aStyle ? aStyle.label : 'A'}
         </button>
         <button
           onClick={handleB}
           className="w-10 h-8 rounded-lg text-xs font-bold flex items-center justify-center flex-shrink-0 active:scale-95 transition"
-          style={bStyle ? { background: bStyle.bg, color: bStyle.color } : { background: '#F8F4FF', color: '#7B5FA8' }}
+          style={bStyle ? { background: bStyle.bg, color: bStyle.color } : { background: '#F0F5FF', color: '#7B5FA8' }}
         >
           {bStyle ? bStyle.label : 'B'}
         </button>
@@ -355,7 +355,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
           className="w-7 h-8 rounded-lg text-xs flex items-center justify-center flex-shrink-0 active:scale-95 transition"
           style={cur === 'unavailable'
             ? { background: ASSIGN_STYLE['unavailable'].bg, color: ASSIGN_STYLE['unavailable'].color }
-            : { background: '#F8F4FF', color: '#C8A0E8' }}
+            : { background: '#F0F5FF', color: '#C8A0E8' }}
         >
           ✗
         </button>
@@ -397,7 +397,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                 key={c.id}
                 onClick={() => setResolutions(m => new Map(m).set(slot.token, c))}
                 className="flex items-center gap-2 w-full py-1 px-2 rounded text-sm active:scale-[0.99]"
-                style={{ background: cur === c ? '#D1FAE5' : '#F8F4FF', color: INK }}
+                style={{ background: cur === c ? '#D1FAE5' : '#F0F5FF', color: INK }}
               >
                 <GroupBadge group={c.defaultGroup} size="xs" />
                 {c.name}
@@ -437,7 +437,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     const shOver = stats.sh > 1
     const anyOver = fOver || bOver || shOver
     const allFull = stats.f === limits.f && stats.b === limits.b && stats.sh === 1
-    const bg = anyOver ? '#FEE2E2' : allFull ? '#D1FAE5' : '#F8F4FF'
+    const bg = anyOver ? '#FEE2E2' : allFull ? '#D1FAE5' : '#F0F5FF'
     const titleColor = anyOver ? '#991B1B' : allFull ? '#065F46' : INK
     const slotColor = (n: number, max: number) =>
       n > max ? '#DC2626' : n === max ? '#059669' : '#78716C'
@@ -458,7 +458,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   }
 
   return (
-    <div className="min-h-screen pb-28" style={{ background: '#F8F4FF', color: INK }}>
+    <div className="min-h-screen pb-28" style={{ background: '#F0F5FF', color: INK }}>
 
       {/* Header */}
       <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
@@ -536,7 +536,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                 value={date}
                 onChange={e => setDate(e.target.value)}
                 className="w-full px-2 py-2 rounded border text-sm outline-none"
-                style={{ borderColor: '#E4D0F5', color: INK }}
+                style={{ borderColor: '#C5D8F5', color: INK }}
               />
             </div>
             <div className="flex-1">
@@ -547,7 +547,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                 onChange={e => setOpponent(e.target.value)}
                 placeholder="e.g. Saints"
                 className="w-full px-2 py-2 rounded border text-sm outline-none"
-                style={{ borderColor: '#E4D0F5', color: INK }}
+                style={{ borderColor: '#C5D8F5', color: INK }}
               />
             </div>
           </div>
@@ -648,7 +648,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       {/* Save button */}
       <div
         className="fixed bottom-16 left-0 right-0 px-3 py-3 z-30"
-        style={{ background: '#F8F4FF', borderTop: '1px solid #C8A0E8' }}
+        style={{ background: '#F0F5FF', borderTop: '1px solid #C8A0E8' }}
       >
         <button
           onClick={() => setShowReview(true)}
@@ -755,3 +755,4 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     </div>
   )
 }
+

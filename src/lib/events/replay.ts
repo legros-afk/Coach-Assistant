@@ -74,7 +74,7 @@ export function replayEvents(
       }
 
       case 'TRY_US': {
-        scoreUs += 1;
+        scoreUs += 5;
         if (event.payload.scorerId) {
           const ps = playerStates.get(event.payload.scorerId);
           if (ps) ps.triesScored += 1;
@@ -84,7 +84,43 @@ export function replayEvents(
       }
 
       case 'TRY_THEM': {
-        scoreThem += 1;
+        scoreThem += 5;
+        elapsedMs = event.payload.elapsedMs;
+        break;
+      }
+
+      case 'CONVERSION_US': {
+        scoreUs += 2;
+        elapsedMs = event.payload.elapsedMs;
+        break;
+      }
+
+      case 'CONVERSION_THEM': {
+        scoreThem += 2;
+        elapsedMs = event.payload.elapsedMs;
+        break;
+      }
+
+      case 'PENALTY_US': {
+        scoreUs += 3;
+        elapsedMs = event.payload.elapsedMs;
+        break;
+      }
+
+      case 'PENALTY_THEM': {
+        scoreThem += 3;
+        elapsedMs = event.payload.elapsedMs;
+        break;
+      }
+
+      case 'DROP_GOAL_US': {
+        scoreUs += 3;
+        elapsedMs = event.payload.elapsedMs;
+        break;
+      }
+
+      case 'DROP_GOAL_THEM': {
+        scoreThem += 3;
         elapsedMs = event.payload.elapsedMs;
         break;
       }

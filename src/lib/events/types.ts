@@ -52,17 +52,23 @@ export interface Match {
 }
 
 export type MatchEvent =
-  | { id: ID; ts: string; type: 'CLOCK_START';    payload: { half: 1 | 2 } }
-  | { id: ID; ts: string; type: 'CLOCK_PAUSE';    payload: { elapsedMs: number } }
-  | { id: ID; ts: string; type: 'HALF_END';       payload: { half: 1 | 2; elapsedMs: number } }
-  | { id: ID; ts: string; type: 'MATCH_END';      payload: { elapsedMs: number } }
-  | { id: ID; ts: string; type: 'TRY_US';         payload: { scorerId?: ID; elapsedMs: number } }
-  | { id: ID; ts: string; type: 'TRY_THEM';       payload: { elapsedMs: number } }
-  | { id: ID; ts: string; type: 'SUB_BATCH';      payload: { offIds: ID[]; onIds: ID[]; elapsedMs: number } }
-  | { id: ID; ts: string; type: 'BLOOD_OFF';      payload: { playerId: ID; replacementId?: ID; elapsedMs: number } }
-  | { id: ID; ts: string; type: 'BLOOD_RETURN';   payload: { playerId: ID; elapsedMs: number } }
-  | { id: ID; ts: string; type: 'INJURED_OFF';    payload: { playerId: ID; replacementId?: ID; elapsedMs: number } }
-  | { id: ID; ts: string; type: 'INJURED_RETURN'; payload: { playerId: ID; elapsedMs: number } };
+  | { id: ID; ts: string; type: 'CLOCK_START';      payload: { half: 1 | 2 } }
+  | { id: ID; ts: string; type: 'CLOCK_PAUSE';      payload: { elapsedMs: number } }
+  | { id: ID; ts: string; type: 'HALF_END';         payload: { half: 1 | 2; elapsedMs: number } }
+  | { id: ID; ts: string; type: 'MATCH_END';        payload: { elapsedMs: number } }
+  | { id: ID; ts: string; type: 'TRY_US';           payload: { scorerId?: ID; elapsedMs: number } }
+  | { id: ID; ts: string; type: 'TRY_THEM';         payload: { elapsedMs: number } }
+  | { id: ID; ts: string; type: 'CONVERSION_US';    payload: { kickerId?: ID; elapsedMs: number } }
+  | { id: ID; ts: string; type: 'CONVERSION_THEM';  payload: { elapsedMs: number } }
+  | { id: ID; ts: string; type: 'PENALTY_US';       payload: { kickerId?: ID; elapsedMs: number } }
+  | { id: ID; ts: string; type: 'PENALTY_THEM';     payload: { elapsedMs: number } }
+  | { id: ID; ts: string; type: 'DROP_GOAL_US';     payload: { scorerId?: ID; elapsedMs: number } }
+  | { id: ID; ts: string; type: 'DROP_GOAL_THEM';   payload: { elapsedMs: number } }
+  | { id: ID; ts: string; type: 'SUB_BATCH';        payload: { offIds: ID[]; onIds: ID[]; elapsedMs: number } }
+  | { id: ID; ts: string; type: 'BLOOD_OFF';        payload: { playerId: ID; replacementId?: ID; elapsedMs: number } }
+  | { id: ID; ts: string; type: 'BLOOD_RETURN';     payload: { playerId: ID; elapsedMs: number } }
+  | { id: ID; ts: string; type: 'INJURED_OFF';      payload: { playerId: ID; replacementId?: ID; elapsedMs: number } }
+  | { id: ID; ts: string; type: 'INJURED_RETURN';   payload: { playerId: ID; elapsedMs: number } };
 
 export interface PlayerMatchState {
   status: 'on' | 'bench' | 'blood' | 'injured';

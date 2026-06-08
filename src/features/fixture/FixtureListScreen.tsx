@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { Calendar, ChevronRight, Link2, Plus, RefreshCw } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Fixture, Match, TeamSheet } from '@/lib/events/types'
@@ -10,8 +10,8 @@ import { spondConfigured, getSpondCreds, extractOpponent } from '@/lib/spond/spo
 import { spondGetEvents, type SpondEvent } from '@/lib/spond/spondApi'
 import { ensureToken } from '@/lib/spond/spondSync'
 
-const PURPLE      = '#3D0066'
-const PURPLE_DARK = '#5B1A99'
+const PURPLE      = '#1565C0'
+const PURPLE_DARK = '#0D47A1'
 const INK         = '#1A1A1A'
 
 const PPS_KEY = 'coach-players-per-side'
@@ -79,7 +79,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
     new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#F8F4FF', color: INK }}>
+    <div className="min-h-screen pb-24" style={{ background: '#F0F5FF', color: INK }}>
       <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
         <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
           <Calendar size={18} color="white" strokeWidth={2} />
@@ -87,10 +87,10 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
             <div className="text-[13px] font-bold tracking-wide uppercase text-white">Fixtures</div>
             <div className="text-[10px] text-white/70">
               {isSyncing
-                ? 'Syncing…'
+                ? 'Syncingâ€¦'
                 : isHydrated
-                  ? `${fixtures.length} fixture${fixtures.length !== 1 ? 's' : ''}${lastSyncedAt ? ` · ${fmtSyncAge(lastSyncedAt)}` : ''}`
-                  : '…'}
+                  ? `${fixtures.length} fixture${fixtures.length !== 1 ? 's' : ''}${lastSyncedAt ? ` Â· ${fmtSyncAge(lastSyncedAt)}` : ''}`
+                  : 'â€¦'}
             </div>
           </div>
           {hasDrive && (
@@ -104,7 +104,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
               <RefreshCw size={15} color="white" strokeWidth={2} className={isSyncing ? 'animate-spin' : ''} />
             </button>
           )}
-          {/* Spond button — green tint when connected */}
+          {/* Spond button â€” green tint when connected */}
           <button
             onClick={() => setShowSpondSheet(true)}
             className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition"
@@ -124,7 +124,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
               onClick={() => setPlayersPerSide(playersPerSide - 1)}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold active:scale-95 transition"
               style={{ background: 'rgba(255,255,255,0.12)', color: 'white' }}
-            >−</button>
+            >âˆ’</button>
             <span className="w-5 text-center text-sm font-bold text-white">{playersPerSide}</span>
             <button
               onClick={() => setPlayersPerSide(playersPerSide + 1)}
@@ -137,7 +137,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
 
       <div className="px-3 pt-3">
         {!isHydrated ? (
-          <div className="py-12 text-center text-stone-400 text-sm">Loading…</div>
+          <div className="py-12 text-center text-stone-400 text-sm">Loadingâ€¦</div>
         ) : fixtures.length === 0 ? (
           <div className="py-12 flex flex-col items-center gap-4">
             <Calendar size={40} className="text-stone-300" strokeWidth={1.5} />
@@ -162,11 +162,11 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
                   key={f.id}
                   onClick={() => onEdit(f)}
                   className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border active:scale-[0.99] transition text-left"
-                  style={{ borderColor: '#E4D0F5' }}
+                  style={{ borderColor: '#C5D8F5' }}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm" style={{ color: INK }}>vs {f.opponent}</div>
-                    <div className="text-xs text-stone-400">{f.date} · {f.teamSheets.length} team sheet{f.teamSheets.length !== 1 ? 's' : ''}</div>
+                    <div className="text-xs text-stone-400">{f.date} Â· {f.teamSheets.length} team sheet{f.teamSheets.length !== 1 ? 's' : ''}</div>
                   </div>
                   {playedSheets.length > 0 && (
                     <div className="flex gap-1 items-center flex-shrink-0" onClick={e => e.stopPropagation()}>
@@ -183,7 +183,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
                             className="px-2 py-1 rounded text-[11px] font-bold text-white active:scale-95 transition"
                             style={{ background: bg }}
                           >
-                            {ts.label} {scoreUs}–{scoreThem}
+                            {ts.label} {scoreUs}â€“{scoreThem}
                           </button>
                         )
                       })}
@@ -196,7 +196,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
           </div>
         )}
 
-        {/* ── Spond upcoming events */}
+        {/* â”€â”€ Spond upcoming events */}
         {isSpondLinked && (
           <div className="mt-4">
             <div className="flex items-center justify-between px-1 mb-2">
@@ -213,8 +213,8 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
               >
                 <span className="text-xs font-semibold text-red-600 flex-1">
                   {spondError === 'session-expired'
-                    ? 'Spond session expired — tap to reconnect'
-                    : 'Could not reach Spond — tap to retry'}
+                    ? 'Spond session expired â€” tap to reconnect'
+                    : 'Could not reach Spond â€” tap to retry'}
                 </span>
                 <RefreshCw size={13} className="text-red-400 flex-shrink-0" />
               </button>
@@ -232,7 +232,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
                     <div
                       key={ev.id}
                       className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border"
-                      style={{ borderColor: '#E4D0F5' }}
+                      style={{ borderColor: '#C5D8F5' }}
                     >
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm" style={{ color: INK }}>vs {opponent}</div>
@@ -241,12 +241,12 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
                           <div className="flex items-center gap-2 mt-0.5">
                             {acceptedIds.length > 0 && (
                               <span className="text-[11px] font-semibold" style={{ color: '#16a34a' }}>
-                                {acceptedIds.length} ✓
+                                {acceptedIds.length} âœ“
                               </span>
                             )}
                             {declinedIds.length > 0 && (
                               <span className="text-[11px] font-semibold" style={{ color: '#dc2626' }}>
-                                {declinedIds.length} ✗
+                                {declinedIds.length} âœ—
                               </span>
                             )}
                             {unansweredIds.length > 0 && (
@@ -258,7 +258,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
                         )}
                       </div>
                       {imported ? (
-                        <span className="text-[11px] font-semibold text-emerald-600 flex-shrink-0">✓ Imported</span>
+                        <span className="text-[11px] font-semibold text-emerald-600 flex-shrink-0">âœ“ Imported</span>
                       ) : (
                         <button
                           onClick={() => onImportSpond(ev.id, opponent, date, playersPerSide)}
@@ -296,3 +296,4 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
     </div>
   )
 }
+

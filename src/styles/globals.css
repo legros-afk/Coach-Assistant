@@ -4,14 +4,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Woodford RFC palette ─────────────────────────────── */
+/* ─── Sheffield Oaks RUFC palette ─────────────────────── */
 :root {
-  --brand-purple:        #3D0066;
-  --brand-purple-dark:   #5B1A99;
-  --brand-purple-light:  #9B4FA1;
-  --brand-purple-soft:   #F4E8F5;
-  --brand-purple-softer: #FAF3FB;
-  --brand-ink:           #1A1A1A;
+  --brand-blue:        #1565C0;
+  --brand-blue-dark:   #0D47A1;
+  --brand-gold:        #F9A800;
+  --brand-blue-soft:   #E3EEFF;
+  --brand-blue-softer: #F0F5FF;
+  --brand-ink:         #1A1A1A;
 }
 
 /* ─── Resets / base ─────────────────────────────────────── */
@@ -44,8 +44,8 @@ body {
 
 /* ─── Sub-builder confirm pulse ──────────────────────────── */
 @keyframes pulse-ready {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(61, 0, 102, 0.6); }
-  50%       { box-shadow: 0 0 0 10px rgba(61, 0, 102, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(21, 101, 192, 0.6); }
+  50%       { box-shadow: 0 0 0 10px rgba(21, 101, 192, 0); }
 }
 .pulse-ready {
   animation: pulse-ready 1.6s ease-out infinite;

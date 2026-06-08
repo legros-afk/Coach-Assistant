@@ -41,6 +41,12 @@ interface MatchStore {
   endMatch: () => void;
   recordTryUs: (scorerId?: ID) => void;
   recordTryThem: () => void;
+  recordConversionUs: (kickerId?: ID) => void;
+  recordConversionThem: () => void;
+  recordPenaltyUs: (kickerId?: ID) => void;
+  recordPenaltyThem: () => void;
+  recordDropGoalUs: (scorerId?: ID) => void;
+  recordDropGoalThem: () => void;
   commitSubBatch: (offIds: ID[], onIds: ID[]) => void;
   bloodOff: (playerId: ID, replacementId?: ID) => void;
   bloodReturn: (playerId: ID) => void;
@@ -221,6 +227,54 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
         id: newId(), ts: nowIso(), type: 'TRY_THEM',
         payload: { elapsedMs: state.currentElapsedMs() },
       };
+      const patch = withEvent(state, event);
+      set(patch);
+      persist(patch.events);
+    },
+
+    recordConversionUs: (kickerId) => {
+      const state = get();
+      const event: MatchEvent = { id: newId(), ts: nowIso(), type: 'CONVERSION_US', payload: { kickerId, elapsedMs: state.currentElapsedMs() } };
+      const patch = withEvent(state, event);
+      set(patch);
+      persist(patch.events);
+    },
+
+    recordConversionThem: () => {
+      const state = get();
+      const event: MatchEvent = { id: newId(), ts: nowIso(), type: 'CONVERSION_THEM', payload: { elapsedMs: state.currentElapsedMs() } };
+      const patch = withEvent(state, event);
+      set(patch);
+      persist(patch.events);
+    },
+
+    recordPenaltyUs: (kickerId) => {
+      const state = get();
+      const event: MatchEvent = { id: newId(), ts: nowIso(), type: 'PENALTY_US', payload: { kickerId, elapsedMs: state.currentElapsedMs() } };
+      const patch = withEvent(state, event);
+      set(patch);
+      persist(patch.events);
+    },
+
+    recordPenaltyThem: () => {
+      const state = get();
+      const event: MatchEvent = { id: newId(), ts: nowIso(), type: 'PENALTY_THEM', payload: { elapsedMs: state.currentElapsedMs() } };
+      const patch = withEvent(state, event);
+      set(patch);
+      persist(patch.events);
+    },
+
+    recordDropGoalUs: (scorerId) => {
+      const state = get();
+      const event: MatchEvent = { id: newId(), ts: nowIso(), type: 'DROP_GOAL_US', payload: { scorerId, elapsedMs: state.currentElapsedMs() } };
+      const patch = withEvent(state, event);
+      set(patch);
+      persist(patch.events);
+    },
+
+    recordDropGoalThem: () => {
+      const state = get();
+      const event: MatchEvent = { id: newId(), ts: nowIso(), type: 'DROP_GOAL_THEM', payload: { elapsedMs: state.currentElapsedMs() } };
       const patch = withEvent(state, event);
       set(patch);
       persist(patch.events);

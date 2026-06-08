@@ -4,8 +4,8 @@ import { WoodfordMark } from '@/components/WoodfordMark'
 import { FOLDER_ID_KEY, listFolder, parseFolderId } from '@/lib/drive/driveRead'
 import { syncFromDrive } from '@/lib/drive/driveSync'
 
-const PURPLE      = '#3D0066'
-const PURPLE_DARK = '#5B1A99'
+const PURPLE      = '#1565C0'
+const PURPLE_DARK = '#0D47A1'
 const INK         = '#1A1A1A'
 
 interface Props {
@@ -52,7 +52,7 @@ export default function SetupScreen({ onDone, onBack }: Props) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#F8F4FF' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: '#F0F5FF' }}>
       {/* Header */}
       <div style={{ background: PURPLE }} className="px-4 py-5 flex items-center gap-3">
         {onBack ? (
@@ -64,7 +64,7 @@ export default function SetupScreen({ onDone, onBack }: Props) {
         )}
         <div className="leading-tight">
           <div className="text-sm font-bold tracking-wide uppercase text-white">
-            {onBack ? 'Drive folder' : 'Woodford RFC'}
+            {onBack ? 'Drive folder' : 'Sheffield Oaks RUFC'}
           </div>
           <div className="text-xs text-white/70">{onBack ? 'Change connected folder' : 'Coach Assistant'}</div>
         </div>
@@ -151,3 +151,4 @@ export default function SetupScreen({ onDone, onBack }: Props) {
     </div>
   )
 }
+
