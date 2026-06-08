@@ -20,7 +20,7 @@ export async function syncFromDrive(folderId: string, _apiKey?: string): Promise
 
     // Always refresh positions from the squad spreadsheet
     try {
-      const positions = await fetchSquadPositions(apiKey);
+      const positions = await fetchSquadPositions();
       const all = await db.squads.toArray();
       const squad = all.length ? all[all.length - 1] : null;
       if (squad && positions.length > 0) {

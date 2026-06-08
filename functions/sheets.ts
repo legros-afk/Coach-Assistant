@@ -18,7 +18,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const sep       = path.includes('?') ? '&' : '?'
   const sheetsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${path}${sep}key=${apiKey}`
 
-  const res  = await fetch(sheetsUrl)
+  const res  = await fetch(sheetsUrl, { headers: { Accept: 'application/json' } })
   const text = await res.text()
   let data: unknown
   try { data = JSON.parse(text) } catch { data = { raw: text } }

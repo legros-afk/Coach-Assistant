@@ -41,7 +41,7 @@ export default function SetupScreen({ onDone, onBack }: Props) {
     setStatus('checking')
     setCanForce(false)
     try {
-      await listFolder(folderId, API_KEY)
+      await listFolder(folderId)
       saveAndProceed(folderId)
     } catch (e) {
       const detail = e instanceof Error ? e.message : String(e)

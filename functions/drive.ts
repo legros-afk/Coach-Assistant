@@ -18,7 +18,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const sep      = path.includes('?') ? '&' : '?'
   const driveUrl = `https://www.googleapis.com/drive/v3/${path}${sep}key=${apiKey}`
 
-  const res  = await fetch(driveUrl)
+  const res  = await fetch(driveUrl, { headers: { Accept: 'application/json' } })
   const text = await res.text()
   let data: unknown
   try { data = JSON.parse(text) } catch { data = { raw: text } }
