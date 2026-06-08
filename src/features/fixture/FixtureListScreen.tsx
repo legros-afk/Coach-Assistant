@@ -14,7 +14,7 @@ const PURPLE      = '#1565C0'
 const PURPLE_DARK = '#0D47A1'
 const INK         = '#1A1A1A'
 
-const PPS_KEY = 'coach-players-per-side'
+const PPS_KEY = 'coach-players-per-side-v2'
 
 interface Props {
   onNew: (playersPerSide: number) => void
