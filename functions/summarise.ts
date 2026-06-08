@@ -73,8 +73,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
     contents: [{ parts: [{ text: userMessage }] }],
     generationConfig: {
-      maxOutputTokens: 500, // gemini-2.5-flash thinking tokens count against this budget; actual output is ~60-90 tokens
+      maxOutputTokens: 300,
       temperature: 0.9,
+      thinkingConfig: { thinkingBudget: 0 },
     },
   }
 
