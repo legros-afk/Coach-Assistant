@@ -6,7 +6,7 @@ import {
   clearSpondCreds, spondConfigured,
 } from '@/lib/spond/spondStore'
 
-const PURPLE = '#1565C0'
+const PURPLE = '#172f77'
 const INK    = '#1A1A1A'
 
 type View = 'status' | 'creds' | 'groups'

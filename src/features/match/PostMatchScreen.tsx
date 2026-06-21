@@ -4,8 +4,8 @@ import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, MatchEvent } from '@/lib/events/types'
 import { useMatchStore } from './useMatchStore'
 
-const BLUE        = '#1565C0'
-const BLUE_DARK   = '#0D47A1'
+const BLUE        = '#172f77'
+const BLUE_DARK   = '#0f1f50'
 const INK         = '#1A1A1A'
 
 const GROUP_SHORT: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf: 'SH' }
@@ -202,7 +202,7 @@ export default function PostMatchScreen({ onBack }: Props) {
   const resultColor = result === 'Won' ? '#059669' : result === 'Lost' ? '#DC2626' : '#D97706'
 
   return (
-    <div className="min-h-screen pb-8" style={{ background: '#F0F5FF', color: INK }}>
+    <div className="min-h-screen pb-8" style={{ background: '#f0f2f9', color: INK }}>
 
       {/* Header */}
       <div className="sticky top-0 z-20" style={{ background: BLUE }}>
@@ -269,7 +269,7 @@ export default function PostMatchScreen({ onBack }: Props) {
 
           {/* AI summary card */}
           <div className="bg-white rounded-lg border overflow-hidden" style={{ borderColor: '#C5D8F5' }}>
-            <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: aiSummary ? '1px solid #E4D0F5' : undefined }}>
+            <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: aiSummary ? '1px solid #d0d7eb' : undefined }}>
               <span className="text-[11px] font-bold uppercase tracking-widest text-stone-400">AI match report</span>
               <button
                 onClick={handleGenerate}
@@ -291,7 +291,7 @@ export default function PostMatchScreen({ onBack }: Props) {
                   <button
                     onClick={handleAiCopy}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold active:scale-95 transition"
-                    style={{ background: aiCopied ? '#059669' : '#F0F5FF', color: aiCopied ? 'white' : BLUE, border: `1px solid #E4D0F5` }}
+                    style={{ background: aiCopied ? '#059669' : '#f0f2f9', color: aiCopied ? 'white' : BLUE, border: `1px solid #d0d7eb` }}
                   >
                     {aiCopied ? <Check size={12} strokeWidth={2.5} /> : <Copy size={12} strokeWidth={2} />}
                     {aiCopied ? 'Copied!' : 'Copy'}
@@ -329,7 +329,7 @@ export default function PostMatchScreen({ onBack }: Props) {
               <div
                 key={r.player.id}
                 className="flex items-center gap-3 px-3 py-2 border-b last:border-0"
-                style={{ borderColor: '#F0F5FF' }}
+                style={{ borderColor: '#f0f2f9' }}
               >
                 <GroupBadge group={r.group} />
                 <span className="flex-1 text-sm font-semibold" style={{ color: INK }}>{r.player.name}</span>
@@ -362,7 +362,7 @@ export default function PostMatchScreen({ onBack }: Props) {
                 <div
                   key={i}
                   className="flex items-center gap-2 px-3 py-2.5 border-b last:border-0 text-sm"
-                  style={{ borderColor: '#F0F5FF' }}
+                  style={{ borderColor: '#f0f2f9' }}
                 >
                   <span className="mono text-xs text-stone-400 w-7 flex-shrink-0 font-semibold">
                     {s.time}'
@@ -383,7 +383,7 @@ export default function PostMatchScreen({ onBack }: Props) {
           {/* Scoring breakdown */}
           <div className="bg-white rounded-lg overflow-hidden border" style={{ borderColor: '#C5D8F5' }}>
             <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-stone-400"
-              style={{ borderBottom: '1px solid #F0F5FF' }}>
+              style={{ borderBottom: '1px solid #f0f2f9' }}>
               Scoring breakdown
             </div>
             {[
@@ -392,7 +392,7 @@ export default function PostMatchScreen({ onBack }: Props) {
               { label: 'Penalties',   us: penaltiesUs,   them: penaltiesThem,   pts: 3 },
               { label: 'Drop goals',  us: dropGoalsUs,   them: dropGoalsThem,   pts: 3 },
             ].map(row => (
-              <div key={row.label} className="flex items-center px-3 py-2 border-b last:border-0 text-sm" style={{ borderColor: '#F0F5FF' }}>
+              <div key={row.label} className="flex items-center px-3 py-2 border-b last:border-0 text-sm" style={{ borderColor: '#f0f2f9' }}>
                 <span className="flex-1 font-semibold" style={{ color: INK }}>{row.label}</span>
                 <span className="text-[10px] text-stone-400 mr-3">+{row.pts}pts</span>
                 <span className="mono w-8 text-center font-bold" style={{ color: BLUE }}>{row.us}</span>
@@ -401,7 +401,7 @@ export default function PostMatchScreen({ onBack }: Props) {
               </div>
             ))}
             {tryScorers.length > 0 && (
-              <div className="px-3 py-2 text-xs text-stone-400" style={{ borderTop: '1px solid #F0F5FF' }}>
+              <div className="px-3 py-2 text-xs text-stone-400" style={{ borderTop: '1px solid #f0f2f9' }}>
                 Try scorers: {tryScorers.join(', ')}
               </div>
             )}

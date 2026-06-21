@@ -13,8 +13,8 @@ import { FOLDER_ID_KEY } from '@/lib/drive/driveRead'
 import { OAUTH_ENABLED } from '@/lib/drive/driveAuth'
 import { publishFixture } from '@/lib/drive/drivePublish'
 
-const PURPLE      = '#1565C0'
-const PURPLE_DARK = '#0D47A1'
+const PURPLE      = '#172f77'
+const PURPLE_DARK = '#0f1f50'
 const INK         = '#1A1A1A'
 
 const GROUP_SHORT: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf: 'SH' }
@@ -27,7 +27,7 @@ const ASSIGN_STYLE: Record<NonNullable<Assignment>, { bg: string; color: string;
   'bench-A':     { bg: '#C084FC',   color: 'white',   label: 'bA' },
   'B':           { bg: '#1D4ED8',   color: 'white',   label: 'B' },
   'bench-B':     { bg: '#93C5FD',   color: INK,       label: 'bB' },
-  'unavailable': { bg: '#C8A0E8',   color: '#78716C', label: '✗' },
+  'unavailable': { bg: '#c5ccdf',   color: '#78716C', label: '✗' },
 }
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
@@ -318,7 +318,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       : null
 
     return (
-      <div key={p.id} className="flex items-center gap-2 py-1.5 border-b last:border-0" style={{ borderColor: '#F0F5FF' }}>
+      <div key={p.id} className="flex items-center gap-2 py-1.5 border-b last:border-0" style={{ borderColor: '#f0f2f9' }}>
         <button onClick={() => isStarter && cycleGroup(p)} className={isStarter ? 'cursor-pointer' : 'cursor-default'}>
           <GroupBadge group={group} />
         </button>
@@ -339,14 +339,14 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
         <button
           onClick={handleA}
           className="w-10 h-8 rounded-lg text-xs font-bold flex items-center justify-center flex-shrink-0 active:scale-95 transition"
-          style={aStyle ? { background: aStyle.bg, color: aStyle.color } : { background: '#F0F5FF', color: '#7B5FA8' }}
+          style={aStyle ? { background: aStyle.bg, color: aStyle.color } : { background: '#f0f2f9', color: '#5b6da0' }}
         >
           {aStyle ? aStyle.label : 'A'}
         </button>
         <button
           onClick={handleB}
           className="w-10 h-8 rounded-lg text-xs font-bold flex items-center justify-center flex-shrink-0 active:scale-95 transition"
-          style={bStyle ? { background: bStyle.bg, color: bStyle.color } : { background: '#F0F5FF', color: '#7B5FA8' }}
+          style={bStyle ? { background: bStyle.bg, color: bStyle.color } : { background: '#f0f2f9', color: '#5b6da0' }}
         >
           {bStyle ? bStyle.label : 'B'}
         </button>
@@ -355,7 +355,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
           className="w-7 h-8 rounded-lg text-xs flex items-center justify-center flex-shrink-0 active:scale-95 transition"
           style={cur === 'unavailable'
             ? { background: ASSIGN_STYLE['unavailable'].bg, color: ASSIGN_STYLE['unavailable'].color }
-            : { background: '#F0F5FF', color: '#C8A0E8' }}
+            : { background: '#f0f2f9', color: '#c5ccdf' }}
         >
           ✗
         </button>
@@ -366,7 +366,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const renderSection = (title: string, list: Player[], autoGroup?: Group) => list.length === 0 ? null : (
     <div className="mb-2">
       <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 px-1 py-1.5">{title}</div>
-      <div className="bg-white rounded-lg px-3" style={{ border: '1px solid #E4D0F5' }}>
+      <div className="bg-white rounded-lg px-3" style={{ border: '1px solid #d0d7eb' }}>
         {list.map(p => renderPlayerRow(p, autoGroup))}
       </div>
     </div>
@@ -397,7 +397,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                 key={c.id}
                 onClick={() => setResolutions(m => new Map(m).set(slot.token, c))}
                 className="flex items-center gap-2 w-full py-1 px-2 rounded text-sm active:scale-[0.99]"
-                style={{ background: cur === c ? '#D1FAE5' : '#F0F5FF', color: INK }}
+                style={{ background: cur === c ? '#D1FAE5' : '#f0f2f9', color: INK }}
               >
                 <GroupBadge group={c.defaultGroup} size="xs" />
                 {c.name}
@@ -437,7 +437,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     const shOver = stats.sh > 1
     const anyOver = fOver || bOver || shOver
     const allFull = stats.f === limits.f && stats.b === limits.b && stats.sh === 1
-    const bg = anyOver ? '#FEE2E2' : allFull ? '#D1FAE5' : '#F0F5FF'
+    const bg = anyOver ? '#FEE2E2' : allFull ? '#D1FAE5' : '#f0f2f9'
     const titleColor = anyOver ? '#991B1B' : allFull ? '#065F46' : INK
     const slotColor = (n: number, max: number) =>
       n > max ? '#DC2626' : n === max ? '#059669' : '#78716C'
@@ -446,11 +446,11 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
         <div className="text-[11px] font-bold" style={{ color: titleColor }}>Team {label}</div>
         <div className="text-[11px] flex gap-1">
           <span style={{ color: slotColor(stats.f, limits.f) }}>{stats.f}/{limits.f}F</span>
-          <span style={{ color: '#C8A0E8' }}>·</span>
+          <span style={{ color: '#c5ccdf' }}>·</span>
           <span style={{ color: slotColor(stats.b, limits.b) }}>{stats.b}/{limits.b}B</span>
-          <span style={{ color: '#C8A0E8' }}>·</span>
+          <span style={{ color: '#c5ccdf' }}>·</span>
           <span style={{ color: slotColor(stats.sh, 1) }}>{stats.sh}/1SH</span>
-          <span style={{ color: '#C8A0E8' }}>·</span>
+          <span style={{ color: '#c5ccdf' }}>·</span>
           <span style={{ color: '#78716C' }}>{stats.bench} bench</span>
         </div>
       </div>
@@ -458,7 +458,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   }
 
   return (
-    <div className="min-h-screen pb-28" style={{ background: '#F0F5FF', color: INK }}>
+    <div className="min-h-screen pb-28" style={{ background: '#f0f2f9', color: INK }}>
 
       {/* Header */}
       <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
@@ -527,7 +527,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
         )}
 
         {/* Fixture details */}
-        <div className="bg-white rounded-lg p-3 space-y-2" style={{ border: '1px solid #E4D0F5' }}>
+        <div className="bg-white rounded-lg p-3 space-y-2" style={{ border: '1px solid #d0d7eb' }}>
           <div className="flex gap-2">
             <div className="flex-1">
               <label className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 block mb-1">Date</label>
@@ -558,7 +558,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
         </div>
 
         {/* Mode tabs */}
-        <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E4D0F5' }}>
+        <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #d0d7eb' }}>
           {(['checklist', 'paste'] as const).map(m => (
             <button
               key={m}
@@ -566,7 +566,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
               className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-1.5 transition"
               style={{
                 background: mode === m ? PURPLE : 'white',
-                color: mode === m ? 'white' : '#7B5FA8',
+                color: mode === m ? 'white' : '#5b6da0',
               }}
             >
               {m === 'checklist' ? <><List size={13} /> Checklist</> : <><ClipboardPaste size={13} /> Paste</>}
@@ -610,7 +610,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
               placeholder={"Team A: Alexander, Dylan, Elliott...\nBench: Dominic, Ethan\n\nTeam B: Archie, Arlo..."}
               rows={8}
               className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none bg-white"
-              style={{ border: '1px solid #E4D0F5', color: INK }}
+              style={{ border: '1px solid #d0d7eb', color: INK }}
             />
             <button
               onClick={handleParse}
@@ -624,7 +624,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
             {parseResult && (
               <div className="space-y-3">
                 {parseResult.blocks.map((block, bi) => (
-                  <div key={bi} className="bg-white rounded-lg p-3" style={{ border: '1px solid #E4D0F5' }}>
+                  <div key={bi} className="bg-white rounded-lg p-3" style={{ border: '1px solid #d0d7eb' }}>
                     <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: PURPLE }}>
                       {block.label}
                     </div>
@@ -648,7 +648,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       {/* Save button */}
       <div
         className="fixed bottom-16 left-0 right-0 px-3 py-3 z-30"
-        style={{ background: '#F0F5FF', borderTop: '1px solid #C8A0E8' }}
+        style={{ background: '#f0f2f9', borderTop: '1px solid #c5ccdf' }}
       >
         <button
           onClick={() => setShowReview(true)}

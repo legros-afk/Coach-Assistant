@@ -8,8 +8,8 @@ import { DEMO_SQUAD } from '@/features/match/mockData'
 import { useSyncStore, fmtSyncAge, driveConfigured } from '@/lib/drive/useSyncStore'
 import type { Fixture, TeamSheet } from '@/lib/events/types'
 
-const BLUE        = '#1565C0'
-const BLUE_DARK   = '#0D47A1'
+const BLUE        = '#172f77'
+const BLUE_DARK   = '#0f1f50'
 const INK         = '#1A1A1A'
 
 interface Props {
@@ -65,7 +65,7 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
   }
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#F0F5FF', color: INK }}>
+    <div className="min-h-screen pb-24" style={{ background: '#f0f2f9', color: INK }}>
       {/* Header */}
       <div className="sticky top-0 z-20" style={{ background: BLUE }}>
         <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${BLUE_DARK}` }}>

@@ -11,9 +11,9 @@ import { publishSquad } from '@/lib/drive/drivePublish'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
 
-const PURPLE      = '#1565C0'
-const PURPLE_DARK = '#0D47A1'
-const PURPLE_SOFT = '#E3EEFF'
+const PURPLE      = '#172f77'
+const PURPLE_DARK = '#0f1f50'
+const PURPLE_SOFT = '#e2e6f4'
 const INK         = '#1A1A1A'
 
 const GROUP_LABEL: Record<Group, string> = { forward: 'Forward', back: 'Back', scrumhalf: 'Scrum-half' }
@@ -142,7 +142,7 @@ export default function SquadScreen({ onBack }: Props) {
   const isDemo = squad?.id === DEMO_SQUAD_ID
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#F0F5FF', color: INK }}>
+    <div className="min-h-screen pb-24" style={{ background: '#f0f2f9', color: INK }}>
 
       {/* Header */}
       <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
@@ -342,7 +342,7 @@ export default function SquadScreen({ onBack }: Props) {
                       onClick={() => handleDefaultGroupChange(g)}
                       className="flex-1 py-2.5 rounded-lg text-sm font-bold transition active:scale-95"
                       style={{
-                        background: form.defaultGroup === g ? PURPLE : '#F0F5FF',
+                        background: form.defaultGroup === g ? PURPLE : '#f0f2f9',
                         color: form.defaultGroup === g ? 'white' : INK,
                         border: `2px solid ${form.defaultGroup === g ? PURPLE : '#C5D8F5'}`,
                       }}
@@ -369,8 +369,8 @@ export default function SquadScreen({ onBack }: Props) {
                         disabled={isDefault}
                         className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition active:scale-95 disabled:opacity-50"
                         style={{
-                          background: checked ? '#D1FAE5' : '#F0F5FF',
-                          color: checked ? '#065F46' : '#7B5FA8',
+                          background: checked ? '#D1FAE5' : '#f0f2f9',
+                          color: checked ? '#065F46' : '#5b6da0',
                           border: `2px solid ${checked ? '#34D399' : '#C5D8F5'}`,
                         }}
                       >

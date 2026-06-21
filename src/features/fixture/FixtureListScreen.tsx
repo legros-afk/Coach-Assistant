@@ -10,8 +10,8 @@ import { spondConfigured, getSpondCreds, extractOpponent } from '@/lib/spond/spo
 import { spondGetEvents, type SpondEvent } from '@/lib/spond/spondApi'
 import { ensureToken } from '@/lib/spond/spondSync'
 
-const PURPLE      = '#1565C0'
-const PURPLE_DARK = '#0D47A1'
+const PURPLE      = '#172f77'
+const PURPLE_DARK = '#0f1f50'
 const INK         = '#1A1A1A'
 
 const PPS_KEY = 'coach-players-per-side-v2'
@@ -79,7 +79,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
     new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#F0F5FF', color: INK }}>
+    <div className="min-h-screen pb-24" style={{ background: '#f0f2f9', color: INK }}>
       <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
         <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
           <Calendar size={18} color="white" strokeWidth={2} />

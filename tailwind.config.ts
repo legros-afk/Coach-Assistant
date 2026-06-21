@@ -6,12 +6,13 @@ export default {
     extend: {
       colors: {
         brand: {
-          purple:        'var(--brand-purple)',
-          'purple-dark': 'var(--brand-purple-dark)',
-          'purple-light':'var(--brand-purple-light)',
-          'purple-soft': 'var(--brand-purple-soft)',
-          'purple-softer':'var(--brand-purple-softer)',
-          ink:           'var(--brand-ink)',
+          blue:        'var(--brand-blue)',
+          'blue-dark': 'var(--brand-blue-dark)',
+          gold:        'var(--brand-gold)',
+          red:         'var(--brand-red)',
+          'blue-soft': 'var(--brand-blue-soft)',
+          'blue-softer':'var(--brand-blue-softer)',
+          ink:         'var(--brand-ink)',
         },
       },
       fontFamily: {

@@ -4,8 +4,8 @@ import { WoodfordMark } from '@/components/WoodfordMark'
 import { FOLDER_ID_KEY, listFolder, parseFolderId } from '@/lib/drive/driveRead'
 import { syncFromDrive } from '@/lib/drive/driveSync'
 
-const PURPLE      = '#1565C0'
-const PURPLE_DARK = '#0D47A1'
+const PURPLE      = '#172f77'
+const PURPLE_DARK = '#0f1f50'
 const INK         = '#1A1A1A'
 
 interface Props {
@@ -52,7 +52,7 @@ export default function SetupScreen({ onDone, onBack }: Props) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#F0F5FF' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: '#f0f2f9' }}>
       {/* Header */}
       <div style={{ background: PURPLE }} className="px-4 py-5 flex items-center gap-3">
         {onBack ? (
@@ -87,7 +87,7 @@ export default function SetupScreen({ onDone, onBack }: Props) {
           </label>
           <div className="flex gap-2">
             <div className="flex-1 flex items-center gap-2 px-3 rounded-lg border-2 bg-white"
-              style={{ borderColor: status === 'error' ? '#EF4444' : status === 'ok' ? '#10B981' : '#C8A0E8' }}
+              style={{ borderColor: status === 'error' ? '#EF4444' : status === 'ok' ? '#10B981' : '#c5ccdf' }}
             >
               <Link size={16} className="flex-shrink-0 text-stone-400" />
               <input

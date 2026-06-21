@@ -6,11 +6,12 @@
 
 /* ─── Sheffield Oaks RUFC palette ─────────────────────── */
 :root {
-  --brand-blue:        #1565C0;
-  --brand-blue-dark:   #0D47A1;
-  --brand-gold:        #F9A800;
-  --brand-blue-soft:   #E3EEFF;
-  --brand-blue-softer: #F0F5FF;
+  --brand-blue:        #172f77;
+  --brand-blue-dark:   #0f1f50;
+  --brand-gold:        #e5a441;
+  --brand-red:         #cb3831;
+  --brand-blue-soft:   #e2e6f4;
+  --brand-blue-softer: #f0f2f9;
   --brand-ink:         #1A1A1A;
 }
 
@@ -44,8 +45,8 @@ body {
 
 /* ─── Sub-builder confirm pulse ──────────────────────────── */
 @keyframes pulse-ready {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(21, 101, 192, 0.6); }
-  50%       { box-shadow: 0 0 0 10px rgba(21, 101, 192, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(23, 47, 119, 0.6); }
+  50%       { box-shadow: 0 0 0 10px rgba(23, 47, 119, 0); }
 }
 .pulse-ready {
   animation: pulse-ready 1.6s ease-out infinite;

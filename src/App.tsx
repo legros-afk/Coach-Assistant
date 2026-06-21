@@ -16,7 +16,7 @@ import { FOLDER_ID_KEY } from '@/lib/drive/driveRead'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
 import type { Fixture } from '@/lib/events/types'
 
-const PURPLE = '#3D0066'
+const PURPLE = '#172f77'
 
 type Screen = 'loading' | 'setup' | 'home' | 'match' | 'post-match' | 'squad' | 'fixtures' | 'fixture-prep'
 
@@ -142,7 +142,7 @@ export default function App() {
       {showTabBar && (
         <div
           className="fixed bottom-0 left-0 right-0 flex z-40"
-          style={{ background: 'white', borderTop: '1px solid #E4D0F5' }}
+          style={{ background: 'white', borderTop: '1px solid #d0d7eb' }}
         >
           {([
             { key: 'home',     icon: <Home     size={20} strokeWidth={2} />, label: 'Match' },
@@ -153,7 +153,7 @@ export default function App() {
               key={tab.key}
               onClick={() => setScreen(tab.key)}
               className="flex-1 py-3 flex flex-col items-center gap-0.5 active:scale-95 transition"
-              style={{ color: screen === tab.key ? PURPLE : '#7B5FA8' }}
+              style={{ color: screen === tab.key ? PURPLE : '#5b6da0' }}
             >
               {tab.icon}
               <span className="text-[10px] font-semibold">{tab.label}</span>

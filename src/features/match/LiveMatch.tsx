@@ -9,8 +9,8 @@ import { useMatchStore } from './useMatchStore'
 
 // ── brand constants ────────────────────────────────────────────────────────────
 
-const BLUE        = '#1565C0'
-const BLUE_DARK   = '#0D47A1'
+const BLUE        = '#172f77'
+const BLUE_DARK   = '#0f1f50'
 
 const INK         = '#1A1A1A'
 
@@ -120,7 +120,7 @@ function PlayerCard({
       className={`p-2.5 rounded-lg transition relative ${onTap ? 'active:scale-[0.98] cursor-pointer' : ''}`}
       style={{
         background: picked ? pickedBg : muted ? '#F5F5F4' : 'white',
-        border: picked ? `2px solid ${pickedBorder}` : '1px solid #E4D0F5',
+        border: picked ? `2px solid ${pickedBorder}` : '1px solid #d0d7eb',
         opacity: muted ? 0.7 : 1,
         minHeight: '88px',
       }}
@@ -379,7 +379,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
 
   // ── render
   return (
-    <div className="min-h-screen pb-44" style={{ background: '#F0F5FF', color: INK }}>
+    <div className="min-h-screen pb-44" style={{ background: '#f0f2f9', color: INK }}>
 
       {/* ── Brand strip */}
       <div className="sticky top-0 z-20" style={{ background: BLUE }}>
@@ -676,7 +676,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
       {/* ── Bottom bar */}
       <div
         className="fixed bottom-0 left-0 right-0 px-3 py-3 flex items-center gap-2 z-30"
-        style={{ background: '#F0F5FF', borderTop: '1px solid #C8A0E8' }}
+        style={{ background: '#f0f2f9', borderTop: '1px solid #c5ccdf' }}
       >
         {matchEnded ? (
           <button
@@ -693,7 +693,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
               onClick={handleUndoPress}
               disabled={!store.events.length}
               className="tap-target px-4 rounded-lg border-2 font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-95 transition"
-              style={{ borderColor: '#C8A0E8', color: INK }}
+              style={{ borderColor: '#c5ccdf', color: INK }}
             >
               <Undo2 size={18} strokeWidth={2.5} />
               Undo
