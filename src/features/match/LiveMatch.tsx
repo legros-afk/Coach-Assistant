@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import {
   Activity, AlertTriangle, ArrowRight, Check, ChevronLeft, Clock,
-  Pause, Play, Plus, Trophy, Undo2, Users, X,
+  HandHelping, Pause, Play, Plus, Trophy, Undo2, Users, X,
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, ID, Player, PlayerMatchState } from '@/lib/events/types'
@@ -42,6 +42,10 @@ function liveMinMs(ps: PlayerMatchState, elapsedMs: number): number {
 const TOTAL_GAME_MS  = 40 * 60_000
 const HALF_LENGTH_MS = TOTAL_GAME_MS / 2
 const TOLERANCE_MS   = TOTAL_GAME_MS * 0.1
+
+// Parent-safe helper mode: subs and scores only. Persisted so a mid-game
+// reload doesn't hand a parent the full coach UI.
+const HELPER_KEY = 'coach-helper-mode'
 
 // ── sub-components ─────────────────────────────────────────────────────────────
 
@@ -227,6 +231,13 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
   const dueKey = dueSwaps.map(s => `${s.off.id}>${s.on.id}`).join('|')
   // Dismiss hides the plan until the set of due swaps changes
   const [dismissedKey, setDismissedKey] = useState<string | null>(null)
+
+  // ── helper mode (parent-safe: subs & scores only)
+  const [helperMode, setHelperModeState] = useState(() => localStorage.getItem(HELPER_KEY) === '1')
+  const setHelperMode = (v: boolean) => {
+    setHelperModeState(v)
+    localStorage.setItem(HELPER_KEY, v ? '1' : '0')
+  }
 
   // ── sub selection
   const [comingOffIds, setComingOffIds] = useState<ID[]>([])
@@ -432,7 +443,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
           style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}
         >
           <div className="flex items-center gap-2">
-            {onBack && (
+            {onBack && !helperMode && (
               <button
                 onClick={onBack}
                 className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition -ml-1"
@@ -456,7 +467,17 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
             <span className="text-[10px] uppercase tracking-widest text-white/70 italic">
               Nunquam Respice
             </span>
-            {onOpenSquad && (
+            {!helperMode && (
+              <button
+                onClick={() => setHelperMode(true)}
+                className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition"
+                style={{ background: 'rgba(255,255,255,0.15)' }}
+                aria-label="Helper mode"
+              >
+                <HandHelping size={15} color="white" strokeWidth={2} />
+              </button>
+            )}
+            {onOpenSquad && !helperMode && (
               <button
                 onClick={onOpenSquad}
                 className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition"
@@ -468,6 +489,22 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
             )}
           </div>
         </div>
+
+        {/* Helper mode strip */}
+        {helperMode && (
+          <div className="px-3 py-1.5 flex items-center justify-between" style={{ background: '#F59E0B' }}>
+            <span className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5" style={{ color: INK }}>
+              <HandHelping size={13} strokeWidth={2.5} /> Helper mode — subs & scores
+            </span>
+            <button
+              onClick={() => setHelperMode(false)}
+              className="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded active:scale-95 transition"
+              style={{ background: INK, color: 'white' }}
+            >
+              Exit
+            </button>
+          </div>
+        )}
 
         {/* Clock + score bar */}
         <div style={{ background: INK }} className="px-3 py-2.5">
@@ -513,7 +550,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
           </div>
 
           {/* Half-end row — visible only when clock is paused and game has started */}
-          {!clockRunning && gameStarted && !matchEnded && (
+          {!clockRunning && gameStarted && !matchEnded && !helperMode && (
             <div className="flex gap-2 mt-2">
               {!halfEnded ? (
                 <button
@@ -546,17 +583,20 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
           <Clock size={18} style={{ color: '#92400E' }} className="flex-shrink-0" strokeWidth={2.5} />
           <div className="flex-1 text-sm font-bold" style={{ color: '#92400E' }}>
             {halfTimeDue ? 'Half 1 has reached 20 min' : 'Game has reached full time'}
+            {helperMode && <span className="block font-semibold text-xs mt-0.5">Tell the coach</span>}
           </div>
-          <button
-            onClick={() => {
-              if (halfTimeDue) { store.endHalf(); showToast('Half time') }
-              else             { store.endMatch(); showToast('Full time') }
-            }}
-            className="text-xs font-bold px-3 py-1.5 rounded whitespace-nowrap active:scale-95 transition"
-            style={{ background: '#92400E', color: 'white' }}
-          >
-            {halfTimeDue ? 'End half' : 'Full time'}
-          </button>
+          {!helperMode && (
+            <button
+              onClick={() => {
+                if (halfTimeDue) { store.endHalf(); showToast('Half time') }
+                else             { store.endMatch(); showToast('Full time') }
+              }}
+              className="text-xs font-bold px-3 py-1.5 rounded whitespace-nowrap active:scale-95 transition"
+              style={{ background: '#92400E', color: 'white' }}
+            >
+              {halfTimeDue ? 'End half' : 'Full time'}
+            </button>
+          )}
         </div>
       )}
 
@@ -632,7 +672,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                 picked={comingOffIds.includes(p.id)}
                 pickedTone="rose"
                 onTap={() => togglePickOff(p)}
-                showActions={!subMode}
+                showActions={!subMode && !helperMode}
                 onBlood={() => setBloodPickerFor(p)}
                 onInjury={() => setInjuryPickerFor(p)}
               />
@@ -683,7 +723,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                   liveElapsedMs={liveElapsedMs}
                   muted
                   showActions={false}
-                  onReturn={() => {
+                  onReturn={helperMode ? undefined : () => {
                     const status = matchState.playerStates.get(p.id)?.status
                     status === 'blood'
                       ? store.bloodReturn(p.id)
@@ -782,26 +822,34 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
         style={{ background: '#F8F4FF', borderTop: '1px solid #C8A0E8' }}
       >
         {matchEnded ? (
-          <button
-            onClick={onSummary}
-            className="tap-target flex-1 rounded-lg font-bold text-base active:scale-95 transition flex items-center justify-center gap-2"
-            style={{ background: PURPLE, color: 'white' }}
-          >
-            <Trophy size={18} strokeWidth={2} />
-            Match summary
-          </button>
+          helperMode ? (
+            <div className="flex-1 text-center text-sm font-semibold py-3" style={{ color: PURPLE_DARK }}>
+              Full time — hand the phone back to the coach
+            </div>
+          ) : (
+            <button
+              onClick={onSummary}
+              className="tap-target flex-1 rounded-lg font-bold text-base active:scale-95 transition flex items-center justify-center gap-2"
+              style={{ background: PURPLE, color: 'white' }}
+            >
+              <Trophy size={18} strokeWidth={2} />
+              Match summary
+            </button>
+          )
         ) : (
           <>
-            <button
-              onClick={handleUndoPress}
-              disabled={!store.events.length}
-              className="tap-target px-4 rounded-lg border-2 font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-95 transition"
-              style={{ borderColor: '#C8A0E8', color: INK }}
-            >
-              <Undo2 size={18} strokeWidth={2.5} />
-              Undo
-            </button>
-            <div className="flex-1 text-center text-xs text-stone-400 italic">
+            {!helperMode && (
+              <button
+                onClick={handleUndoPress}
+                disabled={!store.events.length}
+                className="tap-target px-4 rounded-lg border-2 font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-95 transition"
+                style={{ borderColor: '#C8A0E8', color: INK }}
+              >
+                <Undo2 size={18} strokeWidth={2.5} />
+                Undo
+              </button>
+            )}
+            <div className="flex-1 text-center text-xs text-stone-400 italic py-2">
               {subMode ? 'tap bench to sub' : 'tap a player to sub'}
             </div>
           </>
