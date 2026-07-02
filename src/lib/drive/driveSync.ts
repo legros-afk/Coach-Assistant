@@ -11,11 +11,16 @@ export async function syncFromDrive(folderId: string, _apiKey?: string): Promise
   try {
     const rootFiles = await listFolder(folderId);
 
-    // squad.json
+    // squad.json — keep local copy when it has unpublished edits (higher version)
     const squadFile = rootFiles.find(f => f.name === 'squad.json');
+    let squadUpdated = false;
     if (squadFile) {
       const squad = await fetchFileJson<Squad>(squadFile.id);
-      await db.squads.put(squad);
+      const local = await db.squads.get(squad.id);
+      if (!local || (squad.version ?? 0) >= (local.version ?? 0)) {
+        await db.squads.put(squad);
+        squadUpdated = true;
+      }
     }
 
     // Always refresh positions from the squad spreadsheet
@@ -44,6 +49,9 @@ export async function syncFromDrive(folderId: string, _apiKey?: string): Promise
       for (const ff of fixtureFiles) {
         if (!ff.name.endsWith('.json')) continue;
         const fixture = await fetchFileJson<Fixture>(ff.id);
+        const local = await db.fixtures.get(fixture.id);
+        // Local unpublished edits (higher version) win over the Drive copy
+        if (local && (local.version ?? 0) > (fixture.version ?? 0)) continue;
         await db.fixtures.put(fixture);
         fixturesUpdated++;
       }
@@ -58,12 +66,15 @@ export async function syncFromDrive(folderId: string, _apiKey?: string): Promise
       for (const mf of matchFiles) {
         if (!mf.name.endsWith('.json')) continue;
         const match = await fetchFileJson<Match>(mf.id);
+        const local = await db.matches.get(match.id);
+        // Never lose locally recorded events (e.g. a match in progress on this device)
+        if (local && local.events.length > match.events.length) continue;
         await db.matches.put(match);
         matchesUpdated++;
       }
     }
 
-    return { ok: true, squadUpdated: !!squadFile, fixturesUpdated, matchesUpdated };
+    return { ok: true, squadUpdated, fixturesUpdated, matchesUpdated };
   } catch (err) {
     if (err instanceof DriveError && (err.status === 403 || err.status === 404)) {
       return {
