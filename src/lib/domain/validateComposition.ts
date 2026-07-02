@@ -6,13 +6,21 @@ export interface CompositionResult {
   counts: { forward: number; back: number; scrumhalf: number };
 }
 
-export function validateComposition(groups: Group[]): CompositionResult {
+// Forwards are always 5 (scrum requirement), SH always 1, backs fill the rest.
+export const teamLimits = (playersPerSide: number) => ({
+  f: 5,
+  b: Math.max(0, playersPerSide - 6),
+  sh: 1,
+});
+
+export function validateComposition(groups: Group[], playersPerSide = 11): CompositionResult {
+  const limits = teamLimits(playersPerSide);
   const counts = { forward: 0, back: 0, scrumhalf: 0 };
   for (const g of groups) counts[g]++;
-  const valid = counts.forward === 5 && counts.back === 5 && counts.scrumhalf === 1;
+  const valid = counts.forward === limits.f && counts.back === limits.b && counts.scrumhalf === limits.sh;
   const message = valid
     ? ''
-    : `Would result in ${counts.forward}F · ${counts.back}B · ${counts.scrumhalf}SH (need 5·5·1)`;
+    : `Would result in ${counts.forward}F · ${counts.back}B · ${counts.scrumhalf}SH (need ${limits.f}·${limits.b}·${limits.sh})`;
   return { valid, message, counts };
 }
 

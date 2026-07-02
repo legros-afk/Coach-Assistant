@@ -41,6 +41,23 @@ describe('validateComposition', () => {
     const result = validateComposition([]);
     expect(result.valid).toBe(false);
   });
+
+  it('accepts 5F 6B 1SH for 12-a-side', () => {
+    const groups: Group[] = [
+      'forward', 'forward', 'forward', 'forward', 'forward',
+      'back', 'back', 'back', 'back', 'back', 'back',
+      'scrumhalf',
+    ];
+    const result = validateComposition(groups, 12);
+    expect(result.valid).toBe(true);
+    expect(result.message).toBe('');
+  });
+
+  it('rejects 5F 5B 1SH for 12-a-side and states the needed shape', () => {
+    const result = validateComposition(valid5x5x1, 12);
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('need 5·6·1');
+  });
 });
 
 describe('projectOnPitchGroups', () => {

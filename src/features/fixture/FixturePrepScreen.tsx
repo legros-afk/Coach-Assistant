@@ -2,7 +2,7 @@
 import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, List, RefreshCw, Zap } from 'lucide-react'
 import { getSpondAvailability, type SpondAvailability } from '@/lib/spond/spondSync'
 import { spondConfigured } from '@/lib/spond/spondStore'
-import { validateComposition } from '@/lib/domain/validateComposition'
+import { teamLimits, validateComposition } from '@/lib/domain/validateComposition'
 import { parseTeamSheet } from '@/lib/domain/parseTeamSheet'
 import type { ParsedSlot } from '@/lib/domain/parseTeamSheet'
 import type { Group, ID, Player, TeamSheet } from '@/lib/events/types'
@@ -34,22 +34,19 @@ const todayIso = () => new Date().toISOString().slice(0, 10)
 let _seq = 0
 const newId = () => `f-${Date.now()}-${++_seq}`
 
-// Forwards are always 5 (scrum requirement), SH always 1, backs fill the rest.
-const teamLimits = (n: number) => ({ f: 5, b: Math.max(0, n - 6) })
-
 // ── helpers ───────────────────────────────────────────────────────────────────
-function countTeam(team: 'A' | 'B', assignments: Map<ID, Assignment>, groupOverrides: Map<ID, Group>, squad: Player[]) {
+function countTeam(team: 'A' | 'B', assignments: Map<ID, Assignment>, groupOverrides: Map<ID, Group>, squad: Player[], playersPerSide: number) {
   const starters = squad.filter(p => assignments.get(p.id) === team)
   const groups = starters.map(p => groupOverrides.get(p.id) ?? p.defaultGroup)
   const f = groups.filter(g => g === 'forward').length
   const b = groups.filter(g => g === 'back').length
   const sh = groups.filter(g => g === 'scrumhalf').length
   const bench = squad.filter(p => assignments.get(p.id) === `bench-${team}`).length
-  const comp = validateComposition(groups)
+  const comp = validateComposition(groups, playersPerSide)
   return { f, b, sh, bench, comp }
 }
 
-function buildSheet(team: 'A' | 'B', assignments: Map<ID, Assignment>, groupOverrides: Map<ID, Group>, squad: Player[]): TeamSheet {
+function buildSheet(team: 'A' | 'B', assignments: Map<ID, Assignment>, groupOverrides: Map<ID, Group>, squad: Player[], existingId?: ID): TeamSheet {
   const starters = squad.filter(p => assignments.get(p.id) === team)
   const bench    = squad.filter(p => assignments.get(p.id) === `bench-${team}`)
   const unavail  = squad.filter(p => assignments.get(p.id) === 'unavailable')
@@ -57,7 +54,8 @@ function buildSheet(team: 'A' | 'B', assignments: Map<ID, Assignment>, groupOver
   const backs       = starters.filter(p => (groupOverrides.get(p.id) ?? p.defaultGroup) === 'back').map(p => p.id)
   const scrumhalves = starters.filter(p => (groupOverrides.get(p.id) ?? p.defaultGroup) === 'scrumhalf').map(p => p.id)
   return {
-    id: newId(),
+    // Match records are keyed by team-sheet ID — regenerating on edit would orphan played matches
+    id: existingId ?? newId(),
     label: team,
     starters: { forwards, backs, scrumhalf: scrumhalves[0] ?? '' },
     bench: bench.map(p => p.id),
@@ -235,16 +233,17 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const [publishing, setPublishing] = useState(false)
   const [publishResult, setPublishResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
-  const teamA = useMemo(() => countTeam('A', assignments, groupOverrides, players), [assignments, groupOverrides, players])
-  const teamB = useMemo(() => countTeam('B', assignments, groupOverrides, players), [assignments, groupOverrides, players])
+  const teamA = useMemo(() => countTeam('A', assignments, groupOverrides, players, playersPerSide), [assignments, groupOverrides, players, playersPerSide])
+  const teamB = useMemo(() => countTeam('B', assignments, groupOverrides, players, playersPerSide), [assignments, groupOverrides, players, playersPerSide])
   const hasAnyA = players.some(p => assignments.get(p.id) === 'A' || assignments.get(p.id) === 'bench-A')
   const hasAnyB = players.some(p => assignments.get(p.id) === 'B' || assignments.get(p.id) === 'bench-B')
   const canSave = opponent.trim() && (hasAnyA || hasAnyB)
 
   function buildFixture(): Fixture {
     const teamSheets: TeamSheet[] = []
-    if (hasAnyA) teamSheets.push(buildSheet('A', assignments, groupOverrides, players))
-    if (hasAnyB) teamSheets.push(buildSheet('B', assignments, groupOverrides, players))
+    const sheetId = (team: 'A' | 'B') => existing?.teamSheets.find(ts => ts.label === team)?.id
+    if (hasAnyA) teamSheets.push(buildSheet('A', assignments, groupOverrides, players, sheetId('A')))
+    if (hasAnyB) teamSheets.push(buildSheet('B', assignments, groupOverrides, players, sheetId('B')))
     return {
       id: existing?.id ?? newId(),
       date,
