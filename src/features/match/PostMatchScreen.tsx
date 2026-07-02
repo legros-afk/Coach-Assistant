@@ -1,7 +1,7 @@
 ﻿import { useMemo, useRef, useState } from 'react'
-import { ArrowRight, Check, ChevronLeft, Copy, Sparkles } from 'lucide-react'
+import { ArrowRight, Check, ChevronLeft, Copy, RefreshCw, Sparkles } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
-import type { Group, MatchEvent } from '@/lib/events/types'
+import type { Group, MatchEvent, MatchState, Player, TeamSheet } from '@/lib/events/types'
 import { useMatchStore } from './useMatchStore'
 
 const PURPLE      = '#3D0066'
@@ -22,7 +22,16 @@ function GroupBadge({ group }: { group: Group }) {
   )
 }
 
-interface Props { onBack: () => void }
+// When set, the screen shows a stored match read-only instead of the live match store
+export interface MatchViewData {
+  squad: Player[]
+  teamSheet: TeamSheet
+  opponent: string
+  matchState: MatchState
+  events: MatchEvent[]
+}
+
+interface Props { onBack: () => void; data?: MatchViewData }
 
 // ── share text builder ────────────────────────────────────────────────────────
 
@@ -66,8 +75,10 @@ function buildShareText(
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export default function PostMatchScreen({ onBack }: Props) {
-  const { squad, teamSheet, opponent, matchState, events } = useMatchStore()
+export default function PostMatchScreen({ onBack, data }: Props) {
+  const live = useMatchStore()
+  const { squad, teamSheet, opponent, matchState, events } = data ?? live
+  const publishStatus = data ? null : live.publishStatus
   const [tab, setTab]           = useState<'share' | 'coach'>('share')
   const [copied, setCopied]     = useState(false)
   const [aiSummary, setAiSummary]       = useState<string | null>(null)
@@ -229,6 +240,28 @@ export default function PostMatchScreen({ onBack }: Props) {
           ))}
         </div>
       </div>
+
+      {/* ── Publish status (live matches only) */}
+      {publishStatus === 'failed' && (
+        <div
+          className="mx-3 mt-3 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
+          style={{ background: '#FEE2E2', color: '#991B1B' }}
+        >
+          <span className="flex-1">Match didn't publish to Drive — the club won't see it yet.</span>
+          <button
+            onClick={() => void live.publishNow()}
+            className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded active:scale-95 transition flex-shrink-0"
+            style={{ background: '#991B1B', color: 'white' }}
+          >
+            <RefreshCw size={11} strokeWidth={2.5} /> Retry
+          </button>
+        </div>
+      )}
+      {publishStatus === 'publishing' && (
+        <div className="mx-3 mt-3 px-3 py-2 rounded-lg text-xs flex items-center gap-2 text-stone-500 bg-white border" style={{ borderColor: '#E4D0F5' }}>
+          <RefreshCw size={11} className="animate-spin" /> Publishing to Drive…
+        </div>
+      )}
 
       {/* ── Share tab */}
       {tab === 'share' && (

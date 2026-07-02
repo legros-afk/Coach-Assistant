@@ -4,7 +4,6 @@ import { WoodfordMark } from '@/components/WoodfordMark'
 import { useFixtureStore } from '@/features/fixture/useFixtureStore'
 import { useSquadStore } from '@/features/squad/useSquadStore'
 import { useMatchStore } from '@/features/match/useMatchStore'
-import { DEMO_SQUAD } from '@/features/match/mockData'
 import { useSyncStore, fmtSyncAge, driveConfigured } from '@/lib/drive/useSyncStore'
 import type { Fixture, TeamSheet } from '@/lib/events/types'
 
@@ -47,7 +46,6 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
   }, [fixturesReady, squadReady, hydrateFixtures, hydrateSquad])
 
   const today   = todayStr()
-  const players = squad?.players ?? DEMO_SQUAD
 
   const todayFixtures    = fixtures.filter(f => f.date === today)
   const upcomingFixtures = fixtures.filter(f => f.date > today).slice(0, 5)
@@ -55,7 +53,9 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
   const hasActiveMatch = activeMatchId !== null && activeEvents.length > 0
 
   async function pickTeam(fixture: Fixture, teamSheet: TeamSheet) {
-    await initMatch({ fixtureId: fixture.id, teamSheet, squad: players, opponent: fixture.opponent })
+    // Real fixtures need the real squad — never fall back to demo players
+    if (!squadReady || !squad) return
+    await initMatch({ fixtureId: fixture.id, teamSheet, squad: squad.players, opponent: fixture.opponent })
     onMatch()
   }
 

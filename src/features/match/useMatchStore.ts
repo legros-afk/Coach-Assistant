@@ -10,6 +10,8 @@ let _seq = 0;
 const newId = () => `${Date.now()}-${++_seq}`;
 const nowIso = () => new Date().toISOString();
 
+export type PublishStatus = 'idle' | 'publishing' | 'ok' | 'failed';
+
 export interface InitMatchArgs {
   fixtureId: string;
   teamSheet: TeamSheet;
@@ -26,6 +28,7 @@ interface MatchStore {
   events: MatchEvent[];
   matchState: MatchState;
   isHydrated: boolean;
+  publishStatus: PublishStatus;
 
   clockRunning: boolean;
   clockStartedAt: number | null;
@@ -34,7 +37,7 @@ interface MatchStore {
   currentElapsedMs: () => number;
   initMatch: (args: InitMatchArgs) => Promise<void>;
   initDemoMatch: () => Promise<void>;
-  loadStoredMatch: (match: Match, teamSheet: TeamSheet, players: Player[]) => void;
+  publishNow: () => Promise<void>;
   startClock: () => void;
   pauseClock: () => void;
   endHalf: () => void;
@@ -107,6 +110,7 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
     events: [],
     matchState: replayEvents([], DEMO_TEAM_SHEET, DEMO_SQUAD),
     isHydrated: false,
+    publishStatus: 'idle',
 
     clockRunning: false,
     clockStartedAt: null,
@@ -121,24 +125,7 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
 
     initMatch: async ({ fixtureId, teamSheet, squad, opponent }) => {
       const patch = await loadMatchState(teamSheet.id, fixtureId, opponent, teamSheet, squad);
-      set(patch as MatchStore);
-    },
-
-    loadStoredMatch: (match, teamSheet, players) => {
-      const matchState = replayEvents(match.events, teamSheet, players);
-      set({
-        matchId: match.id,
-        fixtureId: match.fixtureId,
-        opponent: match.opponent,
-        squad: players,
-        teamSheet,
-        events: match.events,
-        matchState,
-        baseElapsedMs: matchState.elapsedMs,
-        clockRunning: false,
-        clockStartedAt: null,
-        isHydrated: true,
-      });
+      set({ ...patch, publishStatus: 'idle' } as MatchStore);
     },
 
     initDemoMatch: async () => {
@@ -186,21 +173,30 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
       const patch = withEvent(state, endEvent);
       set({ clockRunning: false, clockStartedAt: null, baseElapsedMs: elapsedMs, ...patch });
       persist(patch.events);
+      void get().publishNow();
+    },
 
+    publishNow: async () => {
+      const state = get();
       const folderId = localStorage.getItem(FOLDER_ID_KEY);
-      if (folderId && state.matchId) {
-        const date = (patch.events[0]?.ts ?? endEvent.ts).slice(0, 10);
-        const matchRecord: Match = {
-          id: state.matchId,
-          fixtureId: state.fixtureId ?? state.matchId,
-          teamSheetId: state.teamSheet.id,
-          opponent: state.opponent,
-          events: patch.events,
-          startedAt: patch.events[0]?.ts,
-          endedAt: endEvent.ts,
-          version: 1,
-        };
-        publishMatch(matchRecord, folderId, date).catch(() => {/* best-effort */});
+      if (!folderId || !state.matchId || state.events.length === 0) return;
+      set({ publishStatus: 'publishing' });
+      const matchRecord: Match = {
+        id: state.matchId,
+        fixtureId: state.fixtureId ?? state.matchId,
+        teamSheetId: state.teamSheet.id,
+        opponent: state.opponent,
+        events: state.events,
+        startedAt: state.events[0].ts,
+        endedAt: state.events[state.events.length - 1].ts,
+        version: 1,
+      };
+      const date = state.events[0].ts.slice(0, 10);
+      try {
+        const result = await publishMatch(matchRecord, folderId, date);
+        set({ publishStatus: result.ok ? 'ok' : 'failed' });
+      } catch {
+        set({ publishStatus: 'failed' });
       }
     },
 

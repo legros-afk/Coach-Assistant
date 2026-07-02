@@ -1,10 +1,10 @@
 ﻿import { useEffect, useRef, useState } from 'react'
-import { useMatchStore } from '@/features/match/useMatchStore'
 import { useSquadStore } from '@/features/squad/useSquadStore'
 import type { Match, TeamSheet } from '@/lib/events/types'
+import { replayEvents } from '@/lib/events/replay'
 import { Calendar, Home, Users } from 'lucide-react'
 import LiveMatch from '@/features/match/LiveMatch'
-import PostMatchScreen from '@/features/match/PostMatchScreen'
+import PostMatchScreen, { type MatchViewData } from '@/features/match/PostMatchScreen'
 import SetupScreen from '@/features/setup/SetupScreen'
 import SquadScreen from '@/features/squad/SquadScreen'
 import FixtureListScreen from '@/features/fixture/FixtureListScreen'
@@ -50,10 +50,20 @@ export default function App() {
     setScreen('fixture-prep')
   }
 
+  // Stored matches are viewed via props, not the live match store — browsing
+  // history mid-game must not clobber the match in progress.
+  const [viewingMatch, setViewingMatch] = useState<MatchViewData | null>(null)
+
   const openStoredMatch = (match: Match, teamSheet: TeamSheet) => {
     const squad = useSquadStore.getState().squad
     if (!squad) return
-    useMatchStore.getState().loadStoredMatch(match, teamSheet, squad.players)
+    setViewingMatch({
+      squad: squad.players,
+      teamSheet,
+      opponent: match.opponent,
+      matchState: replayEvents(match.events, teamSheet, squad.players),
+      events: match.events,
+    })
     setScreen('post-match')
   }
 
@@ -112,7 +122,14 @@ export default function App() {
         />
       )}
       {screen === 'post-match' && (
-        <PostMatchScreen onBack={() => setScreen('home')} />
+        <PostMatchScreen
+          data={viewingMatch ?? undefined}
+          onBack={() => {
+            const fromHistory = viewingMatch !== null
+            setViewingMatch(null)
+            setScreen(fromHistory ? 'fixtures' : 'home')
+          }}
+        />
       )}
       {screen === 'squad' && (
         <SquadScreen onBack={() => setScreen('home')} />
