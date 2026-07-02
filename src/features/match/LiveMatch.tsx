@@ -1,10 +1,11 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import {
-  Activity, AlertTriangle, ArrowRight, Check, ChevronLeft,
+  Activity, AlertTriangle, ArrowRight, Check, ChevronLeft, Clock,
   Pause, Play, Plus, Trophy, Undo2, Users, X,
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
-import type { Group, ID, Player, PlayerMatchState, TeamSheet } from '@/lib/events/types'
+import type { Group, ID, Player, PlayerMatchState } from '@/lib/events/types'
+import { planSubs } from '@/lib/domain/subPlanner'
 import { useMatchStore } from './useMatchStore'
 
 // ── brand constants ────────────────────────────────────────────────────────────
@@ -37,63 +38,10 @@ function liveMinMs(ps: PlayerMatchState, elapsedMs: number): number {
     : ps.minutesPlayed
 }
 
-interface SwapSuggestion { off: Player; on: Player; group: Group }
-
 // 10% of a 40-minute game = 4 minutes tolerance per player
 const TOTAL_GAME_MS  = 40 * 60_000
+const HALF_LENGTH_MS = TOTAL_GAME_MS / 2
 const TOLERANCE_MS   = TOTAL_GAME_MS * 0.1
-
-function computeNudgePlan(
-  squad: Player[],
-  teamSheet: TeamSheet,
-  playerStates: ReturnType<typeof useMatchStore.getState>['matchState']['playerStates'],
-  elapsedMs: number,
-): SwapSuggestion[] {
-  if (elapsedMs < 60_000) return []
-
-  const groupConfigs: { group: Group; starterCount: number }[] = [
-    { group: 'forward',   starterCount: teamSheet.starters.forwards.length },
-    { group: 'back',      starterCount: teamSheet.starters.backs.length    },
-    { group: 'scrumhalf', starterCount: 1                                  },
-  ]
-
-  const swaps: SwapSuggestion[] = []
-  const usedBenchIds = new Set<ID>()
-
-  for (const { group, starterCount } of groupConfigs) {
-    const onInGroup = squad.filter(p => {
-      const ps = playerStates.get(p.id)
-      return ps?.status === 'on' && ps.activeGroup === group
-    })
-    const benchInGroup = squad.filter(p => {
-      const ps = playerStates.get(p.id)
-      return ps?.status === 'bench' && p.defaultGroup === group && !usedBenchIds.has(p.id)
-    })
-    if (onInGroup.length === 0 || benchInGroup.length === 0) continue
-
-    const totalInGroup  = onInGroup.length + benchInGroup.length
-    const fairShareMs   = elapsedMs * starterCount / totalInGroup
-    const getTime = (p: Player) => liveMinMs(playerStates.get(p.id)!, elapsedMs)
-
-    // Most time on pitch first (candidates to come off)
-    const sortedOn    = [...onInGroup   ].sort((a, b) => getTime(b) - getTime(a))
-    // Least time first (candidates to come on)
-    const sortedBench = [...benchInGroup].sort((a, b) => getTime(a) - getTime(b))
-
-    let benchIdx = 0
-    for (const offPlayer of sortedOn) {
-      if (benchIdx >= sortedBench.length) break
-      if (getTime(offPlayer) <= fairShareMs + TOLERANCE_MS) break  // sorted desc, rest are fine too
-      const onPlayer = sortedBench[benchIdx]
-      if (getTime(onPlayer) >= fairShareMs - TOLERANCE_MS) break   // sorted asc, rest are fine too
-      swaps.push({ off: offPlayer, on: onPlayer, group })
-      usedBenchIds.add(onPlayer.id)
-      benchIdx++
-    }
-  }
-
-  return swaps
-}
 
 // ── sub-components ─────────────────────────────────────────────────────────────
 
@@ -261,23 +209,24 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
     return () => clearInterval(id)
   }, [clockRunning, store.clockStartedAt])
 
-  // ── coach nudge (re-evaluate every 60s of clock time)
-  const [nudgeSwaps, setNudgeSwaps] = useState<SwapSuggestion[]>([])
-  const [nudgeDismissed, setNudgeDismissed] = useState(false)
-  const lastNudgeEvalMs = useRef(-60_001)
-  useEffect(() => {
-    if (!clockRunning) return
-    const id = setInterval(() => {
-      const elapsed = store.currentElapsedMs()
-      if (elapsed - lastNudgeEvalMs.current >= 60_000) {
-        lastNudgeEvalMs.current = elapsed
-        const swaps = computeNudgePlan(squad, teamSheet, matchState.playerStates, elapsed)
-        setNudgeSwaps(swaps)
-        if (swaps.length > 0) setNudgeDismissed(false)
-      }
-    }, 1000)
-    return () => clearInterval(id)
-  }, [clockRunning, matchState])
+  // ── match phase (needed by the sub plan below)
+  const halfEnded = store.events.some(e => e.type === 'HALF_END')
+  const matchEnded = store.events.some(e => e.type === 'MATCH_END')
+  const gameStarted = store.events.some(e => e.type === 'CLOCK_START')
+
+  // ── standing sub plan — recomputed every ~15s of clock time, also while paused
+  //    (half-time is exactly when subs get made)
+  const planElapsedMs = Math.floor(liveElapsedMs / 15_000) * 15_000
+  const subPlan = useMemo(
+    () => gameStarted && !matchEnded
+      ? planSubs(squad, teamSheet, matchState.playerStates, planElapsedMs, TOTAL_GAME_MS, TOLERANCE_MS)
+      : [],
+    [squad, teamSheet, matchState, planElapsedMs, gameStarted, matchEnded],
+  )
+  const dueSwaps = subPlan.filter(s => s.dueNow)
+  const dueKey = dueSwaps.map(s => `${s.off.id}>${s.on.id}`).join('|')
+  // Dismiss hides the plan until the set of due swaps changes
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null)
 
   // ── sub selection
   const [comingOffIds, setComingOffIds] = useState<ID[]>([])
@@ -412,19 +361,30 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
     }
     const newOnIds = [...comingOnIds, p.id]
     if (newOnIds.length === comingOffIds.length) {
-      // Auto-confirm — check for position mismatch first
       const mismatch = comingOffIds.some(offId => {
         const offActive = matchState.playerStates.get(offId)?.activeGroup
         if (!offActive) return false
         return !newOnIds.some(onId => playerMap.get(onId)?.eligibleGroups.includes(offActive))
       })
-      store.commitSubBatch(comingOffIds, newOnIds)
-      clearSubs()
-      showToast(mismatch ? '⚠ Position mismatch — sub done' : 'Sub confirmed')
+      if (mismatch) {
+        // Hold the selection — the tray asks for explicit confirmation
+        setComingOnIds(newOnIds)
+      } else {
+        store.commitSubBatch(comingOffIds, newOnIds)
+        clearSubs()
+        showToast('Sub confirmed')
+      }
     } else {
       setComingOnIds(newOnIds)
     }
   }
+
+  const confirmPendingSub = () => {
+    store.commitSubBatch(comingOffIds, comingOnIds)
+    clearSubs()
+    showToast('⚠ Position mismatch — sub done')
+  }
+  const pendingConfirm = subMode && comingOffIds.length > 0 && comingOnIds.length === comingOffIds.length
 
   const handleUndoPress = () => {
     const last = store.events[store.events.length - 1]
@@ -444,20 +404,22 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
     showToast('Undone')
   }
 
-  const applyNudge = () => {
-    if (nudgeSwaps.length === 0) return
-    store.commitSubBatch(nudgeSwaps.map(s => s.off.id), nudgeSwaps.map(s => s.on.id))
-    const label = nudgeSwaps.length === 1
-      ? `${nudgeSwaps[0].off.name} → ${nudgeSwaps[0].on.name}`
-      : `${nudgeSwaps.length} subs confirmed`
+  const applyDueSwaps = () => {
+    if (dueSwaps.length === 0) return
+    store.commitSubBatch(dueSwaps.map(s => s.off.id), dueSwaps.map(s => s.on.id))
+    const label = dueSwaps.length === 1
+      ? `${dueSwaps[0].off.name} → ${dueSwaps[0].on.name}`
+      : `${dueSwaps.length} subs confirmed`
     showToast(label)
-    setNudgeDismissed(true)
   }
 
-  // half-end state
-  const halfEnded = store.events.some(e => e.type === 'HALF_END')
-  const matchEnded = store.events.some(e => e.type === 'MATCH_END')
-  const gameStarted = store.events.some(e => e.type === 'CLOCK_START')
+  // ── half/full-time prompts
+  const half1EndMs = store.events
+    .filter((e): e is Extract<typeof store.events[number], { type: 'HALF_END' }> => e.type === 'HALF_END')[0]
+    ?.payload.elapsedMs
+  const fullTimeDueAtMs = half1EndMs !== undefined ? half1EndMs + HALF_LENGTH_MS : TOTAL_GAME_MS
+  const halfTimeDue = clockRunning && !halfEnded && liveElapsedMs >= HALF_LENGTH_MS
+  const fullTimeDue = clockRunning && halfEnded && !matchEnded && liveElapsedMs >= fullTimeDueAtMs
 
   // ── render
   return (
@@ -575,36 +537,75 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
         </div>
       </div>
 
-      {/* ── Coach nudge */}
-      {nudgeSwaps.length > 0 && !nudgeDismissed && !subMode && (
+      {/* ── Half / full-time prompt */}
+      {(halfTimeDue || fullTimeDue) && (
+        <div
+          className="mx-3 mt-3 rounded-lg p-3 flex items-center gap-3"
+          style={{ background: '#FEF3C7', border: '1px solid #F59E0B' }}
+        >
+          <Clock size={18} style={{ color: '#92400E' }} className="flex-shrink-0" strokeWidth={2.5} />
+          <div className="flex-1 text-sm font-bold" style={{ color: '#92400E' }}>
+            {halfTimeDue ? 'Half 1 has reached 20 min' : 'Game has reached full time'}
+          </div>
+          <button
+            onClick={() => {
+              if (halfTimeDue) { store.endHalf(); showToast('Half time') }
+              else             { store.endMatch(); showToast('Full time') }
+            }}
+            className="text-xs font-bold px-3 py-1.5 rounded whitespace-nowrap active:scale-95 transition"
+            style={{ background: '#92400E', color: 'white' }}
+          >
+            {halfTimeDue ? 'End half' : 'Full time'}
+          </button>
+        </div>
+      )}
+
+      {/* ── Standing sub plan */}
+      {subPlan.length > 0 && dismissedKey !== dueKey && !subMode && (
         <div
           className="mx-3 mt-3 rounded-lg p-3 flex items-start gap-3"
-          style={{ background: PURPLE_SOFTER, border: `1px solid ${PURPLE_SOFT}` }}
+          style={{
+            background: dueSwaps.length ? PURPLE_SOFTER : 'white',
+            border: `1px solid ${dueSwaps.length ? PURPLE : PURPLE_SOFT}`,
+          }}
         >
-          <AlertTriangle size={18} style={{ color: PURPLE }} className="flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+          {dueSwaps.length > 0
+            ? <AlertTriangle size={18} style={{ color: PURPLE }} className="flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+            : <Clock size={18} style={{ color: '#7B5FA8' }} className="flex-shrink-0 mt-0.5" strokeWidth={2} />}
           <div className="flex-1 text-sm min-w-0">
-            <div className="font-bold mb-1" style={{ color: PURPLE_DARK }}>Subs to equalise time</div>
+            <div className="font-bold mb-1" style={{ color: PURPLE_DARK }}>
+              {dueSwaps.length > 0 ? 'Subs due now' : 'Next subs'}
+            </div>
             <div className="space-y-1">
-              {nudgeSwaps.map((swap, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-[13px]" style={{ color: PURPLE }}>
+              {subPlan.map((swap, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-1.5 text-[13px]"
+                  style={{ color: PURPLE, opacity: swap.dueNow ? 1 : 0.6 }}
+                >
                   <GroupBadge group={swap.group} size="sm" />
                   <span className="font-semibold truncate">{swap.off.name}</span>
                   <ArrowRight size={10} className="flex-shrink-0 opacity-50" />
                   <span className="font-semibold truncate">{swap.on.name}</span>
+                  <span className="mono text-[11px] ml-auto flex-shrink-0 tabular-nums">
+                    {swap.dueNow ? 'now' : `~${Math.ceil(swap.dueAtMs / 60_000)}'`}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
           <div className="flex flex-col gap-1 flex-shrink-0">
+            {dueSwaps.length > 0 && (
+              <button
+                onClick={applyDueSwaps}
+                className="text-xs font-bold px-2.5 py-1 rounded whitespace-nowrap"
+                style={{ background: PURPLE, color: 'white' }}
+              >
+                {dueSwaps.length > 1 ? 'Apply all' : 'Apply'}
+              </button>
+            )}
             <button
-              onClick={applyNudge}
-              className="text-xs font-bold px-2.5 py-1 rounded whitespace-nowrap"
-              style={{ background: PURPLE, color: 'white' }}
-            >
-              {nudgeSwaps.length > 1 ? 'Apply all' : 'Apply'}
-            </button>
-            <button
-              onClick={() => setNudgeDismissed(true)}
+              onClick={() => setDismissedKey(dueKey)}
               className="text-xs px-2 py-1 text-center"
               style={{ color: PURPLE }}
             >
@@ -660,7 +661,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                 picked={comingOnIds.includes(p.id)}
                 pickedTone="emerald"
                 onTap={
-                  comingOffIds.length > comingOnIds.length || isShortPitch
+                  comingOnIds.includes(p.id) || comingOffIds.length > comingOnIds.length || isShortPitch
                     ? () => togglePickOn(p)
                     : undefined
                 }
@@ -704,7 +705,11 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] uppercase tracking-widest font-semibold opacity-60">
-              {comingOffIds.length > comingOnIds.length ? 'Now tap a replacement' : 'Sub in progress'}
+              {comingOffIds.length > comingOnIds.length
+                ? 'Now tap a replacement'
+                : pendingConfirm
+                  ? 'Position mismatch — confirm below'
+                  : 'Sub in progress'}
             </span>
             <button onClick={clearSubs} className="opacity-60 active:opacity-100">
               <X size={16} />
@@ -734,6 +739,15 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
               </div>
             ))}
           </div>
+          {pendingConfirm && (
+            <button
+              onClick={confirmPendingSub}
+              className="w-full mt-2 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition"
+              style={{ background: '#F59E0B', color: INK }}
+            >
+              <AlertTriangle size={14} strokeWidth={2.5} /> Confirm sub anyway
+            </button>
+          )}
         </div>
       )}
 
