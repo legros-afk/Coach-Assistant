@@ -112,6 +112,8 @@ interface PlayerCardProps {
   onTap?: () => void
   showActions?: boolean
   muted?: boolean
+  suggested?: boolean   // fits the position of the player coming off
+  dimmed?: boolean      // doesn't fit — still tappable, just de-emphasised
   onBlood?: () => void
   onInjury?: () => void
   onReturn?: () => void
@@ -119,7 +121,7 @@ interface PlayerCardProps {
 
 function PlayerCard({
   player, ps, avgMs, liveElapsedMs,
-  picked, pickedTone, onTap, showActions, muted, onBlood, onInjury, onReturn,
+  picked, pickedTone, onTap, showActions, muted, suggested, dimmed, onBlood, onInjury, onReturn,
 }: PlayerCardProps) {
   const mins = liveMinMs(ps, liveElapsedMs)
   const pickedBg     = pickedTone === 'rose' ? '#FEE2E2' : '#D1FAE5'
@@ -130,9 +132,11 @@ function PlayerCard({
       onClick={onTap}
       className={`p-2.5 rounded-lg transition relative ${onTap ? 'active:scale-[0.98] cursor-pointer' : ''}`}
       style={{
-        background: picked ? pickedBg : muted ? '#F5F5F4' : 'white',
-        border: picked ? `2px solid ${pickedBorder}` : '1px solid #E4D0F5',
-        opacity: muted ? 0.7 : 1,
+        background: picked ? pickedBg : muted ? '#F5F5F4' : suggested ? PURPLE_SOFTER : 'white',
+        border: picked
+          ? `2px solid ${pickedBorder}`
+          : suggested ? `2px solid ${PURPLE_DARK}` : '1px solid #E4D0F5',
+        opacity: muted ? 0.7 : dimmed ? 0.5 : 1,
         minHeight: '88px',
       }}
     >
@@ -396,6 +400,25 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
     showToast('⚠ Position mismatch — sub done')
   }
   const pendingConfirm = subMode && comingOffIds.length > 0 && comingOnIds.length === comingOffIds.length
+
+  // Positions still waiting for a replacement — used to highlight bench players
+  // who fit, drawing the eye to like-for-like subs without forcing them
+  const awaitingReplacement = comingOffIds.length > comingOnIds.length
+  const wantedGroups = useMemo<Group[]>(
+    () => awaitingReplacement
+      ? pairings.filter(pr => pr.off && !pr.on).map(pr => pr.onGroup)
+      : [],
+    [pairings, awaitingReplacement],
+  )
+
+  // Bench ordered for replacing a specific player: position fits first
+  const replacementsFor = (forPlayer: Player) => {
+    const g = matchState.playerStates.get(forPlayer.id)?.activeGroup
+    if (!g) return bench.map(p => ({ p, fits: true }))
+    return bench
+      .map(p => ({ p, fits: p.eligibleGroups.includes(g) }))
+      .sort((a, b) => Number(b.fits) - Number(a.fits))
+  }
 
   const handleUndoPress = () => {
     const last = store.events[store.events.length - 1]
@@ -691,23 +714,29 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
           }
         >
           <div className="grid grid-cols-2 gap-2">
-            {bench.map(p => (
-              <PlayerCard
-                key={p.id}
-                player={p}
-                ps={matchState.playerStates.get(p.id)!}
-                avgMs={avgMs}
-                liveElapsedMs={liveElapsedMs}
-                picked={comingOnIds.includes(p.id)}
-                pickedTone="emerald"
-                onTap={
-                  comingOnIds.includes(p.id) || comingOffIds.length > comingOnIds.length || isShortPitch
-                    ? () => togglePickOn(p)
-                    : undefined
-                }
-                showActions={false}
-              />
-            ))}
+            {bench.map(p => {
+              const isPicked = comingOnIds.includes(p.id)
+              const fits = wantedGroups.some(g => p.eligibleGroups.includes(g))
+              return (
+                <PlayerCard
+                  key={p.id}
+                  player={p}
+                  ps={matchState.playerStates.get(p.id)!}
+                  avgMs={avgMs}
+                  liveElapsedMs={liveElapsedMs}
+                  picked={isPicked}
+                  pickedTone="emerald"
+                  suggested={awaitingReplacement && !isPicked && fits}
+                  dimmed={awaitingReplacement && !isPicked && !fits}
+                  onTap={
+                    isPicked || awaitingReplacement || isShortPitch
+                      ? () => togglePickOn(p)
+                      : undefined
+                  }
+                  showActions={false}
+                />
+              )
+            })}
           </div>
         </Section>
 
@@ -941,7 +970,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
             </div>
             <p className="text-sm text-stone-400 mb-3">Who comes on as replacement?</p>
             <div className="space-y-1.5">
-              {bench.map(p => (
+              {replacementsFor(bloodPickerFor).map(({ p, fits }) => (
                 <button
                   key={p.id}
                   onClick={() => {
@@ -950,7 +979,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                     setBloodPickerFor(null)
                   }}
                   className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
-                  style={{ borderColor: '#E4D0F5' }}
+                  style={{ borderColor: fits ? PURPLE_DARK : '#E4D0F5', opacity: fits ? 1 : 0.5 }}
                 >
                   <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
                   <span className="font-semibold flex-1 text-left">{p.name}</span>
@@ -1004,7 +1033,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
             </div>
             <p className="text-sm text-stone-400 mb-3">Who comes on as replacement?</p>
             <div className="space-y-1.5">
-              {bench.map(p => (
+              {replacementsFor(injuryPickerFor).map(({ p, fits }) => (
                 <button
                   key={p.id}
                   onClick={() => {
@@ -1013,7 +1042,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                     setInjuryPickerFor(null)
                   }}
                   className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
-                  style={{ borderColor: '#E4D0F5' }}
+                  style={{ borderColor: fits ? PURPLE_DARK : '#E4D0F5', opacity: fits ? 1 : 0.5 }}
                 >
                   <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
                   <span className="font-semibold flex-1 text-left">{p.name}</span>
