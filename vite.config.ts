@@ -9,6 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['woodford-mark.svg', 'favicon.ico', '*.png'],
       manifest: {
         name: 'Minis Coach Assistant — Woodford RFC',
