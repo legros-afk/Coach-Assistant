@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { db } from '@/lib/db/db';
-import { FOLDER_ID_KEY } from '@/lib/drive/driveRead';
 import { syncFromDrive } from '@/lib/drive/driveSync';
 import type { ID, Player, Squad } from '@/lib/events/types';
 import { DEMO_SQUAD } from '@/features/match/mockData';
+import { DRIVE_FOLDER_ID } from '@/config/club';
 
 export const DEMO_SQUAD_ID = 'demo-squad';
 const API_KEY = import.meta.env.VITE_GOOGLE_DRIVE_API_KEY as string | undefined;
@@ -96,10 +96,8 @@ export const useSquadStore = create<SquadStore>()((set, get) => ({
   },
 
   pullFromDrive: async () => {
-    const folderId = localStorage.getItem(FOLDER_ID_KEY);
-    if (!folderId) return { ok: false, error: 'No Drive folder configured. Go to Settings to add one.' };
     if (!API_KEY) return { ok: false, error: 'API key not configured.' };
-    const result = await syncFromDrive(folderId, API_KEY);
+    const result = await syncFromDrive(DRIVE_FOLDER_ID, API_KEY);
     if (result.ok && result.squadUpdated) {
       const all = await db.squads.toArray();
       const squad = all.length ? all[all.length - 1] : null;

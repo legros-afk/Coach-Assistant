@@ -1,14 +1,14 @@
 import type { Fixture, Match, Squad } from '@/lib/events/types';
-import { getClubCode } from './driveRead';
+import { getClubPin } from './driveRead';
 
 export type PublishResult = { ok: true } | { ok: false; error: string };
 
-// All coaches share one club code, so publishing never requires signing in
+// All coaches share one PIN, so publishing never requires signing in
 // to Drive as a specific person — the server-side proxy writes as a shared
 // service account.
 async function publish(folderId: string, subfolder: string | undefined, fileName: string, content: unknown): Promise<PublishResult> {
-  const code = getClubCode();
-  if (!code) return { ok: false, error: 'No club code set. Add it in Drive settings.' };
+  const code = getClubPin();
+  if (!code) return { ok: false, error: 'No coach PIN set. Add it in settings.' };
 
   try {
     const res = await fetch('/publish', {

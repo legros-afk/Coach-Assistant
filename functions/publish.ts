@@ -2,9 +2,12 @@
 
 // Writes fixture/squad/match JSON into the shared Drive folder using a Google
 // service account, so any coach can publish without signing in to Drive as
-// the head coach. Gated by a shared club code (CLUB_PUBLISH_CODE) — anyone
-// who knows it can write into the folder the service account has access to,
-// nothing more.
+// the head coach. Gated by a shared PIN (CLUB_PUBLISH_CODE) — anyone who
+// knows it can write into the folder the service account has access to,
+// nothing more. A short PIN is guessable by brute force, so wrong attempts
+// are throttled per-isolate below; this isn't watertight (isolates recycle,
+// an attacker could rotate IPs) but raises the cost well past what's worth
+// it for a junior club's team-sheet folder.
 //
 // Accepts POST { code, folderId, subfolder?, fileName, content }
 
@@ -28,6 +31,36 @@ const TOKEN_URL   = 'https://oauth2.googleapis.com/token'
 const BOUNDARY    = '==coach_publish_boundary=='
 const FOLDER_MIME = 'application/vnd.google-apps.folder'
 const SCOPE       = 'https://www.googleapis.com/auth/drive'
+
+// ── wrong-PIN throttle, per isolate ──────────────────────────────────────────
+
+const MAX_ATTEMPTS   = 5
+const LOCKOUT_MS      = 5 * 60 * 1000
+const WRONG_DELAY_MS  = 400
+
+const attempts = new Map<string, { count: number; lockedUntil: number }>()
+
+function isLockedOut(ip: string): boolean {
+  const entry = attempts.get(ip)
+  return !!entry && entry.lockedUntil > Date.now()
+}
+
+function recordWrongAttempt(ip: string): void {
+  const now = Date.now()
+  const entry = attempts.get(ip)
+  if (!entry || entry.lockedUntil <= now) {
+    attempts.set(ip, { count: 1, lockedUntil: 0 })
+    return
+  }
+  const count = entry.count + 1
+  attempts.set(ip, { count, lockedUntil: count >= MAX_ATTEMPTS ? now + LOCKOUT_MS : 0 })
+}
+
+function clearAttempts(ip: string): void {
+  attempts.delete(ip)
+}
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 // ── service-account access token, memoized per isolate ──────────────────────
 
@@ -156,6 +189,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return Response.json({ ok: false, error: 'Publishing is not configured on the server yet.' }, { status: 503 })
   }
 
+  const ip = request.headers.get('cf-connecting-ip') ?? 'unknown'
+  if (isLockedOut(ip)) {
+    return Response.json({ ok: false, error: 'Too many wrong PINs — try again in a few minutes.' }, { status: 429 })
+  }
+
   let payload: PublishRequest
   try {
     payload = await request.json() as PublishRequest
@@ -164,8 +202,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   if (payload.code !== env.CLUB_PUBLISH_CODE) {
-    return Response.json({ ok: false, error: 'Wrong club code.' }, { status: 403 })
+    recordWrongAttempt(ip)
+    await sleep(WRONG_DELAY_MS)
+    return Response.json({ ok: false, error: 'Wrong PIN.' }, { status: 403 })
   }
+  clearAttempts(ip)
   if (!payload.folderId || !payload.fileName || payload.content === undefined) {
     return Response.json({ ok: false, error: 'Missing folderId, fileName, or content.' }, { status: 400 })
   }

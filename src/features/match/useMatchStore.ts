@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import { db } from '@/lib/db/db';
 import { replayEvents } from '@/lib/events/replay';
 import type { ID, Match, MatchEvent, MatchState, Player, TeamSheet } from '@/lib/events/types';
-import { FOLDER_ID_KEY } from '@/lib/drive/driveRead';
 import { publishMatch } from '@/lib/drive/drivePublish';
 import { DEMO_SQUAD, DEMO_TEAM_SHEET } from './mockData';
+import { DRIVE_FOLDER_ID } from '@/config/club';
 
 let _seq = 0;
 const newId = () => `${Date.now()}-${++_seq}`;
@@ -178,8 +178,7 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
 
     publishNow: async () => {
       const state = get();
-      const folderId = localStorage.getItem(FOLDER_ID_KEY);
-      if (!folderId || !state.matchId || state.events.length === 0) return;
+      if (!state.matchId || state.events.length === 0) return;
       set({ publishStatus: 'publishing' });
       const matchRecord: Match = {
         id: state.matchId,
@@ -193,7 +192,7 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
       };
       const date = state.events[0].ts.slice(0, 10);
       try {
-        const result = await publishMatch(matchRecord, folderId, date);
+        const result = await publishMatch(matchRecord, DRIVE_FOLDER_ID, date);
         set({ publishStatus: result.ok ? 'ok' : 'failed' });
       } catch {
         set({ publishStatus: 'failed' });

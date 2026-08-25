@@ -4,7 +4,7 @@ import { WoodfordMark } from '@/components/WoodfordMark'
 import { useFixtureStore } from '@/features/fixture/useFixtureStore'
 import { useSquadStore } from '@/features/squad/useSquadStore'
 import { useMatchStore } from '@/features/match/useMatchStore'
-import { useSyncStore, fmtSyncAge, driveConfigured } from '@/lib/drive/useSyncStore'
+import { useSyncStore, fmtSyncAge } from '@/lib/drive/useSyncStore'
 import type { Fixture, TeamSheet } from '@/lib/events/types'
 
 const PURPLE      = '#3D0066'
@@ -38,7 +38,6 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
   const activeOpponent = useMatchStore(s => s.opponent)
   const activeTeamSheet = useMatchStore(s => s.teamSheet)
   const { isSyncing, lastSyncedAt, lastError, syncAll } = useSyncStore()
-  const hasDrive = driveConfigured()
 
   useEffect(() => {
     if (!fixturesReady) hydrateFixtures()
@@ -81,18 +80,16 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
                     : 'U12 · Coach Assistant'}
             </div>
           </div>
-          {hasDrive && (
-            <button
-              onClick={syncAll}
-              disabled={isSyncing}
-              className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition disabled:opacity-50"
-              style={{ background: 'rgba(255,255,255,0.15)' }}
-              aria-label="Sync from Drive"
-            >
-              <RefreshCw size={15} color="white" strokeWidth={2} className={isSyncing ? 'animate-spin' : ''} />
-            </button>
-          )}
-          <button onClick={onOpenSetup} className="tap-target flex items-center justify-center" aria-label="Drive settings">
+          <button
+            onClick={syncAll}
+            disabled={isSyncing}
+            className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition disabled:opacity-50"
+            style={{ background: 'rgba(255,255,255,0.15)' }}
+            aria-label="Sync from Drive"
+          >
+            <RefreshCw size={15} color="white" strokeWidth={2} className={isSyncing ? 'animate-spin' : ''} />
+          </button>
+          <button onClick={onOpenSetup} className="tap-target flex items-center justify-center" aria-label="Coach PIN settings">
             <WoodfordMark size={22} color="white" />
           </button>
         </div>

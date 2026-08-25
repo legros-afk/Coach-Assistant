@@ -32,31 +32,22 @@ export async function fetchFileJson<T>(fileId: string, _apiKey?: string): Promis
   return driveGet<T>(`files/${fileId}?alt=media`)
 }
 
-// Accepts a full Drive folder URL or a bare folder ID
-export function parseFolderId(input: string): string | null {
-  const trimmed = input.trim();
-  const urlMatch = trimmed.match(/\/folders\/([a-zA-Z0-9_-]+)/);
-  if (urlMatch) return urlMatch[1];
-  if (/^[a-zA-Z0-9_-]{20,}$/.test(trimmed)) return trimmed;
-  return null;
-}
-
-export const FOLDER_ID_KEY = 'coach-drive-folder-id';
-
-// Shared secret that gates writes through the /publish proxy — the same code
+// Shared PIN that gates writes through the /publish proxy — the same PIN
 // for every coach, so nobody needs to sign in to Drive as anyone else.
-export const CLUB_CODE_KEY = 'coach-club-code';
+// Checked against the CLUB_PUBLISH_CODE secret set server-side; never
+// stored or embedded in the app's source.
+export const CLUB_PIN_KEY = 'coach-club-pin';
 
-export function getClubCode(): string {
-  return localStorage.getItem(CLUB_CODE_KEY) ?? '';
+export function getClubPin(): string {
+  return localStorage.getItem(CLUB_PIN_KEY) ?? '';
 }
 
-export function setClubCode(code: string): void {
-  const trimmed = code.trim();
-  if (trimmed) localStorage.setItem(CLUB_CODE_KEY, trimmed);
-  else localStorage.removeItem(CLUB_CODE_KEY);
+export function setClubPin(pin: string): void {
+  const trimmed = pin.trim();
+  if (trimmed) localStorage.setItem(CLUB_PIN_KEY, trimmed);
+  else localStorage.removeItem(CLUB_PIN_KEY);
 }
 
-export function clubCodeConfigured(): boolean {
-  return getClubCode().length > 0;
+export function clubPinConfigured(): boolean {
+  return getClubPin().length > 0;
 }

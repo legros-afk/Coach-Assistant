@@ -5,8 +5,9 @@ import {
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, Player } from '@/lib/events/types'
-import { FOLDER_ID_KEY, clubCodeConfigured } from '@/lib/drive/driveRead'
+import { clubPinConfigured } from '@/lib/drive/driveRead'
 import { publishSquad } from '@/lib/drive/drivePublish'
+import { DRIVE_FOLDER_ID } from '@/config/club'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
 
@@ -58,8 +59,7 @@ export default function SquadScreen({ onBack }: Props) {
   const [banner, setBanner] = useState<{ ok: boolean; msg: string } | null>(null)
   const { isSyncing, syncAll } = useSyncStore()
 
-  const folderId = localStorage.getItem(FOLDER_ID_KEY)
-  const canPublish = clubCodeConfigured() && !!folderId && !!squad
+  const canPublish = clubPinConfigured() && !!squad
 
   useEffect(() => { if (!isHydrated) hydrate() }, [isHydrated, hydrate])
 
@@ -120,9 +120,9 @@ export default function SquadScreen({ onBack }: Props) {
   }
 
   const handlePublish = async () => {
-    if (!squad || !folderId) return
+    if (!squad) return
     setPublishing(true)
-    const result = await publishSquad(squad, folderId)
+    const result = await publishSquad(squad, DRIVE_FOLDER_ID)
     setPublishing(false)
     showBanner(result.ok, result.ok ? 'Squad published to Drive.' : result.error)
   }
@@ -180,7 +180,7 @@ export default function SquadScreen({ onBack }: Props) {
             disabled={!canPublish || publishing}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide transition active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
             style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
-            title={!clubCodeConfigured() ? 'Add the club code in Drive settings to enable' : !folderId ? 'No Drive folder configured' : 'Publish squad to Drive'}
+            title={!clubPinConfigured() ? 'Add your coach PIN in settings to enable' : 'Publish squad to Drive'}
           >
             {publishing
               ? <RefreshCw size={13} className="animate-spin" />

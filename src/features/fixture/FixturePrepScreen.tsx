@@ -11,7 +11,8 @@ import type { Group, ID, Player, TeamSheet } from '@/lib/events/types'
 import { useSquadStore } from '@/features/squad/useSquadStore'
 import { useFixtureStore } from './useFixtureStore'
 import type { Fixture } from '@/lib/events/types'
-import { FOLDER_ID_KEY, clubCodeConfigured } from '@/lib/drive/driveRead'
+import { clubPinConfigured } from '@/lib/drive/driveRead'
+import { DRIVE_FOLDER_ID } from '@/config/club'
 import { publishFixture } from '@/lib/drive/drivePublish'
 import TeamBoard, { GroupBadge, type Assignment } from './TeamBoard'
 
@@ -270,8 +271,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   }
 
   // ── save + publish (the board is the review)
-  const folderId = localStorage.getItem(FOLDER_ID_KEY)
-  const canPublish = clubCodeConfigured() && !!folderId
+  const canPublish = clubPinConfigured()
 
   const [publishing, setPublishing] = useState(false)
   const [publishResult, setPublishResult] = useState<{ ok: boolean; msg: string } | null>(null)
@@ -339,12 +339,11 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   }
 
   const handleSaveAndPublish = async () => {
-    if (!folderId) return
     const fixture = buildFixture()
     await saveFixture(fixture)
     setPublishing(true)
     setPublishResult(null)
-    const result = await publishFixture(fixture, folderId)
+    const result = await publishFixture(fixture, DRIVE_FOLDER_ID)
     setPublishing(false)
     setPublishResult({ ok: result.ok, msg: result.ok ? 'Published to Drive.' : result.error })
     if (result.ok) setTimeout(() => onSaved(), 900)

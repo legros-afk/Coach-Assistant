@@ -4,7 +4,7 @@ import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Fixture, Match, TeamSheet } from '@/lib/events/types'
 import { db } from '@/lib/db/db'
 import { useFixtureStore } from './useFixtureStore'
-import { useSyncStore, fmtSyncAge, driveConfigured } from '@/lib/drive/useSyncStore'
+import { useSyncStore, fmtSyncAge } from '@/lib/drive/useSyncStore'
 import SpondSheet from '@/features/spond/SpondSheet'
 import { spondConfigured, getSpondCreds, extractOpponent } from '@/lib/spond/spondStore'
 import { spondGetEvents, type SpondEvent } from '@/lib/spond/spondApi'
@@ -26,7 +26,6 @@ interface Props {
 export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImportSpond }: Props) {
   const { fixtures, isHydrated, hydrate } = useFixtureStore()
   const { isSyncing, lastSyncedAt, syncAll } = useSyncStore()
-  const hasDrive = driveConfigured()
   const [matchMap, setMatchMap] = useState<Map<string, Match>>(new Map())
   const [playersPerSide, setPlayersPerSideState] = useState<number>(() => {
     const stored = localStorage.getItem(PPS_KEY)
@@ -93,17 +92,15 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
                   : '…'}
             </div>
           </div>
-          {hasDrive && (
-            <button
-              onClick={syncAll}
-              disabled={isSyncing}
-              className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition disabled:opacity-50"
-              style={{ background: 'rgba(255,255,255,0.15)' }}
-              aria-label="Sync fixtures from Drive"
-            >
-              <RefreshCw size={15} color="white" strokeWidth={2} className={isSyncing ? 'animate-spin' : ''} />
-            </button>
-          )}
+          <button
+            onClick={syncAll}
+            disabled={isSyncing}
+            className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition disabled:opacity-50"
+            style={{ background: 'rgba(255,255,255,0.15)' }}
+            aria-label="Sync fixtures from Drive"
+          >
+            <RefreshCw size={15} color="white" strokeWidth={2} className={isSyncing ? 'animate-spin' : ''} />
+          </button>
           {/* Spond button — green tint when connected */}
           <button
             onClick={() => setShowSpondSheet(true)}

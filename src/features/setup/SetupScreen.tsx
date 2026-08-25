@@ -1,12 +1,10 @@
-﻿import { useState } from 'react'
-import { CheckCircle, ChevronLeft, Key, Link, Loader } from 'lucide-react'
+import { useState } from 'react'
+import { CheckCircle, ChevronLeft, KeyRound } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
-import { FOLDER_ID_KEY, getClubCode, listFolder, parseFolderId, setClubCode } from '@/lib/drive/driveRead'
-import { syncFromDrive } from '@/lib/drive/driveSync'
+import { getClubPin, setClubPin } from '@/lib/drive/driveRead'
 
-const PURPLE      = '#3D0066'
-const PURPLE_DARK = '#5B1A99'
-const INK         = '#1A1A1A'
+const PURPLE = '#3D0066'
+const INK    = '#1A1A1A'
 
 interface Props {
   onDone: () => void
@@ -14,43 +12,13 @@ interface Props {
 }
 
 export default function SetupScreen({ onDone, onBack }: Props) {
-  const [input, setInput]     = useState(() => localStorage.getItem(FOLDER_ID_KEY) ?? '')
-  const [status, setStatus]   = useState<'idle' | 'checking' | 'ok' | 'error'>('idle')
-  const [errorMsg, setErrorMsg] = useState('')
-  const [canForce, setCanForce] = useState(false)
-  const [codeInput, setCodeInput] = useState(() => getClubCode())
-  const [codeSaved, setCodeSaved] = useState(false)
+  const [pin, setPin]         = useState(() => getClubPin())
+  const [saved, setSaved]     = useState(false)
 
-  const saveAndProceed = (folderId: string) => {
-    localStorage.setItem(FOLDER_ID_KEY, folderId)
-    syncFromDrive(folderId)
-    setStatus('ok')
-    setTimeout(onDone, 800)
-  }
-
-  const handleConnect = async (force = false) => {
-    const folderId = parseFolderId(input)
-    if (!folderId) {
-      setStatus('error')
-      setErrorMsg('That doesn\'t look like a valid folder link or ID.')
-      setCanForce(false)
-      return
-    }
-    if (force) {
-      saveAndProceed(folderId)
-      return
-    }
-    setStatus('checking')
-    setCanForce(false)
-    try {
-      await listFolder(folderId)
-      saveAndProceed(folderId)
-    } catch (e) {
-      const detail = e instanceof Error ? e.message : String(e)
-      setStatus('error')
-      setErrorMsg(`Couldn't verify the folder (${detail}). If you're sure the folder is shared correctly, tap "Connect anyway".`)
-      setCanForce(true)
-    }
+  const handleSave = () => {
+    setClubPin(pin)
+    setSaved(true)
+    setTimeout(onDone, 600)
   }
 
   return (
@@ -65,127 +33,59 @@ export default function SetupScreen({ onDone, onBack }: Props) {
           <WoodfordMark size={28} color="white" />
         )}
         <div className="leading-tight">
-          <div className="text-sm font-bold tracking-wide uppercase text-white">
-            {onBack ? 'Drive folder' : 'Woodford RFC'}
-          </div>
-          <div className="text-xs text-white/70">{onBack ? 'Change connected folder' : 'Coach Assistant'}</div>
+          <div className="text-sm font-bold tracking-wide uppercase text-white">Coach PIN</div>
+          <div className="text-xs text-white/70">Needed to save & publish</div>
         </div>
       </div>
 
       <div className="flex-1 px-4 py-8 flex flex-col gap-6 max-w-md mx-auto w-full">
         <div>
           <h1 className="text-2xl font-bold mb-1" style={{ color: INK }}>
-            Connect to club data
+            Enter your coach PIN
           </h1>
           <p className="text-sm text-stone-500 leading-relaxed">
-            Paste the Google Drive folder link shared by your head coach. This lets you pull the
-            squad and fixtures to your device — no Google account needed.
+            Ask your head coach for this. It's the same PIN for every coach — it lets whoever's
+            picking teams this week save and publish, without anyone signing in to Drive. You
+            don't need it just to view the squad or fixtures.
           </p>
         </div>
 
         <div className="space-y-2">
           <label className="text-xs font-semibold uppercase tracking-widest text-stone-400">
-            Drive folder link or ID
+            4-digit PIN
           </label>
-          <div className="flex gap-2">
-            <div className="flex-1 flex items-center gap-2 px-3 rounded-lg border-2 bg-white"
-              style={{ borderColor: status === 'error' ? '#EF4444' : status === 'ok' ? '#10B981' : '#C8A0E8' }}
-            >
-              <Link size={16} className="flex-shrink-0 text-stone-400" />
-              <input
-                type="text"
-                value={input}
-                onChange={e => { setInput(e.target.value); setStatus('idle') }}
-                onKeyDown={e => e.key === 'Enter' && handleConnect(false)}
-                placeholder="https://drive.google.com/drive/folders/…"
-                className="flex-1 py-3 text-sm outline-none bg-transparent"
-                style={{ color: INK }}
-                autoCapitalize="none"
-                autoCorrect="off"
-              />
-            </div>
-          </div>
-
-          {status === 'error' && (
-            <p className="text-xs text-red-500">{errorMsg}</p>
-          )}
-          {status === 'ok' && (
-            <p className="text-xs text-emerald-600 flex items-center gap-1">
-              <CheckCircle size={12} strokeWidth={2.5} /> Connected — syncing data…
-            </p>
-          )}
-        </div>
-
-        <button
-          onClick={() => handleConnect(false)}
-          disabled={!input.trim() || status === 'checking' || status === 'ok'}
-          className="tap-target w-full rounded-lg font-bold text-base flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition"
-          style={{ background: PURPLE, color: 'white', minHeight: '56px' }}
-        >
-          {status === 'checking' && <Loader size={18} className="animate-spin" />}
-          {status === 'checking' ? 'Checking…' : 'Connect'}
-        </button>
-
-        {canForce && (
-          <button
-            onClick={() => handleConnect(true)}
-            className="tap-target w-full rounded-lg font-bold text-base flex items-center justify-center active:scale-95 transition"
-            style={{ background: '#78716C', color: 'white', minHeight: '48px' }}
+          <div className="flex items-center gap-2 px-4 rounded-lg border-2 bg-white"
+            style={{ borderColor: saved ? '#10B981' : '#C8A0E8' }}
           >
-            Connect anyway
-          </button>
-        )}
-
-        <div className="space-y-2 pt-2" style={{ borderTop: '1px solid #E4D0F5' }}>
-          <label className="text-xs font-semibold uppercase tracking-widest text-stone-400 block pt-4">
-            Club publish code
-          </label>
-          <p className="text-xs text-stone-500 leading-relaxed">
-            Ask your head coach for this. It lets you save and publish from whichever phone has
-            teams for the week — nobody needs to sign in to Drive.
-          </p>
-          <div className="flex gap-2">
-            <div className="flex-1 flex items-center gap-2 px-3 rounded-lg border-2 bg-white" style={{ borderColor: '#C8A0E8' }}>
-              <Key size={16} className="flex-shrink-0 text-stone-400" />
-              <input
-                type="text"
-                value={codeInput}
-                onChange={e => { setCodeInput(e.target.value); setCodeSaved(false) }}
-                placeholder="Club code"
-                className="flex-1 py-3 text-sm outline-none bg-transparent"
-                style={{ color: INK }}
-                autoCapitalize="none"
-                autoCorrect="off"
-              />
-            </div>
-            <button
-              onClick={() => { setClubCode(codeInput); setCodeSaved(true) }}
-              disabled={codeInput.trim() === getClubCode()}
-              className="tap-target rounded-lg font-bold text-sm px-4 disabled:opacity-40 active:scale-95 transition"
-              style={{ background: PURPLE, color: 'white' }}
-            >
-              Save
-            </button>
+            <KeyRound size={18} className="flex-shrink-0 text-stone-400" />
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={4}
+              value={pin}
+              onChange={e => { setPin(e.target.value.replace(/\D/g, '')); setSaved(false) }}
+              onKeyDown={e => e.key === 'Enter' && pin.length > 0 && handleSave()}
+              placeholder="0000"
+              className="flex-1 py-4 text-2xl tracking-[0.5em] text-center outline-none bg-transparent"
+              style={{ color: INK }}
+              autoFocus
+            />
           </div>
-          {codeSaved && (
+          {saved && (
             <p className="text-xs text-emerald-600 flex items-center gap-1">
               <CheckCircle size={12} strokeWidth={2.5} /> Saved.
             </p>
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-stone-200" />
-          <span className="text-xs text-stone-400">or</span>
-          <div className="flex-1 h-px bg-stone-200" />
-        </div>
-
         <button
-          onClick={onDone}
-          className="text-sm font-semibold text-center active:opacity-70 transition"
-          style={{ color: PURPLE_DARK }}
+          onClick={handleSave}
+          disabled={pin.length === 0}
+          className="tap-target w-full rounded-lg font-bold text-base flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition"
+          style={{ background: PURPLE, color: 'white', minHeight: '56px' }}
         >
-          Skip — use demo data for now
+          Save PIN
         </button>
       </div>
     </div>
