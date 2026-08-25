@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, Copy, LayoutGrid, RefreshCw, Zap } from 'lucide-react'
 import { getSpondAvailability, type SpondAvailability } from '@/lib/spond/spondSync'
 import { spondConfigured } from '@/lib/spond/spondStore'
@@ -78,6 +78,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   // ── fixture fields
   const [date, setDate]           = useState(existing?.date ?? initialDate ?? todayIso())
   const [opponent, setOpponent]   = useState(existing?.opponent ?? initialOpponent ?? '')
+  const opponentRef = useRef<HTMLInputElement>(null)
   const [playersPerSide]          = useState(existing?.playersPerSide ?? initialPlayersPerSide ?? 12)
   const [spondEventId]            = useState(existing?.spondEventId ?? initialSpondEventId)
 
@@ -296,6 +297,16 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const hasAnyA = players.some(p => assignments.get(p.id) === 'A' || assignments.get(p.id) === 'bench-A')
   const hasAnyB = players.some(p => assignments.get(p.id) === 'B' || assignments.get(p.id) === 'bench-B')
   const canSave = opponent.trim() && (hasAnyA || hasAnyB)
+  const cantSaveReason = !opponent.trim()
+    ? 'Add an opponent name to save'
+    : !hasAnyA && !hasAnyB
+      ? 'Place at least one player to save'
+      : null
+
+  const jumpToOpponent = () => {
+    opponentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    opponentRef.current?.focus()
+  }
 
   function buildFixture(): Fixture {
     const teamSheets: TeamSheet[] = []
@@ -425,7 +436,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   }
 
   return (
-    <div className="min-h-screen pb-28" style={{ background: '#F8F4FF', color: INK }}>
+    <div className="min-h-screen pb-44" style={{ background: '#F8F4FF', color: INK }}>
 
       {/* Header */}
       <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
@@ -509,6 +520,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
             <div className="flex-1">
               <label className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 block mb-1">Opponent</label>
               <input
+                ref={opponentRef}
                 type="text"
                 value={opponent}
                 onChange={e => setOpponent(e.target.value)}
@@ -653,8 +665,12 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
 
       {/* Save bar — the board above is the review */}
       <div
-        className="fixed bottom-16 left-0 right-0 px-3 py-3 z-30"
-        style={{ background: '#F8F4FF', borderTop: '1px solid #C8A0E8' }}
+        className="fixed bottom-0 left-0 right-0 px-3 pt-3 z-30"
+        style={{
+          background: '#F8F4FF',
+          borderTop: '1px solid #C8A0E8',
+          paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))',
+        }}
       >
         {publishResult && (
           <div
@@ -677,6 +693,15 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
           >
             {copyToast}
           </div>
+        )}
+        {!canSave && !publishResult && !copyToast && cantSaveReason && (
+          <button
+            onClick={!opponent.trim() ? jumpToOpponent : undefined}
+            className="w-full mb-2 text-sm text-center px-2 py-1.5 rounded-lg active:opacity-70 transition"
+            style={{ background: '#FEF3C7', color: '#92400E', cursor: !opponent.trim() ? 'pointer' : 'default' }}
+          >
+            {cantSaveReason}
+          </button>
         )}
         <div className="flex gap-2">
           <button

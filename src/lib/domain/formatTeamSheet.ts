@@ -17,7 +17,6 @@ export interface FormatOptions {
 // parseTeamSheet, so a coach can paste this message back into the app.
 export function formatTeamsForWhatsApp({ teamName, opponent, date, players, assignments, groupOverrides }: FormatOptions): string {
   const groupOf = (p: Player) => groupOverrides.get(p.id) ?? p.defaultGroup;
-  const names = (list: Player[]) => list.map(p => p.name).join(', ');
 
   let title = `🏉 *${teamName} vs ${opponent}*`;
   try {
@@ -27,6 +26,13 @@ export function formatTeamsForWhatsApp({ teamName, opponent, date, players, assi
   }
 
   const lines: string[] = [title];
+
+  // One name per line with a blank line before each labelled group, so a
+  // long squad list doesn't read as one dense block on a phone screen.
+  const section = (label: string, list: Player[]) => {
+    if (!list.length) return;
+    lines.push('', `${label}:`, ...list.map(p => p.name));
+  };
 
   for (const team of ['A', 'B'] as const) {
     const starters = players.filter(p => assignments.get(p.id) === team);
@@ -38,14 +44,11 @@ export function formatTeamsForWhatsApp({ teamName, opponent, date, players, assi
     const sh = starters.filter(p => groupOf(p) === 'scrumhalf');
 
     lines.push('', `*Team ${team}*`);
-    if (forwards.length) lines.push(`Forwards: ${names(forwards)}`);
-    if (backs.length) lines.push(`Backs: ${names(backs)}`);
-    if (sh.length) lines.push(`Scrum-half: ${names(sh)}`);
-    if (bench.length) lines.push(`Bench: ${names(bench)}`);
+    section('Forwards', forwards);
+    section('Backs', backs);
+    section('Scrum-half', sh);
+    section('Finishers', bench);
   }
-
-  const unavailable = players.filter(p => assignments.get(p.id) === 'unavailable');
-  if (unavailable.length) lines.push('', `Not available: ${names(unavailable)}`);
 
   return lines.join('\n');
 }

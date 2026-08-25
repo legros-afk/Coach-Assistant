@@ -33,26 +33,42 @@ function fixtureSetup() {
 const OPTS = { teamName: 'Woodford U12', opponent: 'Saints', date: '2026-08-30' };
 
 describe('formatTeamsForWhatsApp', () => {
-  it('produces the full message with both teams, bench, and unavailable', () => {
+  it('produces the full message with both teams and finishers, one name per line', () => {
     const { squad, assignments, overrides } = fixtureSetup();
     const msg = formatTeamsForWhatsApp({ ...OPTS, players: squad, assignments, groupOverrides: overrides });
     expect(msg).toBe([
       '🏉 *Woodford U12 vs Saints* — Sunday 30 August',
       '',
       '*Team A*',
-      'Forwards: Alexander',
-      'Backs: Angelo',
-      'Scrum-half: Hayden',
-      'Bench: Dylan',
+      '',
+      'Forwards:',
+      'Alexander',
+      '',
+      'Backs:',
+      'Angelo',
+      '',
+      'Scrum-half:',
+      'Hayden',
+      '',
+      'Finishers:',
+      'Dylan',
       '',
       '*Team B*',
-      'Forwards: Elias',
-      'Backs: Archie',
-      'Scrum-half: Seb',
-      'Bench: Oscar',
       '',
-      'Not available: Rafferty',
+      'Forwards:',
+      'Elias',
+      '',
+      'Backs:',
+      'Archie',
+      '',
+      'Scrum-half:',
+      'Seb',
+      '',
+      'Finishers:',
+      'Oscar',
     ].join('\n'));
+    // Unavailable players are never included in the message.
+    expect(msg).not.toContain('Rafferty');
   });
 
   it('omits empty teams and sections', () => {
@@ -60,8 +76,7 @@ describe('formatTeamsForWhatsApp', () => {
     const assignments = new Map<ID, 'A' | null>([[squad[0].id, 'A']]);
     const msg = formatTeamsForWhatsApp({ ...OPTS, players: squad, assignments, groupOverrides: overrides });
     expect(msg).not.toContain('Team B');
-    expect(msg).not.toContain('Bench:');
-    expect(msg).not.toContain('Not available');
+    expect(msg).not.toContain('Finishers:');
     expect(msg).not.toContain('Backs:');
   });
 
