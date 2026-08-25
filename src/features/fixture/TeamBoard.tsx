@@ -30,11 +30,13 @@ interface Props {
   assignments: Map<ID, Assignment>
   groupOverrides: Map<ID, Group>
   spondAvailability: SpondAvailability | null
+  /** Season starts per player; null hides the counts (e.g. first fixture of the season). */
+  starts?: Map<ID, number> | null
   onAssign: (id: ID, val: Assignment) => void
   onOverride: (id: ID, group: Group | null) => void
 }
 
-export default function TeamBoard({ players, playersPerSide, assignments, groupOverrides, spondAvailability, onAssign, onOverride }: Props) {
+export default function TeamBoard({ players, playersPerSide, assignments, groupOverrides, spondAvailability, starts = null, onAssign, onOverride }: Props) {
   const [selectedId, setSelectedId] = useState<ID | null>(null)
 
   const limits = teamLimits(playersPerSide)
@@ -53,6 +55,10 @@ export default function TeamBoard({ players, playersPerSide, assignments, groupO
   const unavail = players.filter(p => assignOf(p.id) === 'unavailable')
 
   const fits = (p: Player, g: Group) => p.eligibleGroups.includes(g)
+  const canSH = (p: Player) => p.eligibleGroups.includes('scrumhalf')
+  // SH cover is the scarce resource — outline those players so they're
+  // spottable in the pool regardless of which section they sit in.
+  const SH_OUTLINE = `1.5px solid ${PURPLE_DARK}`
 
   const pickUp = (id: ID) => {
     onAssign(id, null)
@@ -74,6 +80,20 @@ export default function TeamBoard({ players, playersPerSide, assignments, groupO
     if (!selected) return
     onAssign(selected.id, 'unavailable')
     setSelectedId(null)
+  }
+
+  const startsCount = (p: Player, light: boolean) => {
+    if (!starts) return null
+    const n = starts.get(p.id) ?? 0
+    return (
+      <span
+        className="ml-auto mono text-[9px] font-bold flex-shrink-0"
+        style={{ color: light ? 'rgba(255,255,255,0.6)' : '#A8A29E' }}
+        title={`${n} start${n === 1 ? '' : 's'} this season`}
+      >
+        {n}
+      </span>
+    )
   }
 
   const spondGlyph = (p: Player) => {
@@ -100,16 +120,17 @@ export default function TeamBoard({ players, playersPerSide, assignments, groupO
       <button
         key={p.id}
         onClick={() => setSelectedId(isSel ? null : p.id)}
-        aria-label={`${p.name}${isSel ? ', selected' : ''}`}
+        aria-label={`${p.name}${canSH(p) ? ', can play scrum-half' : ''}${isSel ? ', selected' : ''}`}
         aria-pressed={isSel}
         className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold active:scale-95 transition"
         style={isSel
           ? { border: '1px solid #7C3AED', background: '#F3E8FF', boxShadow: '0 0 0 2px #DDD0F0', color: INK }
-          : { border: '1px solid #E4D0F5', background: 'white', color: INK }}
+          : { border: canSH(p) ? SH_OUTLINE : '1px solid #E4D0F5', background: 'white', color: INK }}
       >
         <GroupBadge group={p.defaultGroup} size="xs" />
         <span className="truncate max-w-[110px]">{p.name}</span>
         {spondGlyph(p)}
+        {startsCount(p, false)}
       </button>
     )
   }
@@ -136,6 +157,7 @@ export default function TeamBoard({ players, playersPerSide, assignments, groupO
           >
             <span className="text-[9px] font-extrabold opacity-60 w-4 text-left flex-shrink-0">{GROUP_SHORT[g]}</span>
             <span className="truncate">{p.name}</span>
+            {startsCount(p, true)}
           </button>
         )
       }
@@ -182,9 +204,9 @@ export default function TeamBoard({ players, playersPerSide, assignments, groupO
                 <button
                   key={p.id}
                   onClick={() => pickUp(p.id)}
-                  aria-label={`${p.name}, bench Team ${team} — pick up`}
+                  aria-label={`${p.name}${canSH(p) ? ', can play scrum-half' : ''}, bench Team ${team} — pick up`}
                   className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold active:scale-95 transition"
-                  style={{ border: '1px solid #E4D0F5', background: 'white', color: INK }}
+                  style={{ border: canSH(p) ? SH_OUTLINE : '1px solid #E4D0F5', background: 'white', color: INK }}
                 >
                   <GroupBadge group={p.defaultGroup} size="xs" />
                   <span className="truncate max-w-[80px]">{p.name}</span>
@@ -231,15 +253,25 @@ export default function TeamBoard({ players, playersPerSide, assignments, groupO
 
       {pool.length > 0 ? (
         <>
+          {players.some(canSH) && (
+            <div className="flex items-center gap-1.5 mt-3 px-1 text-[10px] text-stone-400">
+              <span
+                className="inline-block w-6 h-3.5 rounded-full flex-shrink-0"
+                style={{ border: SH_OUTLINE, background: 'white' }}
+                aria-hidden="true"
+              />
+              <span>= can play scrum-half</span>
+            </div>
+          )}
           {poolF.length > 0 && (
             <>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mt-3 mb-1.5 px-1">Available — forwards</div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mt-2 mb-1.5 px-1">Available — forwards</div>
               <div className="flex flex-wrap gap-1.5">{poolF.map(poolChip)}</div>
             </>
           )}
           {poolBS.length > 0 && (
             <>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mt-3 mb-1.5 px-1">Available — backs &amp; SH</div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mt-3 mb-1.5 px-1">Available — backs</div>
               <div className="flex flex-wrap gap-1.5">{poolBS.map(poolChip)}</div>
             </>
           )}

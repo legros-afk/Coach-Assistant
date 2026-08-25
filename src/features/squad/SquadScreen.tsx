@@ -5,8 +5,7 @@ import {
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, Player } from '@/lib/events/types'
-import { FOLDER_ID_KEY } from '@/lib/drive/driveRead'
-import { OAUTH_ENABLED } from '@/lib/drive/driveAuth'
+import { FOLDER_ID_KEY, clubCodeConfigured } from '@/lib/drive/driveRead'
 import { publishSquad } from '@/lib/drive/drivePublish'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
@@ -60,7 +59,7 @@ export default function SquadScreen({ onBack }: Props) {
   const { isSyncing, syncAll } = useSyncStore()
 
   const folderId = localStorage.getItem(FOLDER_ID_KEY)
-  const canPublish = OAUTH_ENABLED && !!folderId && !!squad
+  const canPublish = clubCodeConfigured() && !!folderId && !!squad
 
   useEffect(() => { if (!isHydrated) hydrate() }, [isHydrated, hydrate])
 
@@ -181,7 +180,7 @@ export default function SquadScreen({ onBack }: Props) {
             disabled={!canPublish || publishing}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide transition active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
             style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
-            title={!OAUTH_ENABLED ? 'Add VITE_GOOGLE_OAUTH_CLIENT_ID to enable' : !folderId ? 'No Drive folder configured' : 'Publish squad to Drive'}
+            title={!clubCodeConfigured() ? 'Add the club code in Drive settings to enable' : !folderId ? 'No Drive folder configured' : 'Publish squad to Drive'}
           >
             {publishing
               ? <RefreshCw size={13} className="animate-spin" />

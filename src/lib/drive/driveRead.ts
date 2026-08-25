@@ -42,3 +42,21 @@ export function parseFolderId(input: string): string | null {
 }
 
 export const FOLDER_ID_KEY = 'coach-drive-folder-id';
+
+// Shared secret that gates writes through the /publish proxy — the same code
+// for every coach, so nobody needs to sign in to Drive as anyone else.
+export const CLUB_CODE_KEY = 'coach-club-code';
+
+export function getClubCode(): string {
+  return localStorage.getItem(CLUB_CODE_KEY) ?? '';
+}
+
+export function setClubCode(code: string): void {
+  const trimmed = code.trim();
+  if (trimmed) localStorage.setItem(CLUB_CODE_KEY, trimmed);
+  else localStorage.removeItem(CLUB_CODE_KEY);
+}
+
+export function clubCodeConfigured(): boolean {
+  return getClubCode().length > 0;
+}

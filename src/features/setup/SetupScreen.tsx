@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react'
-import { CheckCircle, ChevronLeft, Link, Loader } from 'lucide-react'
+import { CheckCircle, ChevronLeft, Key, Link, Loader } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
-import { FOLDER_ID_KEY, listFolder, parseFolderId } from '@/lib/drive/driveRead'
+import { FOLDER_ID_KEY, getClubCode, listFolder, parseFolderId, setClubCode } from '@/lib/drive/driveRead'
 import { syncFromDrive } from '@/lib/drive/driveSync'
 
 const PURPLE      = '#3D0066'
@@ -18,6 +18,8 @@ export default function SetupScreen({ onDone, onBack }: Props) {
   const [status, setStatus]   = useState<'idle' | 'checking' | 'ok' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [canForce, setCanForce] = useState(false)
+  const [codeInput, setCodeInput] = useState(() => getClubCode())
+  const [codeSaved, setCodeSaved] = useState(false)
 
   const saveAndProceed = (folderId: string) => {
     localStorage.setItem(FOLDER_ID_KEY, folderId)
@@ -133,6 +135,44 @@ export default function SetupScreen({ onDone, onBack }: Props) {
             Connect anyway
           </button>
         )}
+
+        <div className="space-y-2 pt-2" style={{ borderTop: '1px solid #E4D0F5' }}>
+          <label className="text-xs font-semibold uppercase tracking-widest text-stone-400 block pt-4">
+            Club publish code
+          </label>
+          <p className="text-xs text-stone-500 leading-relaxed">
+            Ask your head coach for this. It lets you save and publish from whichever phone has
+            teams for the week — nobody needs to sign in to Drive.
+          </p>
+          <div className="flex gap-2">
+            <div className="flex-1 flex items-center gap-2 px-3 rounded-lg border-2 bg-white" style={{ borderColor: '#C8A0E8' }}>
+              <Key size={16} className="flex-shrink-0 text-stone-400" />
+              <input
+                type="text"
+                value={codeInput}
+                onChange={e => { setCodeInput(e.target.value); setCodeSaved(false) }}
+                placeholder="Club code"
+                className="flex-1 py-3 text-sm outline-none bg-transparent"
+                style={{ color: INK }}
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
+            </div>
+            <button
+              onClick={() => { setClubCode(codeInput); setCodeSaved(true) }}
+              disabled={codeInput.trim() === getClubCode()}
+              className="tap-target rounded-lg font-bold text-sm px-4 disabled:opacity-40 active:scale-95 transition"
+              style={{ background: PURPLE, color: 'white' }}
+            >
+              Save
+            </button>
+          </div>
+          {codeSaved && (
+            <p className="text-xs text-emerald-600 flex items-center gap-1">
+              <CheckCircle size={12} strokeWidth={2.5} /> Saved.
+            </p>
+          )}
+        </div>
 
         <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-stone-200" />

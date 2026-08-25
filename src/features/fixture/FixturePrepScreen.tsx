@@ -1,16 +1,17 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, LayoutGrid, RefreshCw, Zap } from 'lucide-react'
+import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, Copy, LayoutGrid, RefreshCw, Zap } from 'lucide-react'
 import { getSpondAvailability, type SpondAvailability } from '@/lib/spond/spondSync'
 import { spondConfigured } from '@/lib/spond/spondStore'
 import { teamLimits, validateComposition } from '@/lib/domain/validateComposition'
+import { draftTeams } from '@/lib/domain/draftTeams'
+import { formatTeamsForWhatsApp } from '@/lib/domain/formatTeamSheet'
 import { parseTeamSheet } from '@/lib/domain/parseTeamSheet'
 import type { ParsedSlot } from '@/lib/domain/parseTeamSheet'
 import type { Group, ID, Player, TeamSheet } from '@/lib/events/types'
 import { useSquadStore } from '@/features/squad/useSquadStore'
 import { useFixtureStore } from './useFixtureStore'
 import type { Fixture } from '@/lib/events/types'
-import { FOLDER_ID_KEY } from '@/lib/drive/driveRead'
-import { OAUTH_ENABLED } from '@/lib/drive/driveAuth'
+import { FOLDER_ID_KEY, clubCodeConfigured } from '@/lib/drive/driveRead'
 import { publishFixture } from '@/lib/drive/drivePublish'
 import TeamBoard, { GroupBadge, type Assignment } from './TeamBoard'
 
@@ -63,9 +64,10 @@ interface Props {
 
 export default function FixturePrepScreen({ existing, initialPlayersPerSide, initialOpponent, initialDate, initialSpondEventId, onBack, onSaved }: Props) {
   const { squad, isHydrated: squadReady, hydrate: hydrateSquad } = useSquadStore()
-  const { saveFixture } = useFixtureStore()
+  const { fixtures, isHydrated: fixturesReady, hydrate: hydrateFixtures, saveFixture } = useFixtureStore()
 
   useEffect(() => { if (!squadReady) hydrateSquad() }, [squadReady, hydrateSquad])
+  useEffect(() => { if (!fixturesReady) hydrateFixtures() }, [fixturesReady, hydrateFixtures])
 
   const players = useMemo(() =>
     [...(squad?.players ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
@@ -147,8 +149,19 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const [assignments,   setAssignments]   = useState<Map<ID, Assignment>>(initAssignments)
   const [groupOverrides, setGroupOverrides] = useState<Map<ID, Group>>(initOverrides)
 
-  const assign = (id: ID, val: Assignment) =>
+  // Players placed by the last draft — a manual move takes a player out of
+  // this set, which is what lets Re-draft keep hand placements pinned.
+  const [draftedIds, setDraftedIds] = useState<Set<ID>>(new Set())
+
+  const assign = (id: ID, val: Assignment) => {
     setAssignments(m => new Map(m).set(id, val))
+    setDraftedIds(s => {
+      if (!s.has(id)) return s
+      const next = new Set(s)
+      next.delete(id)
+      return next
+    })
+  }
 
   const setOverride = (id: ID, group: Group | null) =>
     setGroupOverrides(m => {
@@ -157,6 +170,62 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       else next.delete(id)
       return next
     })
+
+  // ── draft
+  // Starts per player across earlier saved fixtures — the fairness evidence.
+  const startsById = useMemo(() => {
+    const m = new Map<ID, number>()
+    for (const f of fixtures) {
+      if (f.id === existing?.id || f.date >= date) continue
+      for (const ts of f.teamSheets) {
+        const ids = [...ts.starters.forwards, ...ts.starters.backs]
+        if (ts.starters.scrumhalf) ids.push(ts.starters.scrumhalf)
+        for (const id of ids) m.set(id, (m.get(id) ?? 0) + 1)
+      }
+    }
+    return m
+  }, [fixtures, existing?.id, date])
+
+  const handleDraft = () => {
+    // Release what the previous draft placed; hand placements stay locked.
+    const base = new Map(assignments)
+    const baseOverrides = new Map(groupOverrides)
+    for (const id of draftedIds) {
+      if (base.get(id) !== 'unavailable') {
+        base.set(id, null)
+        baseOverrides.delete(id)
+      }
+    }
+    const result = draftTeams({
+      players,
+      existing: base,
+      groupOverrides: baseOverrides,
+      playersPerSide,
+      starts: startsById,
+    })
+    result.assignments.forEach((v, k) => base.set(k, v))
+    result.groups.forEach((v, k) => baseOverrides.set(k, v))
+    setAssignments(base)
+    setGroupOverrides(baseOverrides)
+    setDraftedIds(new Set(result.assignments.keys()))
+  }
+
+  const [clearArmed, setClearArmed] = useState(false)
+  const handleClear = () => {
+    if (!clearArmed) {
+      setClearArmed(true)
+      setTimeout(() => setClearArmed(false), 2500)
+      return
+    }
+    setClearArmed(false)
+    setAssignments(m => {
+      const next = new Map(m)
+      for (const [id, val] of next) if (val !== 'unavailable') next.set(id, null)
+      return next
+    })
+    setGroupOverrides(new Map())
+    setDraftedIds(new Set())
+  }
 
   // ── paste
   const [pasteText,   setPasteText]   = useState('')
@@ -202,13 +271,28 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
 
   // ── save + publish (the board is the review)
   const folderId = localStorage.getItem(FOLDER_ID_KEY)
-  const canPublish = OAUTH_ENABLED && !!folderId
+  const canPublish = clubCodeConfigured() && !!folderId
 
   const [publishing, setPublishing] = useState(false)
   const [publishResult, setPublishResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
   const teamA = useMemo(() => countTeam('A', assignments, groupOverrides, players, playersPerSide), [assignments, groupOverrides, players, playersPerSide])
   const teamB = useMemo(() => countTeam('B', assignments, groupOverrides, players, playersPerSide), [assignments, groupOverrides, players, playersPerSide])
+
+  const hasRatings = players.some(p => p.ratings)
+  const balance = useMemo(() => {
+    const calc = (team: 'A' | 'B') => {
+      const starters = players.filter(p => assignments.get(p.id) === team)
+      if (starters.length === 0) return null
+      const avg = (f: (p: Player) => number) =>
+        (starters.reduce((sum, p) => sum + f(p), 0) / starters.length).toFixed(1)
+      return {
+        starts: avg(p => startsById.get(p.id) ?? 0),
+        impact: avg(p => p.ratings?.impact ?? 3),
+      }
+    }
+    return { A: calc('A'), B: calc('B') }
+  }, [players, assignments, startsById])
   const hasAnyA = players.some(p => assignments.get(p.id) === 'A' || assignments.get(p.id) === 'bench-A')
   const hasAnyB = players.some(p => assignments.get(p.id) === 'B' || assignments.get(p.id) === 'bench-B')
   const canSave = opponent.trim() && (hasAnyA || hasAnyB)
@@ -233,6 +317,25 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const handleSave = async () => {
     await saveFixture(buildFixture())
     onSaved()
+  }
+
+  const [copyToast, setCopyToast] = useState('')
+  const handleCopy = async () => {
+    const msg = formatTeamsForWhatsApp({
+      teamName: squad?.name ?? 'Woodford',
+      opponent: opponent.trim() || 'TBC',
+      date,
+      players,
+      assignments,
+      groupOverrides,
+    })
+    try {
+      await navigator.clipboard.writeText(msg)
+      setCopyToast('Copied — paste into WhatsApp')
+    } catch {
+      setCopyToast('Copy failed — check browser permissions')
+    }
+    setTimeout(() => setCopyToast(''), 3000)
   }
 
   const handleSaveAndPublish = async () => {
@@ -448,8 +551,47 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
               </div>
             ) : (
               <>
+                <div className="flex gap-2 mb-2">
+                  <button
+                    onClick={handleDraft}
+                    className="tap-target flex-1 rounded-lg font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition"
+                    style={{ background: PURPLE, color: 'white', minHeight: '44px' }}
+                  >
+                    <Zap size={14} strokeWidth={2.5} />
+                    {draftedIds.size > 0 ? 'Re-draft' : 'Draft teams'}
+                  </button>
+                  <button
+                    onClick={handleClear}
+                    className="tap-target rounded-lg font-bold text-xs px-4 active:scale-95 transition"
+                    style={clearArmed
+                      ? { background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#B42318' }
+                      : { background: 'white', border: '1px solid #E4D0F5', color: '#7B5FA8' }}
+                  >
+                    {clearArmed ? 'Clear board?' : 'Clear'}
+                  </button>
+                </div>
+                {(balance.A || balance.B) && (
+                  <div className="flex gap-2 mb-2">
+                    <div className="flex-1 bg-white rounded-lg px-2.5 py-1.5" style={{ border: '1px solid #E4D0F5' }}>
+                      <div className="text-[9px] font-extrabold tracking-widest text-stone-400">AVG STARTS</div>
+                      <div className="text-xs font-bold mono">
+                        A {balance.A?.starts ?? '—'} · B {balance.B?.starts ?? '—'}
+                      </div>
+                    </div>
+                    {hasRatings && (
+                      <div className="flex-1 bg-white rounded-lg px-2.5 py-1.5" style={{ border: '1px solid #E4D0F5' }}>
+                        <div className="text-[9px] font-extrabold tracking-widest text-stone-400">AVG IMPACT</div>
+                        <div className="text-xs font-bold mono">
+                          A {balance.A?.impact ?? '—'} · B {balance.B?.impact ?? '—'}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="text-[10px] text-stone-400 mb-2 px-1">
-                  Tap a player, then tap a slot to place them. Tap a placed player to pick them back up.
+                  {draftedIds.size > 0
+                    ? 'Draft is a proposal — every magnet still moves, and Re-draft keeps players you placed by hand.'
+                    : 'Tap a player, then tap a slot to place them. Tap a placed player to pick them back up.'}
                 </div>
                 <TeamBoard
                   players={players}
@@ -457,6 +599,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                   assignments={assignments}
                   groupOverrides={groupOverrides}
                   spondAvailability={spondAvailability}
+                  starts={startsById.size > 0 ? startsById : null}
                   onAssign={assign}
                   onOverride={setOverride}
                 />
@@ -525,7 +668,27 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
             {publishResult.msg}
           </div>
         )}
+        {copyToast && (
+          <div
+            className="mb-2 text-sm text-center px-2 py-1.5 rounded-lg"
+            style={{
+              background: copyToast.startsWith('Copied') ? '#D1FAE5' : '#FEE2E2',
+              color: copyToast.startsWith('Copied') ? '#065F46' : '#991B1B',
+            }}
+          >
+            {copyToast}
+          </div>
+        )}
         <div className="flex gap-2">
+          <button
+            onClick={handleCopy}
+            disabled={!canSave}
+            aria-label="Copy team sheet for WhatsApp"
+            className="tap-target rounded-lg px-4 flex items-center justify-center active:scale-95 transition disabled:opacity-40"
+            style={{ background: 'white', border: '1px solid #C8A0E8', color: PURPLE, minHeight: '52px' }}
+          >
+            <Copy size={18} strokeWidth={2.5} />
+          </button>
           <button
             onClick={handleSave}
             disabled={!canSave || publishing}

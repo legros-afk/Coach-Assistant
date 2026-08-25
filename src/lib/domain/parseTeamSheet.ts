@@ -28,11 +28,14 @@ interface RawBlock {
   bench: string[];
 }
 
-const isTeamHeader     = (s: string) => /^team\s+[a-c]$/.test(s);
-const isForwardsHeader = (s: string) => /^(forwards?|f)$/.test(s);
-const isBacksHeader    = (s: string) => /^(backs?|b)$/.test(s);
-const isScrumHeader    = (s: string) => /^(scrum[\s-]?half|scrumhalf|sh)$/.test(s);
-const isBenchHeader    = (s: string) => /^(bench|subs?|finishers?)$/.test(s);
+// WhatsApp bold/italic markers (*Team A*, _Bench_) are stripped before header checks
+const stripWa          = (s: string) => s.replace(/^[*_~]+|[*_~]+$/g, '').trim();
+const isTeamHeader     = (s: string) => /^team\s+[a-c]$/.test(stripWa(s));
+const isForwardsHeader = (s: string) => /^(forwards?|f)$/.test(stripWa(s));
+const isBacksHeader    = (s: string) => /^(backs?|b)$/.test(stripWa(s));
+const isScrumHeader    = (s: string) => /^(scrum[\s-]?half|scrumhalf|sh)$/.test(stripWa(s));
+const isBenchHeader    = (s: string) => /^(bench|subs?|finishers?)$/.test(stripWa(s));
+const isUnavailHeader  = (s: string) => /^(unavailable|not available|out|missing)$/.test(stripWa(s));
 
 function splitTokens(s: string): string[] {
   return s.split(/,|\s+and\s+|&/)
@@ -43,7 +46,7 @@ function splitTokens(s: string): string[] {
 function extractRawBlocks(text: string): RawBlock[] {
   const blocks: RawBlock[] = [];
   let current: RawBlock | null = null;
-  let mode: 'starters' | 'bench' = 'starters';
+  let mode: 'starters' | 'bench' | 'skip' = 'starters';
   let hintedGroup: Group | null = null;
 
   function newBlock(label: string) {
@@ -54,6 +57,7 @@ function extractRawBlocks(text: string): RawBlock[] {
   }
 
   function addTokens(raw: string[]) {
+    if (mode === 'skip') return;
     if (!current) newBlock('Team');
     for (const t of raw) {
       if (!t) continue;
@@ -76,8 +80,10 @@ function extractRawBlocks(text: string): RawBlock[] {
       const inline = rest ? splitTokens(rest) : [];
 
       if (isTeamHeader(head)) {
-        newBlock(line.slice(0, colonIdx).trim());
+        newBlock(stripWa(line.slice(0, colonIdx).trim()));
         addTokens(inline);
+      } else if (isUnavailHeader(head)) {
+        mode = 'skip'; hintedGroup = null;
       } else if (isForwardsHeader(head)) {
         mode = 'starters'; hintedGroup = 'forward';
         addTokens(inline);
@@ -97,7 +103,9 @@ function extractRawBlocks(text: string): RawBlock[] {
     } else {
       const low = line.toLowerCase();
       if (isTeamHeader(low)) {
-        newBlock(line);
+        newBlock(stripWa(line));
+      } else if (isUnavailHeader(low)) {
+        mode = 'skip'; hintedGroup = null;
       } else if (isForwardsHeader(low)) {
         mode = 'starters'; hintedGroup = 'forward';
       } else if (isBacksHeader(low)) {
@@ -113,7 +121,10 @@ function extractRawBlocks(text: string): RawBlock[] {
   }
 
   if (current) blocks.push(current);
-  return blocks;
+  // A title line before the first "Team A" header lands in an implicit block —
+  // drop it when explicit team blocks exist (e.g. the app's own WhatsApp export).
+  const explicit = blocks.filter(b => b.label !== 'Team');
+  return explicit.length > 0 ? explicit : blocks;
 }
 
 // ─── name resolution ──────────────────────────────────────────────────────────
