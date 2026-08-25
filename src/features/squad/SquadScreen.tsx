@@ -295,12 +295,13 @@ export default function SquadScreen({ onBack }: Props) {
       {/* Player edit bottom sheet */}
       {editTarget !== null && (
         <div
-          className="fixed inset-0 z-40 flex items-end"
+          className="fixed inset-0 z-50 flex items-end"
           style={{ background: 'rgba(32,24,32,0.7)' }}
           onClick={closeEdit}
         >
           <div
             className="bg-white w-full rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto"
+            style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
