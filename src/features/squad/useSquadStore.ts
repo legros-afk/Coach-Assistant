@@ -4,6 +4,7 @@ import { syncFromDrive } from '@/lib/drive/driveSync';
 import type { ID, Player, Squad } from '@/lib/events/types';
 import { DEMO_SQUAD } from '@/features/match/mockData';
 import { DRIVE_FOLDER_ID } from '@/config/club';
+import { currentSeason } from '@/lib/domain/season';
 
 export const DEMO_SQUAD_ID = 'demo-squad';
 const API_KEY = import.meta.env.VITE_GOOGLE_DRIVE_API_KEY as string | undefined;
@@ -44,7 +45,7 @@ export const useSquadStore = create<SquadStore>()((set, get) => ({
     const player: Player = { ...draft, id: newPlayerId() };
     const updated: Squad = squad
       ? { ...squad, players: [...squad.players, player], updatedAt: nowIso(), version: squad.version + 1 }
-      : { id: newPlayerId(), name: 'Woodford U12', season: '2025-26', players: [player], updatedAt: nowIso(), version: 1 };
+      : { id: newPlayerId(), name: 'Woodford U12', season: currentSeason(), players: [player], updatedAt: nowIso(), version: 1 };
     await saveSquad(updated);
     set({ squad: updated });
   },
@@ -79,7 +80,7 @@ export const useSquadStore = create<SquadStore>()((set, get) => ({
     const demo: Squad = {
       id: DEMO_SQUAD_ID,
       name: 'Woodford U12 (Demo)',
-      season: '2025-26',
+      season: currentSeason(),
       players: DEMO_SQUAD,
       updatedAt: nowIso(),
       version: 1,

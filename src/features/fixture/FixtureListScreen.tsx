@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Calendar, ChevronRight, Link2, Plus, RefreshCw } from 'lucide-react'
+import { Calendar, CalendarPlus, ChevronRight, Link2, Plus, RefreshCw } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Fixture, Match, TeamSheet } from '@/lib/events/types'
 import { db } from '@/lib/db/db'
 import { useFixtureStore } from './useFixtureStore'
 import { useSyncStore, fmtSyncAge } from '@/lib/drive/useSyncStore'
 import SpondSheet from '@/features/spond/SpondSheet'
-import { spondConfigured, getSpondCreds, extractOpponent } from '@/lib/spond/spondStore'
+import { spondConfigured, getSpondCreds, extractOpponent, getKickoffDefaults, saveKickoffDefaults } from '@/lib/spond/spondStore'
 import { spondGetEvents, type SpondEvent } from '@/lib/spond/spondApi'
-import { ensureToken } from '@/lib/spond/spondSync'
+import { ensureToken, createSpondEventForFixture } from '@/lib/spond/spondSync'
 
 const PURPLE      = '#3D0066'
 const PURPLE_DARK = '#5B1A99'
@@ -24,13 +24,34 @@ interface Props {
 }
 
 export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImportSpond }: Props) {
-  const { fixtures, isHydrated, hydrate } = useFixtureStore()
+  const { fixtures, isHydrated, hydrate, saveFixture } = useFixtureStore()
   const { isSyncing, lastSyncedAt, syncAll } = useSyncStore()
   const [matchMap, setMatchMap] = useState<Map<string, Match>>(new Map())
   const [playersPerSide, setPlayersPerSideState] = useState<number>(() => {
     const stored = localStorage.getItem(PPS_KEY)
     return stored ? parseInt(stored, 10) : 12
   })
+
+  const [kickOff,  setKickOff]  = useState(() => getKickoffDefaults().kickOff)
+  const [duration, setDuration] = useState(() => getKickoffDefaults().durationMins)
+  const [pushingId, setPushingId] = useState<string | null>(null)
+  const [pushError, setPushError] = useState('')
+
+  // One fixture at a time, on purpose: Spond's API is undocumented, so the
+  // first event is worth eyeballing in the app before doing the rest.
+  const pushToSpond = async (fixture: Fixture) => {
+    setPushingId(fixture.id)
+    setPushError('')
+    try {
+      saveKickoffDefaults(kickOff, duration)
+      const eventId = await createSpondEventForFixture(fixture)
+      await saveFixture({ ...fixture, spondEventId: eventId, version: fixture.version + 1, updatedAt: new Date().toISOString() })
+    } catch (e) {
+      setPushError(e instanceof Error ? e.message : 'Could not create the Spond event')
+    } finally {
+      setPushingId(null)
+    }
+  }
 
   const [showSpondSheet, setShowSpondSheet]   = useState(false)
   const [spondEvents,    setSpondEvents]       = useState<SpondEvent[]>([])
@@ -152,6 +173,40 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
           </div>
         ) : (
           <div className="space-y-1.5">
+            {isSpondLinked && (
+              <div className="rounded-lg bg-white px-3 py-2 mb-1.5" style={{ border: '1px solid #E4D0F5' }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 flex-1">
+                    Spond kick-off
+                  </span>
+                  <input
+                    type="time"
+                    value={kickOff}
+                    onChange={e => setKickOff(e.target.value)}
+                    className="px-2 py-1 rounded border text-xs outline-none"
+                    style={{ borderColor: '#E4D0F5', color: INK }}
+                  />
+                  <input
+                    type="number"
+                    min={15}
+                    step={15}
+                    value={duration}
+                    onChange={e => setDuration(parseInt(e.target.value, 10) || 120)}
+                    className="w-16 px-2 py-1 rounded border text-xs outline-none"
+                    style={{ borderColor: '#E4D0F5', color: INK }}
+                    title="Length in minutes"
+                  />
+                  <span className="text-[10px] text-stone-400">min</span>
+                </div>
+                <div className="text-[10px] text-stone-400 mt-1">
+                  Used for every event you add. Festivals and evening games will need their times
+                  corrected in Spond.
+                </div>
+                {pushError && (
+                  <div className="text-[11px] font-semibold mt-1.5" style={{ color: '#DC2626' }}>{pushError}</div>
+                )}
+              </div>
+            )}
             {fixtures.map(f => {
               const playedSheets = f.teamSheets.filter(ts => matchMap.has(ts.id))
               return (
@@ -184,6 +239,26 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
                           </button>
                         )
                       })}
+                    </div>
+                  )}
+                  {isSpondLinked && (
+                    <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      {f.spondEventId ? (
+                        <span className="text-[10px] font-bold px-2 py-1 rounded" style={{ background: '#ECFDF5', color: '#059669' }}>
+                          In Spond
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => pushToSpond(f)}
+                          disabled={pushingId !== null}
+                          className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded active:scale-95 transition disabled:opacity-40"
+                          style={{ background: '#F3E8FF', color: PURPLE }}
+                          title={`Create a Spond event at ${kickOff}`}
+                        >
+                          <CalendarPlus size={11} strokeWidth={2.5} />
+                          {pushingId === f.id ? 'Adding…' : 'Add'}
+                        </button>
+                      )}
                     </div>
                   )}
                   <ChevronRight size={16} className="text-stone-300 flex-shrink-0" />
