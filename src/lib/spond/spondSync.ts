@@ -1,8 +1,8 @@
 // Higher-level Spond helpers used by the app UI.
 
-import { spondLogin, spondGetGroups, spondGetEvents } from './spondApi'
-import { getSpondCreds, saveSpondToken, clearSpondToken, matchMember } from './spondStore'
-import type { Player } from '@/lib/events/types'
+import { spondLogin, spondGetGroups, spondGetEvents, spondCreateEvent } from './spondApi'
+import { getSpondCreds, saveSpondToken, clearSpondToken, matchMember, getKickoffDefaults, eventWindow } from './spondStore'
+import type { Fixture, Player } from '@/lib/events/types'
 
 export async function ensureToken(forceRefresh = false): Promise<string> {
   const { email, password, token } = getSpondCreds()
@@ -82,4 +82,24 @@ export async function getSpondAvailability(
     unanswered: idsFor(event.responses.unansweredIds),
     unmatched:  unmatchedNames,
   }
+}
+
+// Creates the Spond event for a fixture and returns its id, which the caller
+// stores on the fixture so availability sync works and the event is never
+// created twice. Times come from the coach's kick-off defaults — the club
+// schedule only carries dates.
+export async function createSpondEventForFixture(fixture: Fixture): Promise<string> {
+  const { groupId } = getSpondCreds()
+  if (!groupId) throw new Error('No Spond group selected — open settings')
+  if (fixture.spondEventId) throw new Error('This fixture already has a Spond event')
+
+  const { kickOff, durationMins } = getKickoffDefaults()
+  const { startTimestamp, endTimestamp } = eventWindow(fixture.date, kickOff, durationMins)
+
+  return withFreshToken(token => spondCreateEvent(token, {
+    groupId,
+    heading: `vs ${fixture.opponent}`,
+    startTimestamp,
+    endTimestamp,
+  }))
 }
