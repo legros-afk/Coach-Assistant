@@ -27,3 +27,10 @@ export function hasUnpublishedSquadEdits(localVersion: number): boolean {
   if (synced === null) return false;
   return localVersion > synced;
 }
+
+// Gives up this device's unpublished squad edits so the next sync accepts the
+// club copy. Marking the local version as synced is exactly that: it stops
+// claiming to hold anything Drive doesn't have.
+export function discardLocalSquadEdits(localVersion: number): void {
+  markSquadSynced(localVersion);
+}

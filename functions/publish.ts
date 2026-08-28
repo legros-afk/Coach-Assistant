@@ -9,7 +9,7 @@
 // an attacker could rotate IPs) but raises the cost well past what's worth
 // it for a junior club's team-sheet folder.
 //
-// Accepts POST { code, folderId, subfolder?, fileName, content }
+// Accepts POST { code, folderId, subfolder?, fileName, content, baseVersion?, force? }
 
 interface Env {
   GOOGLE_SERVICE_ACCOUNT_EMAIL: string
@@ -23,6 +23,21 @@ interface PublishRequest {
   subfolder?: string
   fileName: string
   content: unknown
+  /**
+   * Version this edit was based on — what the publisher believed was already
+   * in Drive. When set, the write only lands if Drive is still on that
+   * version, so two coaches editing from the same starting point can't
+   * silently overwrite each other. Omit to write unconditionally.
+   */
+  baseVersion?: number
+  /** Publish over a conflict deliberately, after the coach has been shown it. */
+  force?: boolean
+}
+
+class ConflictError extends Error {
+  constructor(public readonly driveVersion: number | null) {
+    super('conflict')
+  }
 }
 
 const DRIVE_BASE  = 'https://www.googleapis.com/drive/v3'
@@ -166,11 +181,36 @@ function multipartBody(metadata: object, content: unknown): string {
   ].join('\r\n')
 }
 
-async function upsertFile(name: string, content: unknown, parentId: string, token: string): Promise<string> {
+// Returns the `version` field of a stored JSON document, or null when it has
+// none or can't be parsed.
+async function storedVersion(fileId: string, token: string): Promise<number | null> {
+  const res = await fetch(`${DRIVE_BASE}/files/${fileId}?alt=media`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) return null
+  try {
+    const doc = await res.json() as { version?: unknown }
+    return typeof doc.version === 'number' ? doc.version : null
+  } catch {
+    return null
+  }
+}
+
+async function upsertFile(name: string, content: unknown, parentId: string, token: string, baseVersion?: number): Promise<string> {
   // Name-based lookup, not a client-cached file ID — any coach's device finds
   // the same file, so two coaches publishing the same fixture update in
   // place instead of creating duplicates.
   const existing = await findFileId(name, parentId, token)
+
+  // Compare-and-swap. A missing file is not a conflict — there is nothing to
+  // overwrite. Nor is a document we can't read a version out of: refusing to
+  // publish over an unparseable file would leave a coach with no way to fix
+  // it from the app, which is worse than the race this guards against.
+  if (existing && baseVersion !== undefined) {
+    const current = await storedVersion(existing, token)
+    if (current !== null && current !== baseVersion) throw new ConflictError(current)
+  }
+
   const url = existing
     ? `${UPLOAD_BASE}/files/${existing}?uploadType=multipart`
     : `${UPLOAD_BASE}/files?uploadType=multipart`
@@ -216,9 +256,17 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const parentId = payload.subfolder
       ? await ensureSubfolder(payload.subfolder, payload.folderId, token)
       : payload.folderId
-    await upsertFile(payload.fileName, payload.content, parentId, token)
+    await upsertFile(payload.fileName, payload.content, parentId, token, payload.force ? undefined : payload.baseVersion)
     return Response.json({ ok: true })
   } catch (e) {
+    if (e instanceof ConflictError) {
+      return Response.json({
+        ok: false,
+        conflict: true,
+        driveVersion: e.driveVersion,
+        error: 'Another coach has published since you last synced.',
+      }, { status: 409 })
+    }
     return Response.json({ ok: false, error: e instanceof Error ? e.message : 'Publish failed' }, { status: 502 })
   }
 }

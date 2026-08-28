@@ -7,7 +7,7 @@ import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, Player } from '@/lib/events/types'
 import { clubPinConfigured } from '@/lib/drive/driveRead'
 import { publishSquad } from '@/lib/drive/drivePublish'
-import { markSquadSynced } from '@/lib/drive/squadSyncState'
+import { markSquadSynced, discardLocalSquadEdits } from '@/lib/drive/squadSyncState'
 import { DRIVE_FOLDER_ID } from '@/config/club'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
@@ -57,6 +57,7 @@ export default function SquadScreen({ onBack }: Props) {
   const [editTarget, setEditTarget] = useState<Player | 'new' | null>(null)
   const [form, setForm] = useState<PlayerForm>(emptyForm())
   const [publishing, setPublishing] = useState(false)
+  const [conflict, setConflict]     = useState(false)
   const [banner, setBanner] = useState<{ ok: boolean; msg: string } | null>(null)
   const { isSyncing, syncAll } = useSyncStore()
 
@@ -120,15 +121,35 @@ export default function SquadScreen({ onBack }: Props) {
     showBanner(!lastError, lastError ?? 'Squad & fixtures synced from Drive.')
   }
 
-  const handlePublish = async () => {
+  const handlePublish = async (force = false) => {
     if (!squad) return
     setPublishing(true)
-    const result = await publishSquad(squad, DRIVE_FOLDER_ID)
-    // What's on Drive is now this version, so these edits are no longer
-    // unpublished — without this the device would keep refusing club updates.
-    if (result.ok) markSquadSynced(squad.version)
+    const result = await publishSquad(squad, DRIVE_FOLDER_ID, force)
     setPublishing(false)
-    showBanner(result.ok, result.ok ? 'Squad published to Drive.' : result.error)
+
+    if (result.ok) {
+      // What's on Drive is now this version, so these edits are no longer
+      // unpublished — without this the device would keep refusing club updates.
+      markSquadSynced(squad.version)
+      setConflict(false)
+      showBanner(true, 'Squad published to Drive.')
+      return
+    }
+    // A conflict isn't a failure to retry — it needs the coach to choose, so
+    // it gets its own prompt rather than a banner that scrolls away.
+    if (result.conflict) {
+      setConflict(true)
+      return
+    }
+    showBanner(false, result.error)
+  }
+
+  // Give up this device's edits and take the club copy instead.
+  const handleTakeClubCopy = async () => {
+    if (!squad) return
+    discardLocalSquadEdits(squad.version)
+    setConflict(false)
+    await handlePull()
   }
 
   const handleLoadDemo = async () => {
@@ -180,7 +201,7 @@ export default function SquadScreen({ onBack }: Props) {
             Pull from club
           </button>
           <button
-            onClick={handlePublish}
+            onClick={() => handlePublish()}
             disabled={!canPublish || publishing}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide transition active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
             style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
@@ -194,6 +215,45 @@ export default function SquadScreen({ onBack }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Publish conflict — needs a decision, so it stays put until one is made */}
+      {conflict && (
+        <div className="mx-3 mt-3 px-3 py-3 rounded-lg" style={{ background: '#FEF3C7', border: '1px solid #FCD34D' }}>
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={15} strokeWidth={2.5} className="flex-shrink-0 mt-0.5" style={{ color: '#92400E' }} />
+            <div className="flex-1">
+              <div className="text-sm font-bold" style={{ color: '#92400E' }}>
+                Another coach published since you last synced
+              </div>
+              <div className="text-xs mt-1" style={{ color: '#92400E' }}>
+                Publishing now would overwrite their changes. Your edits are still safe on this
+                phone either way.
+              </div>
+              <div className="flex gap-2 mt-2.5">
+                <button
+                  onClick={() => handlePublish(true)}
+                  disabled={publishing}
+                  className="px-2.5 py-1.5 rounded text-[11px] font-bold uppercase tracking-wide active:scale-95 transition disabled:opacity-40"
+                  style={{ background: '#92400E', color: 'white' }}
+                >
+                  Keep mine
+                </button>
+                <button
+                  onClick={handleTakeClubCopy}
+                  disabled={publishing || isSyncing}
+                  className="px-2.5 py-1.5 rounded text-[11px] font-bold uppercase tracking-wide active:scale-95 transition disabled:opacity-40"
+                  style={{ background: 'white', color: '#92400E', border: '1px solid #FCD34D' }}
+                >
+                  Take theirs
+                </button>
+              </div>
+              <div className="text-[10px] mt-1.5" style={{ color: '#B45309' }}>
+                "Keep mine" replaces the club copy. "Take theirs" discards your edits on this device.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Banner */}
       {banner && (
