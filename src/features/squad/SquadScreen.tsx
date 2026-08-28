@@ -379,6 +379,9 @@ export default function SquadScreen({ onBack }: Props) {
                     )
                   })}
                 </div>
+                <div className="text-[11px] text-stone-400 mt-2 leading-snug">
+                  Position comes from the club spreadsheet — the next "Pull from club" will overwrite it if the sheet still says something different.
+                </div>
               </div>
 
               {/* Notes */}
