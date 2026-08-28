@@ -15,7 +15,8 @@ export const useFixtureStore = create<FixtureStore>()((set, get) => ({
   isHydrated: false,
 
   hydrate: async () => {
-    const fixtures = await db.fixtures.orderBy('date').reverse().toArray();
+    // Soonest first — the next match is what a coach opens the app for.
+    const fixtures = await db.fixtures.orderBy('date').toArray();
     set({ fixtures, isHydrated: true });
   },
 
@@ -25,7 +26,9 @@ export const useFixtureStore = create<FixtureStore>()((set, get) => ({
     const idx = fixtures.findIndex(f => f.id === fixture.id);
     const updated = idx >= 0
       ? fixtures.map(f => f.id === fixture.id ? fixture : f)
-      : [fixture, ...fixtures];
+      : [...fixtures, fixture];
+    // A new or re-dated fixture has to slot into place, not sit where it landed.
+    updated.sort((a, b) => a.date.localeCompare(b.date));
     set({ fixtures: updated });
   },
 

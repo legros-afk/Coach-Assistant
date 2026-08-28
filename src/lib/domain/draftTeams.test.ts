@@ -136,4 +136,23 @@ describe('draftTeams', () => {
       .reduce((s, p) => s + (p.ratings?.impact ?? 3), 0);
     expect(Math.abs(sum('A') - sum('B'))).toBeLessThanOrEqual(1);
   });
+
+  it('places nobody in Team B when drafting a single team', () => {
+    const players = squadFor7s();
+    const result = run(players, { teamCount: 1 });
+    const teams = [...result.assignments.values()];
+    expect(teams).not.toContain('B');
+    expect(teams).not.toContain('bench-B');
+    expect(teams).toContain('A');
+  });
+
+  it('fills one full side and benches the rest in one-team mode', () => {
+    const players = squadFor7s();
+    const result = run(players, { teamCount: 1 });
+    const starters = players.filter(p => result.assignments.get(p.id) === 'A');
+    // 7-a-side is 5F/1B/1SH — one side's worth, not two.
+    expect(starters).toHaveLength(7);
+    const benched = players.filter(p => result.assignments.get(p.id) === 'bench-A');
+    expect(starters.length + benched.length).toBe(players.length);
+  });
 });

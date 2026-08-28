@@ -20,6 +20,8 @@ const PURPLE      = '#3D0066'
 const PURPLE_DARK = '#5B1A99'
 const INK         = '#1A1A1A'
 
+const TEAM_COUNT_KEY = 'coach-team-count'
+
 const todayIso = () => new Date().toISOString().slice(0, 10)
 let _seq = 0
 const newId = () => `f-${Date.now()}-${++_seq}`
@@ -80,6 +82,13 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const [opponent, setOpponent]   = useState(existing?.opponent ?? initialOpponent ?? '')
   const opponentRef = useRef<HTMLInputElement>(null)
   const [playersPerSide]          = useState(existing?.playersPerSide ?? initialPlayersPerSide ?? 12)
+  // An existing fixture already says how many teams it was built for; a new one
+  // falls back to whatever this coach chose last.
+  const [teamCount, setTeamCountState] = useState<1 | 2>(() => {
+    if (existing) return existing.teamSheets.length > 1 ? 2 : 1
+    const stored = localStorage.getItem(TEAM_COUNT_KEY)
+    return stored === '1' ? 1 : 2
+  })
   const [spondEventId]            = useState(existing?.spondEventId ?? initialSpondEventId)
 
   // ── spond availability sync
@@ -155,6 +164,22 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   // this set, which is what lets Re-draft keep hand placements pinned.
   const [draftedIds, setDraftedIds] = useState<Set<ID>>(new Set())
 
+  const setTeamCount = (n: 1 | 2) => {
+    localStorage.setItem(TEAM_COUNT_KEY, String(n))
+    setTeamCountState(n)
+    if (n === 1) {
+      // Team B is hidden from here on — anyone parked there would otherwise be
+      // saved into a team sheet the coach can no longer see or edit.
+      setAssignments(m => {
+        const next = new Map(m)
+        for (const [id, val] of next) {
+          if (val === 'B' || val === 'bench-B') next.set(id, null)
+        }
+        return next
+      })
+    }
+  }
+
   const assign = (id: ID, val: Assignment) => {
     setAssignments(m => new Map(m).set(id, val))
     setDraftedIds(s => {
@@ -204,6 +229,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       groupOverrides: baseOverrides,
       playersPerSide,
       starts: startsById,
+      teamCount,
     })
     result.assignments.forEach((v, k) => base.set(k, v))
     result.groups.forEach((v, k) => baseOverrides.set(k, v))
@@ -488,7 +514,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
         {/* Fill bar */}
         <div className="px-3 py-1.5 flex gap-2" style={{ background: INK }}>
           <FillBadge label="A" stats={teamA} />
-          <FillBadge label="B" stats={teamB} />
+          {teamCount === 2 && <FillBadge label="B" stats={teamB} />}
         </div>
       </div>
 
@@ -533,6 +559,24 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
           <div className="flex items-center justify-between pt-0.5">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Players per side</span>
             <span className="text-sm font-bold" style={{ color: INK }}>{playersPerSide}</span>
+          </div>
+          <div className="flex items-center justify-between pt-0.5">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Teams today</span>
+            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E4D0F5' }}>
+              {([1, 2] as const).map(n => (
+                <button
+                  key={n}
+                  onClick={() => setTeamCount(n)}
+                  className="px-3 py-1 text-xs font-bold transition"
+                  style={{
+                    background: teamCount === n ? PURPLE : 'white',
+                    color: teamCount === n ? 'white' : '#7B5FA8',
+                  }}
+                >
+                  {n === 1 ? 'One' : 'Two'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -611,6 +655,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                   groupOverrides={groupOverrides}
                   spondAvailability={spondAvailability}
                   starts={startsById.size > 0 ? startsById : null}
+                  teamCount={teamCount}
                   onAssign={assign}
                   onOverride={setOverride}
                 />

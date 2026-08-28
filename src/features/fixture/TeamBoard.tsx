@@ -32,11 +32,13 @@ interface Props {
   spondAvailability: SpondAvailability | null
   /** Season starts per player; null hides the counts (e.g. first fixture of the season). */
   starts?: Map<ID, number> | null
+  /** 1 hides the Team B panel for match days with only enough players for one side. */
+  teamCount?: 1 | 2
   onAssign: (id: ID, val: Assignment) => void
   onOverride: (id: ID, group: Group | null) => void
 }
 
-export default function TeamBoard({ players, playersPerSide, assignments, groupOverrides, spondAvailability, starts = null, onAssign, onOverride }: Props) {
+export default function TeamBoard({ players, playersPerSide, assignments, groupOverrides, spondAvailability, starts = null, teamCount = 2, onAssign, onOverride }: Props) {
   const [selectedId, setSelectedId] = useState<ID | null>(null)
 
   const limits = teamLimits(playersPerSide)
@@ -231,9 +233,9 @@ export default function TeamBoard({ players, playersPerSide, assignments, groupO
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className={teamCount === 2 ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-1'}>
         {teamPanel('A')}
-        {teamPanel('B')}
+        {teamCount === 2 && teamPanel('B')}
       </div>
 
       {selected && (

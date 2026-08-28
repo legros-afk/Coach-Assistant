@@ -47,7 +47,9 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
   const today   = todayStr()
 
   const todayFixtures    = fixtures.filter(f => f.date === today)
-  const upcomingFixtures = fixtures.filter(f => f.date > today).slice(0, 5)
+  // Just the one next fixture — fixtures are ordered soonest-first, so that is
+  // the head of the list. Anything further out lives in the Fixtures tab.
+  const upcomingFixtures = fixtures.filter(f => f.date > today).slice(0, 1)
 
   const hasActiveMatch = activeMatchId !== null && activeEvents.length > 0
 

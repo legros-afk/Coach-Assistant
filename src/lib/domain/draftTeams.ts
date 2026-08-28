@@ -12,6 +12,8 @@ export interface DraftOptions {
   playersPerSide: number;
   /** Season starts per player, used to give low-starts players priority to start. */
   starts: Map<ID, number>;
+  /** 1 drafts a single side — nobody is placed in Team B or its bench. */
+  teamCount?: 1 | 2;
   rng?: () => number;
 }
 
@@ -37,7 +39,7 @@ function shuffle<T>(arr: T[], rng: () => number): T[] {
   return out;
 }
 
-export function draftTeams({ players, existing, groupOverrides, playersPerSide, starts, rng = Math.random }: DraftOptions): DraftResult {
+export function draftTeams({ players, existing, groupOverrides, playersPerSide, starts, teamCount = 2, rng = Math.random }: DraftOptions): DraftResult {
   const limits = teamLimits(playersPerSide);
   const startsOf = (p: Player) => starts.get(p.id) ?? 0;
 
@@ -47,9 +49,14 @@ export function draftTeams({ players, existing, groupOverrides, playersPerSide, 
     starts: number;
     benchCount: number;
   }
+  // In one-team mode Team B simply has no slots to fill, which keeps every
+  // balance decision below untouched — B is never a candidate.
+  const bLimits = teamCount === 2
+    ? { forward: limits.f, back: limits.b, scrumhalf: limits.sh }
+    : { forward: 0, back: 0, scrumhalf: 0 };
   const teams: Record<'A' | 'B', TeamState> = {
     A: { remaining: { forward: limits.f, back: limits.b, scrumhalf: limits.sh }, impact: 0, starts: 0, benchCount: 0 },
-    B: { remaining: { forward: limits.f, back: limits.b, scrumhalf: limits.sh }, impact: 0, starts: 0, benchCount: 0 },
+    B: { remaining: bLimits, impact: 0, starts: 0, benchCount: 0 },
   };
 
   // Account for locked placements.
@@ -113,9 +120,11 @@ export function draftTeams({ players, existing, groupOverrides, playersPerSide, 
   // Everyone still unplaced goes on a bench — evens out the two benches.
   for (const p of pool) {
     if (taken.has(p.id)) continue;
-    const team = teams.A.benchCount !== teams.B.benchCount
-      ? (teams.A.benchCount < teams.B.benchCount ? 'A' : 'B')
-      : (rng() < 0.5 ? 'A' : 'B');
+    const team = teamCount === 1
+      ? 'A'
+      : teams.A.benchCount !== teams.B.benchCount
+        ? (teams.A.benchCount < teams.B.benchCount ? 'A' : 'B')
+        : (rng() < 0.5 ? 'A' : 'B');
     assignments.set(p.id, `bench-${team}`);
     teams[team].benchCount++;
   }

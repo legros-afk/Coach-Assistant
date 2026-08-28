@@ -7,6 +7,7 @@ import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, Player } from '@/lib/events/types'
 import { clubPinConfigured } from '@/lib/drive/driveRead'
 import { publishSquad } from '@/lib/drive/drivePublish'
+import { markSquadSynced } from '@/lib/drive/squadSyncState'
 import { DRIVE_FOLDER_ID } from '@/config/club'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
@@ -123,6 +124,9 @@ export default function SquadScreen({ onBack }: Props) {
     if (!squad) return
     setPublishing(true)
     const result = await publishSquad(squad, DRIVE_FOLDER_ID)
+    // What's on Drive is now this version, so these edits are no longer
+    // unpublished — without this the device would keep refusing club updates.
+    if (result.ok) markSquadSynced(squad.version)
     setPublishing(false)
     showBanner(result.ok, result.ok ? 'Squad published to Drive.' : result.error)
   }
