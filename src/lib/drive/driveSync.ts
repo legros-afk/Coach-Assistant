@@ -2,6 +2,7 @@ import { db } from '@/lib/db/db';
 import type { Fixture, Match, Squad } from '@/lib/events/types';
 import { DriveError, fetchFileJson, listFolder } from './driveRead';
 import { fetchSquadPositions, applyPositions } from './sheetsSync';
+import { hasUnpublishedSquadEdits, markSquadSynced } from './squadSyncState';
 
 export type SyncResult =
   | { ok: true;  squadUpdated: boolean; fixturesUpdated: number; matchesUpdated: number }
@@ -11,14 +12,18 @@ export async function syncFromDrive(folderId: string, _apiKey?: string): Promise
   try {
     const rootFiles = await listFolder(folderId);
 
-    // squad.json — keep local copy when it has unpublished edits (higher version)
+    // squad.json — keep the local copy only when this device holds edits it
+    // has never published. Comparing versions alone used to decide this, which
+    // silently wedged any device whose local version had drifted above Drive's:
+    // every later publish by another coach looked older and was skipped.
     const squadFile = rootFiles.find(f => f.name === 'squad.json');
     let squadUpdated = false;
     if (squadFile) {
       const squad = await fetchFileJson<Squad>(squadFile.id);
       const local = await db.squads.get(squad.id);
-      if (!local || (squad.version ?? 0) >= (local.version ?? 0)) {
+      if (!local || !hasUnpublishedSquadEdits(local.version ?? 0)) {
         await db.squads.put(squad);
+        markSquadSynced(squad.version ?? 0);
         squadUpdated = true;
       }
     }
@@ -31,7 +36,11 @@ export async function syncFromDrive(folderId: string, _apiKey?: string): Promise
       if (squad && positions.length > 0) {
         const { players, changed } = applyPositions(squad.players, positions);
         if (changed > 0) {
-          await db.squads.put({ ...squad, players, updatedAt: new Date().toISOString(), version: squad.version + 1 });
+          // Positions are derived from the club sheet, not edited by this
+          // coach. Bumping version/updatedAt here would make the device look
+          // like it had unpublished changes and stop it accepting squad
+          // updates published by anyone else.
+          await db.squads.put({ ...squad, players });
         }
       }
     } catch {
