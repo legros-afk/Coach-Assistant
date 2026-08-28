@@ -16,6 +16,10 @@ const INK         = '#1A1A1A'
 
 const PPS_KEY = 'coach-players-per-side'
 
+// Matches the other screens' notion of today so a fixture can't read as
+// upcoming on one and played on another.
+const todayIso = () => new Date().toISOString().slice(0, 10)
+
 interface Props {
   onNew: (playersPerSide: number) => void
   onEdit: (fixture: Fixture) => void
@@ -95,8 +99,75 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
   const importedSpondIds = new Set(fixtures.filter(f => f.spondEventId).map(f => f.spondEventId!))
   const isSpondLinked = spondConfigured()
 
+  // Played fixtures fold away so the list opens on what's next rather than on
+  // October once the season is under way. Today's game counts as upcoming.
+  const [showPast, setShowPast] = useState(false)
+  const today = todayIso()
+  const upcomingFixtures = fixtures.filter(f => f.date >= today)
+  // Most recent first — reviewing history reads backwards from now.
+  const pastFixtures = fixtures.filter(f => f.date < today).reverse()
+
   const fmtEventDate = (iso: string) =>
     new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+
+  const renderFixture = (f: Fixture) => {
+    const playedSheets = f.teamSheets.filter(ts => matchMap.has(ts.id))
+    return (
+      <button
+        key={f.id}
+        onClick={() => onEdit(f)}
+        className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border active:scale-[0.99] transition text-left"
+        style={{ borderColor: '#E4D0F5' }}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-sm" style={{ color: INK }}>vs {f.opponent}</div>
+          <div className="text-xs text-stone-400">{f.date} · {f.teamSheets.length} team sheet{f.teamSheets.length !== 1 ? 's' : ''}</div>
+        </div>
+        {playedSheets.length > 0 && (
+          <div className="flex gap-1 items-center flex-shrink-0" onClick={e => e.stopPropagation()}>
+            {playedSheets.map(ts => {
+              const match = matchMap.get(ts.id)!
+              const scoreUs = match.events.filter(e => e.type === 'TRY_US').length
+              const scoreThem = match.events.filter(e => e.type === 'TRY_THEM').length
+              const result = scoreUs > scoreThem ? 'W' : scoreUs < scoreThem ? 'L' : 'D'
+              const bg = result === 'W' ? '#059669' : result === 'L' ? '#DC2626' : '#D97706'
+              return (
+                <button
+                  key={ts.id}
+                  onClick={() => onViewMatch(match, ts)}
+                  className="px-2 py-1 rounded text-[11px] font-bold text-white active:scale-95 transition"
+                  style={{ background: bg }}
+                >
+                  {ts.label} {scoreUs}–{scoreThem}
+                </button>
+              )
+            })}
+          </div>
+        )}
+        {isSpondLinked && (
+          <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+            {f.spondEventId ? (
+              <span className="text-[10px] font-bold px-2 py-1 rounded" style={{ background: '#ECFDF5', color: '#059669' }}>
+                In Spond
+              </span>
+            ) : (
+              <button
+                onClick={() => pushToSpond(f)}
+                disabled={pushingId !== null}
+                className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded active:scale-95 transition disabled:opacity-40"
+                style={{ background: '#F3E8FF', color: PURPLE }}
+                title={`Create a Spond event at ${kickOff}`}
+              >
+                <CalendarPlus size={11} strokeWidth={2.5} />
+                {pushingId === f.id ? 'Adding…' : 'Add'}
+              </button>
+            )}
+          </div>
+        )}
+        <ChevronRight size={16} className="text-stone-300 flex-shrink-0" />
+      </button>
+    )
+  }
 
   return (
     <div className="min-h-screen pb-24" style={{ background: '#F8F4FF', color: INK }}>
@@ -207,64 +278,38 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
                 )}
               </div>
             )}
-            {fixtures.map(f => {
-              const playedSheets = f.teamSheets.filter(ts => matchMap.has(ts.id))
-              return (
+            {upcomingFixtures.map(renderFixture)}
+
+            {upcomingFixtures.length === 0 && (
+              <div className="py-6 text-center text-sm text-stone-400">
+                No fixtures left this season.
+              </div>
+            )}
+
+            {pastFixtures.length > 0 && (
+              <div className="pt-1">
                 <button
-                  key={f.id}
-                  onClick={() => onEdit(f)}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border active:scale-[0.99] transition text-left"
-                  style={{ borderColor: '#E4D0F5' }}
+                  onClick={() => setShowPast(p => !p)}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg active:scale-[0.99] transition"
+                  style={{ background: 'rgba(120,40,128,0.06)' }}
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm" style={{ color: INK }}>vs {f.opponent}</div>
-                    <div className="text-xs text-stone-400">{f.date} · {f.teamSheets.length} team sheet{f.teamSheets.length !== 1 ? 's' : ''}</div>
-                  </div>
-                  {playedSheets.length > 0 && (
-                    <div className="flex gap-1 items-center flex-shrink-0" onClick={e => e.stopPropagation()}>
-                      {playedSheets.map(ts => {
-                        const match = matchMap.get(ts.id)!
-                        const scoreUs = match.events.filter(e => e.type === 'TRY_US').length
-                        const scoreThem = match.events.filter(e => e.type === 'TRY_THEM').length
-                        const result = scoreUs > scoreThem ? 'W' : scoreUs < scoreThem ? 'L' : 'D'
-                        const bg = result === 'W' ? '#059669' : result === 'L' ? '#DC2626' : '#D97706'
-                        return (
-                          <button
-                            key={ts.id}
-                            onClick={() => onViewMatch(match, ts)}
-                            className="px-2 py-1 rounded text-[11px] font-bold text-white active:scale-95 transition"
-                            style={{ background: bg }}
-                          >
-                            {ts.label} {scoreUs}–{scoreThem}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-                  {isSpondLinked && (
-                    <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
-                      {f.spondEventId ? (
-                        <span className="text-[10px] font-bold px-2 py-1 rounded" style={{ background: '#ECFDF5', color: '#059669' }}>
-                          In Spond
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => pushToSpond(f)}
-                          disabled={pushingId !== null}
-                          className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded active:scale-95 transition disabled:opacity-40"
-                          style={{ background: '#F3E8FF', color: PURPLE }}
-                          title={`Create a Spond event at ${kickOff}`}
-                        >
-                          <CalendarPlus size={11} strokeWidth={2.5} />
-                          {pushingId === f.id ? 'Adding…' : 'Add'}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  <ChevronRight size={16} className="text-stone-300 flex-shrink-0" />
+                  <ChevronRight
+                    size={14}
+                    className="flex-shrink-0 transition-transform"
+                    style={{ color: '#7B5FA8', transform: showPast ? 'rotate(90deg)' : 'none' }}
+                    strokeWidth={2.5}
+                  />
+                  <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#7B5FA8' }}>
+                    {pastFixtures.length} played
+                  </span>
                 </button>
-              )
-            })}
+                {showPast && (
+                  <div className="space-y-1.5 mt-1.5">
+                    {pastFixtures.map(renderFixture)}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
