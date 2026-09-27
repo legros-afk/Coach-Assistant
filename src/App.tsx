@@ -1,33 +1,36 @@
 import { useEffect, useState } from 'react'
 import { useSquadStore } from '@/features/squad/useSquadStore'
-import type { Match, TeamSheet } from '@/lib/events/types'
+import { useMatchStore } from '@/features/match/useMatchStore'
+import type { Fixture, Match, TeamSheet } from '@/lib/events/types'
 import { replayEvents } from '@/lib/events/replay'
-import { Calendar, Home, Users } from 'lucide-react'
+import { CalendarDays, Users } from 'lucide-react'
 import LiveMatch from '@/features/match/LiveMatch'
 import PostMatchScreen, { type MatchViewData } from '@/features/match/PostMatchScreen'
 import SetupScreen from '@/features/setup/SetupScreen'
 import SquadScreen from '@/features/squad/SquadScreen'
-import FixtureListScreen from '@/features/fixture/FixtureListScreen'
+import MatchesScreen from '@/features/matches/MatchesScreen'
 import FixturePrepScreen from '@/features/fixture/FixturePrepScreen'
-import HomeScreen from '@/features/home/HomeScreen'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import InstallPrompt from '@/components/InstallPrompt'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
-import type { Fixture } from '@/lib/events/types'
 
 const PURPLE = '#3D0066'
 
-type Screen = 'loading' | 'setup' | 'home' | 'match' | 'post-match' | 'squad' | 'fixtures' | 'fixture-prep'
+// Two tabs: Matches (everything about a fixture, from picking to the result)
+// and Team (the squad and the season). Everything else opens over them.
+type Tab = 'matches' | 'team'
+type Screen = 'loading' | Tab | 'settings' | 'match' | 'post-match' | 'fixture'
 
 export default function App() {
-  const [screen, setScreen]                     = useState<Screen>('loading')
-  const [editingFixture, setEditingFixture]       = useState<Fixture | undefined>()
-  const [newFixturePPS, setNewFixturePPS]         = useState<number>(12)
-  const [newFixtureSpond, setNewFixtureSpond]     = useState<{ id: string; opponent: string; date: string } | undefined>()
+  const [screen, setScreen]                 = useState<Screen>('loading')
+  const [lastTab, setLastTab]               = useState<Tab>('matches')
+  const [editingFixture, setEditingFixture] = useState<Fixture | undefined>()
+  const [newFixturePPS, setNewFixturePPS]   = useState<number>(12)
+  const [newFixtureSpond, setNewFixtureSpond] = useState<{ id: string; opponent: string; date: string } | undefined>()
 
   useEffect(() => {
     useSyncStore.getState().syncAll()   // background sync, tracked in store
-    setScreen('home')
+    setScreen('matches')
     // Coming back to the app is when coaches expect it to be current:
     // update then, so nobody ever needs a refresh button.
     const onVisible = () => {
@@ -43,18 +46,37 @@ export default function App() {
     }
   }, [])
 
-  const openFixturePrep = (fixture?: Fixture, pps?: number) => {
+  const goTab = (t: Tab) => { setLastTab(t); setScreen(t) }
+  const openSettings = () => setScreen('settings')
+
+  const openFixture = (fixture?: Fixture, pps?: number) => {
     setEditingFixture(fixture)
     if (pps !== undefined) setNewFixturePPS(pps)
     setNewFixtureSpond(undefined)
-    setScreen('fixture-prep')
+    setScreen('fixture')
   }
 
   const importSpondFixture = (spondEventId: string, opponent: string, date: string, pps: number) => {
     setEditingFixture(undefined)
     setNewFixturePPS(pps)
     setNewFixtureSpond({ id: spondEventId, opponent, date })
-    setScreen('fixture-prep')
+    setScreen('fixture')
+  }
+
+  // Start — or pick back up — a team's match. initMatch resumes any events
+  // already recorded for that team sheet.
+  const startMatch = async (fixture: Fixture, teamSheet: TeamSheet) => {
+    const squad = useSquadStore.getState().squad
+    if (!squad) return
+    await useMatchStore.getState().initMatch({
+      fixtureId: fixture.id, teamSheet, squad: squad.players, opponent: fixture.opponent,
+    })
+    setScreen('match')
+  }
+
+  const startDemo = async () => {
+    await useMatchStore.getState().initDemoMatch()
+    setScreen('match')
   }
 
   // Stored matches are viewed via props, not the live match store — browsing
@@ -74,7 +96,7 @@ export default function App() {
     setScreen('post-match')
   }
 
-  const showTabBar = screen === 'home' || screen === 'squad' || screen === 'fixtures'
+  const showTabBar = screen === 'matches' || screen === 'team'
 
   if (screen === 'loading') {
     return (
@@ -84,27 +106,28 @@ export default function App() {
     )
   }
 
-  if (screen === 'setup') {
-    return (
-      <SetupScreen
-        onDone={() => setScreen('home')}
-        onBack={() => setScreen('home')}
-      />
-    )
+  if (screen === 'settings') {
+    return <SetupScreen onBack={() => setScreen(lastTab)} />
   }
 
   return (
     <div className="contents">
-      {screen === 'home' && (
-        <HomeScreen
-          onMatch={() => setScreen('match')}
-          onFixturePrep={f => openFixturePrep(f)}
-          onOpenSetup={() => setScreen('setup')}
+      {screen === 'matches' && (
+        <MatchesScreen
+          onStart={(f, ts) => void startMatch(f, ts)}
+          onResume={() => setScreen('match')}
+          onOpenFixture={f => openFixture(f)}
+          onNew={pps => openFixture(undefined, pps)}
+          onViewMatch={openStoredMatch}
+          onImportSpond={importSpondFixture}
+          onOpenSettings={openSettings}
+          onDemo={() => void startDemo()}
         />
       )}
+      {screen === 'team' && <SquadScreen onOpenSettings={openSettings} />}
       {screen === 'match' && (
         <LiveMatch
-          onBack={() => setScreen('home')}
+          onBack={() => goTab('matches')}
           onSummary={() => setScreen('post-match')}
         />
       )}
@@ -112,58 +135,46 @@ export default function App() {
         <PostMatchScreen
           data={viewingMatch ?? undefined}
           onBack={() => {
-            const fromHistory = viewingMatch !== null
             setViewingMatch(null)
-            setScreen(fromHistory ? 'fixtures' : 'home')
+            goTab('matches')
           }}
         />
       )}
-      {screen === 'squad' && (
-        <SquadScreen onBack={() => setScreen('home')} />
-      )}
-      {screen === 'fixtures' && (
-        <FixtureListScreen
-          onNew={pps => openFixturePrep(undefined, pps)}
-          onEdit={f => openFixturePrep(f)}
-          onViewMatch={openStoredMatch}
-          onImportSpond={importSpondFixture}
-        />
-      )}
-      {screen === 'fixture-prep' && (
+      {screen === 'fixture' && (
         <FixturePrepScreen
           existing={editingFixture}
           initialPlayersPerSide={newFixturePPS}
           initialOpponent={newFixtureSpond?.opponent}
           initialDate={newFixtureSpond?.date}
           initialSpondEventId={newFixtureSpond?.id}
-          onBack={() => setScreen('fixtures')}
-          onSaved={() => setScreen('fixtures')}
+          onBack={() => goTab('matches')}
+          onSaved={() => goTab('matches')}
         />
       )}
 
       <InstallPrompt visible={showTabBar} />
 
       {showTabBar && (
-        <div
+        <nav
           className="fixed bottom-0 left-0 right-0 flex z-40"
-          style={{ background: 'white', borderTop: '1px solid #E4D0F5' }}
+          style={{ background: 'white', borderTop: '1px solid #E4D0F5', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
           {([
-            { key: 'home',     icon: <Home     size={20} strokeWidth={2} />, label: 'Match' },
-            { key: 'fixtures', icon: <Calendar size={20} strokeWidth={2} />, label: 'Fixtures' },
-            { key: 'squad',    icon: <Users    size={20} strokeWidth={2} />, label: 'Squad' },
+            { key: 'matches', icon: <CalendarDays size={24} strokeWidth={2} />, label: 'Matches' },
+            { key: 'team',    icon: <Users        size={24} strokeWidth={2} />, label: 'Team' },
           ] as const).map(tab => (
             <button
               key={tab.key}
-              onClick={() => setScreen(tab.key)}
-              className="flex-1 py-3 flex flex-col items-center gap-0.5 active:scale-95 transition"
-              style={{ color: screen === tab.key ? PURPLE : '#7B5FA8' }}
+              onClick={() => goTab(tab.key)}
+              aria-current={screen === tab.key ? 'page' : undefined}
+              className="flex-1 pt-2.5 pb-2 flex flex-col items-center gap-0.5 active:scale-95 transition"
+              style={{ color: screen === tab.key ? PURPLE : '#8A7A99' }}
             >
               {tab.icon}
-              <span className="text-xs font-semibold">{tab.label}</span>
+              <span className="text-[13px] font-semibold">{tab.label}</span>
             </button>
           ))}
-        </div>
+        </nav>
       )}
     </div>
   )

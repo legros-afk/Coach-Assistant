@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  AlertTriangle, ChevronLeft,
-  Plus, Trash2, UserPlus, Users,
+  AlertTriangle, Plus, Settings, Trash2, UserPlus, Users,
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, Player } from '@/lib/events/types'
@@ -11,6 +10,7 @@ import { markSquadSynced, discardLocalSquadEdits } from '@/lib/drive/squadSyncSt
 import { DRIVE_FOLDER_ID } from '@/config/club'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
 import { friendlyShareError } from '@/lib/friendly'
+import SeasonView from './SeasonView'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
 
 const PURPLE      = '#3D0066'
@@ -49,9 +49,10 @@ function GroupBadge({ group }: { group: Group }) {
   )
 }
 
-interface Props { onBack: () => void }
+interface Props { onOpenSettings: () => void }
 
-export default function SquadScreen({ onBack }: Props) {
+export default function SquadScreen({ onOpenSettings }: Props) {
+  const [view, setView] = useState<'squad' | 'season'>('squad')
   const store = useSquadStore()
   const { squad, isHydrated, hydrate } = store
 
@@ -176,22 +177,37 @@ export default function SquadScreen({ onBack }: Props) {
 
       {/* Header */}
       <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
-        <div className="px-3 py-2 flex items-center gap-3" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
-          <button onClick={onBack} className="tap-target flex items-center justify-center -ml-1">
-            <ChevronLeft size={24} color="white" strokeWidth={2.5} />
-          </button>
-          <div className="flex items-center gap-2 flex-1">
-            <Users size={18} color="white" strokeWidth={2} />
-            <div className="leading-tight">
-              <div className="text-[13px] font-bold tracking-wide uppercase text-white">Squad</div>
-              <div className="text-[10px] text-white/70">
-                {squad ? `${players.length} player${players.length !== 1 ? 's' : ''}` : 'No squad loaded'}
-              </div>
+        <div className="px-3 py-2.5 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
+          <WoodfordMark size={24} color="white" />
+          <div className="flex-1 leading-tight min-w-0">
+            <div className="text-[17px] font-bold text-white">Team</div>
+            <div className="text-xs text-white/75">
+              {squad ? `${players.length} player${players.length !== 1 ? 's' : ''}` : 'No squad yet'}
             </div>
           </div>
-          <WoodfordMark size={22} color="white" />
+          <button
+            onClick={onOpenSettings}
+            className="h-10 px-3 flex items-center gap-1.5 rounded-lg active:scale-95 transition text-sm font-bold text-white"
+            style={{ background: 'rgba(255,255,255,0.15)' }}
+          >
+            <Settings size={16} strokeWidth={2.5} />
+            Settings
+          </button>
         </div>
-
+        <div className="px-3 py-2 flex" style={{ background: PURPLE }}>
+          <div className="flex-1 flex rounded-lg overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.3)' }}>
+            {([['squad', 'Squad'], ['season', 'Season']] as const).map(([k, label]) => (
+              <button
+                key={k}
+                onClick={() => setView(k)}
+                className="flex-1 h-10 text-sm font-bold transition"
+                style={{ background: view === k ? 'white' : 'transparent', color: view === k ? PURPLE : 'white' }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Publish conflict — needs a decision, so it stays put until one is made */}
@@ -265,7 +281,9 @@ export default function SquadScreen({ onBack }: Props) {
 
       {/* Content */}
       <div className="px-3 pt-3">
-        {!isHydrated ? (
+        {view === 'season' ? (
+          <SeasonView players={players} />
+        ) : !isHydrated ? (
           <div className="py-12 text-center text-stone-400 text-sm">Loading…</div>
         ) : players.length === 0 ? (
           /* Empty state */
@@ -327,7 +345,7 @@ export default function SquadScreen({ onBack }: Props) {
       </div>
 
       {/* Add player FAB — only when squad exists */}
-      {players.length > 0 && canEdit && (
+      {players.length > 0 && canEdit && view === 'squad' && (
         <div className="fixed bottom-20 right-4 z-20">
           <button
             onClick={openNew}
