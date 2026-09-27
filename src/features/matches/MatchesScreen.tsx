@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Calendar, CalendarPlus, ChevronRight, Link2, Play, Plus, RotateCcw, Settings } from 'lucide-react'
+import { CalendarPlus, ChevronRight, Link2, Play, Plus, RotateCcw, Settings } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Fixture, Match, TeamSheet } from '@/lib/events/types'
 import { db } from '@/lib/db/db'
@@ -17,8 +17,8 @@ import { getDefaultFormat } from '@/lib/prefs'
 const PURPLE      = '#3D0066'
 const PURPLE_DARK = '#5B1A99'
 const INK         = '#1A1A1A'
-const MUTED       = '#6B5B7B'
-const BORDER      = '#E4D0F5'
+const MUTED       = '#6E6E73'
+const BORDER      = '#E5E5EA'
 
 // "Sat 4 Oct" — how coaches talk about match days
 const fmtDate = (iso: string) => {
@@ -119,7 +119,13 @@ export default function MatchesScreen({
   const thisWeek = fixtures.filter(f => f.date >= today && f.date <= weekEnd)
   const later    = fixtures.filter(f => f.date > weekEnd)
   const played   = fixtures.filter(f => f.date < today).reverse()
-  const [showPlayed, setShowPlayed] = useState(false)
+  // Remember whether Played was open, so coming back from a result keeps it open
+  const [showPlayed, setShowPlayedState] = useState(() => sessionStorage.getItem('coach-show-played') === '1')
+  const setShowPlayed = (f: (v: boolean) => boolean) => setShowPlayedState(v => {
+    const next = f(v)
+    try { sessionStorage.setItem('coach-show-played', next ? '1' : '0') } catch { /* ignore */ }
+    return next
+  })
 
   const importedSpondIds = new Set(fixtures.filter(f => f.spondEventId).map(f => f.spondEventId!))
   const spondToAdd = canEdit ? spondEvents.filter(ev => !importedSpondIds.has(ev.id)) : []
@@ -140,7 +146,7 @@ export default function MatchesScreen({
       <div key={f.id} className="rounded-xl bg-white overflow-hidden" style={{ border: `1px solid ${BORDER}` }}>
         <button
           onClick={() => onOpenFixture(f)}
-          className="w-full px-3 pt-3 pb-2 flex items-center gap-2 text-left active:bg-stone-50 transition"
+          className="w-full px-3 pt-3 pb-2 flex items-center gap-2 text-left active:bg-[#F2F2F7] transition"
         >
           <div className="flex-1 min-w-0">
             <div className="font-bold text-[16px] truncate" style={{ color: INK }}>vs {f.opponent}</div>
@@ -148,7 +154,7 @@ export default function MatchesScreen({
               {fmtDate(f.date)} · {f.playersPerSide ?? 12}-a-side · {statusLine}
             </div>
           </div>
-          <ChevronRight size={18} className="text-stone-300 flex-shrink-0" />
+          <ChevronRight size={18} className="text-[#C7C7CC] flex-shrink-0" />
         </button>
 
         <div className="px-3 pb-3 flex flex-wrap gap-2">
@@ -210,7 +216,7 @@ export default function MatchesScreen({
               onClick={() => pushToSpond(f)}
               disabled={pushingId !== null}
               className="h-11 px-3 rounded-lg text-sm font-semibold flex items-center gap-1.5 active:scale-95 transition disabled:opacity-40"
-              style={{ background: '#F4E8F5', color: PURPLE }}
+              style={{ background: '#F1EAF6', color: PURPLE }}
             >
               <CalendarPlus size={14} strokeWidth={2.5} />
               {pushingId === f.id ? 'Adding…' : 'Add to Spond'}
@@ -222,13 +228,13 @@ export default function MatchesScreen({
   }
 
   const heading = (text: string) => (
-    <h2 className="text-sm font-bold uppercase tracking-wide mt-5 mb-2 px-1" style={{ color: PURPLE_DARK }}>{text}</h2>
+    <h2 className="text-[13px] font-semibold mt-5 mb-2 px-1" style={{ color: MUTED }}>{text}</h2>
   )
 
   return (
-    <div className="min-h-screen pb-28" style={{ background: '#F8F4FF', color: INK }}>
+    <div className="min-h-screen pb-28" style={{ background: '#F2F2F7', color: INK }}>
       {/* Header */}
-      <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: PURPLE }}>
         <div className="px-3 py-2.5 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
           <WoodfordMark size={24} color="white" />
           <div className="flex-1 leading-tight min-w-0">
@@ -264,7 +270,7 @@ export default function MatchesScreen({
             <button
               onClick={onResume}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left active:scale-[0.99] transition"
-              style={{ background: '#FDF4FF', border: `2px solid ${PURPLE}` }}
+              style={{ background: '#F1EAF6', border: `2px solid ${PURPLE}` }}
             >
               <div className="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: PURPLE }}>
                 <RotateCcw size={18} color="white" strokeWidth={2.5} />
@@ -281,13 +287,13 @@ export default function MatchesScreen({
         )}
 
         {!isHydrated ? (
-          <div className="py-12 text-center text-stone-400 text-sm">Loading…</div>
+          <div className="py-12 text-center text-[#8E8E93] text-sm">Loading…</div>
         ) : fixtures.length === 0 ? (
           <div className="py-12 flex flex-col items-center gap-4 text-center">
-            <Calendar size={40} className="text-stone-300" strokeWidth={1.5} />
+            <WoodfordMark size={72} />
             <div>
-              <div className="font-bold text-stone-600 mb-1">No matches yet</div>
-              <div className="text-sm text-stone-500">
+              <div className="font-bold text-lg mb-1" style={{ color: INK }}>No matches yet</div>
+              <div className="text-sm text-[#6E6E73]">
                 {canEdit ? 'Add your first fixture to start picking teams.' : 'Your head coach adds the fixtures — they’ll appear here.'}
               </div>
             </div>
@@ -323,7 +329,7 @@ export default function MatchesScreen({
                 >
                   <ChevronRight size={16} strokeWidth={2.5} className="transition-transform"
                     style={{ color: PURPLE_DARK, transform: showPlayed ? 'rotate(90deg)' : 'none' }} />
-                  <span className="text-sm font-bold uppercase tracking-wide" style={{ color: PURPLE_DARK }}>
+                  <span className="text-sm font-bold" style={{ color: PURPLE_DARK }}>
                     Played ({played.length})
                   </span>
                 </button>
@@ -341,7 +347,7 @@ export default function MatchesScreen({
               <button
                 onClick={() => { setShowSpondSheet(true) }}
                 className="w-full px-3 py-3 rounded-xl text-left text-sm font-semibold"
-                style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#B42318' }}
+                style={{ background: '#FDECEC', border: '1px solid #F5C2C2', color: '#B42318' }}
               >
                 {spondError}
               </button>
@@ -384,21 +390,21 @@ export default function MatchesScreen({
               className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-white text-left active:scale-[0.99] transition"
               style={{ border: `1px solid ${BORDER}` }}
             >
-              <div className="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#F4E8F5' }}>
+              <div className="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#F1EAF6' }}>
                 <Play size={18} color={PURPLE} strokeWidth={2.5} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-[15px]" style={{ color: INK }}>Practice match</div>
                 <div className="text-[13px]" style={{ color: MUTED }}>Have a go with a made-up squad</div>
               </div>
-              <ChevronRight size={18} className="text-stone-300" />
+              <ChevronRight size={18} className="text-[#C7C7CC]" />
             </button>
           </>
         )}
       </div>
 
       {canEdit && fixtures.length > 0 && (
-        <div className="fixed bottom-20 right-4 z-20">
+        <div className="fixed fab-bottom right-4 z-20">
           <button
             onClick={() => onNew(defaultFormat)}
             className="h-14 pl-4 pr-5 rounded-full shadow-lg flex items-center gap-2 font-bold active:scale-95 transition"

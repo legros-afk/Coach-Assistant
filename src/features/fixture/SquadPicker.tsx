@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { GROUP_COLOR } from '@/ui/positions'
 import type { Group, ID, Player } from '@/lib/events/types'
 import type { SpondAvailability } from '@/lib/spond/spondSync'
 import { teamLimits } from '@/lib/domain/validateComposition'
@@ -6,7 +7,7 @@ import { teamLimits } from '@/lib/domain/validateComposition'
 const PURPLE      = '#3D0066'
 const PURPLE_DARK = '#5B1A99'
 const INK         = '#1A1A1A'
-const MUTED       = '#6B5B7B'
+const MUTED       = '#6E6E73'
 
 export type Assignment = 'A' | 'bench-A' | 'B' | 'bench-B' | 'unavailable' | null
 type Team = 'A' | 'B'
@@ -17,8 +18,8 @@ const GROUP_TITLE: Record<Group, string> = { forward: 'Forwards', back: 'Backs',
 const GROUP_ORDER: Group[] = ['forward', 'back', 'scrumhalf']
 
 export function GroupBadge({ group, size = 'sm' }: { group: Group; size?: 'sm' | 'xs' }) {
-  const bg = group === 'forward' ? INK : group === 'back' ? PURPLE : PURPLE_DARK
-  const cls = size === 'xs' ? 'w-5 h-5 text-[9px]' : 'w-6 h-6 text-[10px]'
+  const bg = GROUP_COLOR[group]
+  const cls = size === 'xs' ? 'w-5 h-5 text-[11px]' : 'w-6 h-6 text-xs'
   return (
     <span className={`font-bold rounded-full flex items-center justify-center flex-shrink-0 ${cls}`}
       style={{ background: bg, color: 'white' }}>
@@ -128,7 +129,7 @@ export default function SquadPicker({
       <div
         key={p.id}
         className="flex items-center gap-2 py-1.5"
-        style={{ borderBottom: '1px solid #F0E6FA', opacity: choice === 'out' || elsewhere ? 0.6 : 1 }}
+        style={{ borderBottom: '1px solid #EFEFF4', opacity: choice === 'out' || elsewhere ? 0.6 : 1 }}
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -136,7 +137,7 @@ export default function SquadPicker({
             {spond && (
               <span
                 className="text-xs font-semibold flex-shrink-0"
-                style={{ color: spond === 'yes' ? '#16a34a' : spond === 'no' ? '#dc2626' : MUTED }}
+                style={{ color: spond === 'yes' ? '#059669' : spond === 'no' ? '#dc2626' : MUTED }}
               >
                 {spond === 'yes' ? '✓' : spond === 'no' ? 'said no' : '?'}
               </span>
@@ -170,15 +171,15 @@ export default function SquadPicker({
           role="radiogroup"
           aria-label={`${p.name}${teamCount === 2 ? `, Team ${team}` : ''}`}
           className="flex rounded-lg overflow-hidden flex-shrink-0"
-          style={{ border: '1px solid #D8C6EC' }}
+          style={{ border: '1px solid #E5E5EA' }}
         >
           {(['start', 'bench', 'out'] as const).map((c, i) => {
             const on = choice === c
             const selected = c === 'start'
               ? { background: PURPLE, color: 'white' }
               : c === 'bench'
-                ? { background: '#E7E0EE', color: INK }
-                : { background: '#FEE2E2', color: '#B42318' }
+                ? { background: '#E5E5EA', color: INK }
+                : { background: '#FDECEC', color: '#B42318' }
             return (
               <button
                 key={c}
@@ -188,7 +189,7 @@ export default function SquadPicker({
                 className="w-[58px] text-[13px] font-semibold active:scale-95 transition"
                 style={{
                   minHeight: 44,
-                  borderLeft: i > 0 ? '1px solid #D8C6EC' : undefined,
+                  borderLeft: i > 0 ? '1px solid #E5E5EA' : undefined,
                   ...(on ? selected : { background: 'white', color: MUTED }),
                 }}
               >
@@ -204,7 +205,7 @@ export default function SquadPicker({
   return (
     <div>
       {teamCount === 2 && (
-        <div className="flex rounded-lg overflow-hidden mb-2" style={{ border: '1px solid #E4D0F5' }}>
+        <div className="flex rounded-lg overflow-hidden mb-2" style={{ border: '1px solid #E5E5EA' }}>
           {(['A', 'B'] as const).map(t => {
             const n = players.filter(p => assignOf(p.id) === t).length
             return (
@@ -239,7 +240,7 @@ export default function SquadPicker({
         return (
           <section key={g} className="mt-3">
             <div className="flex items-baseline justify-between px-1 pb-1" style={{ borderBottom: `2px solid ${PURPLE_DARK}` }}>
-              <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: PURPLE }}>{GROUP_TITLE[g]}</h3>
+              <h3 className="text-sm font-bold" style={{ color: PURPLE }}>{GROUP_TITLE[g]}</h3>
               <span className="text-sm font-bold mono" style={{ color }}>
                 {count}/{limit}{count === limit ? ' ✓' : ''}
               </span>

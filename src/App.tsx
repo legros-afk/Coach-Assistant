@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useSquadStore } from '@/features/squad/useSquadStore'
 import { useMatchStore } from '@/features/match/useMatchStore'
 import type { Fixture, Match, TeamSheet } from '@/lib/events/types'
@@ -20,17 +20,69 @@ const PURPLE = '#3D0066'
 // and Team (the squad and the season). Everything else opens over them.
 type Tab = 'matches' | 'team'
 type Screen = 'loading' | Tab | 'settings' | 'match' | 'post-match' | 'fixture'
+const isTab = (s: unknown): s is Tab => s === 'matches' || s === 'team'
 
 export default function App() {
   const [screen, setScreen]                 = useState<Screen>('loading')
-  const [lastTab, setLastTab]               = useState<Tab>('matches')
   const [editingFixture, setEditingFixture] = useState<Fixture | undefined>()
   const [newFixturePPS, setNewFixturePPS]   = useState<number>(12)
   const [newFixtureSpond, setNewFixtureSpond] = useState<{ id: string; opponent: string; date: string } | undefined>()
 
+  // ── navigation with the browser's history, so the phone's Back button (and
+  //    the back swipe) closes the screen on top instead of leaving the app.
+  const lastTabRef = useRef<Tab>('matches')
+  const scrollByTab = useRef<Record<Tab, number>>({ matches: 0, team: 0 })
+
+  const rememberScroll = () => {
+    if (isTab(screenRef.current)) scrollByTab.current[screenRef.current] = window.scrollY
+  }
+  const screenRef = useRef<Screen>('loading')
+  useEffect(() => { screenRef.current = screen }, [screen])
+
+  /** Open a screen over the tabs; Back returns to the tab. */
+  const openOver = (s: Screen) => {
+    rememberScroll()
+    if (isTab(screenRef.current)) window.history.pushState({ s }, '')
+    else window.history.replaceState({ s }, '')
+    setScreen(s)
+  }
+  /** Close the screen on top (same as the phone's Back). */
+  const closeOver = () => {
+    if (window.history.state?.s && !isTab(window.history.state.s)) window.history.back()
+    else setScreen(lastTabRef.current)
+  }
+  const goTab = (t: Tab) => {
+    rememberScroll()
+    lastTabRef.current = t
+    window.history.replaceState({ s: t }, '')
+    setScreen(t)
+  }
+
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const s = (e.state as { s?: Screen } | null)?.s
+      setScreen(isTab(s) ? s : lastTabRef.current)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  // Back on a tab lands where you were; a screen opened on top starts at the top.
+  useLayoutEffect(() => {
+    window.scrollTo(0, isTab(screen) ? scrollByTab.current[screen] : 0)
+  }, [screen])
+
   useEffect(() => {
     useSyncStore.getState().syncAll()   // background sync, tracked in store
+    window.history.replaceState({ s: 'matches' }, '')
     setScreen('matches')
+    // If the phone closed the app during a running match, go straight back to it.
+    void useMatchStore.getState().restoreActive().then(r => {
+      if (r === 'running') {
+        window.history.pushState({ s: 'match' }, '')
+        setScreen('match')
+      }
+    })
     // Coming back to the app is when coaches expect it to be current:
     // update then, so nobody ever needs a refresh button.
     const onVisible = () => {
@@ -46,21 +98,20 @@ export default function App() {
     }
   }, [])
 
-  const goTab = (t: Tab) => { setLastTab(t); setScreen(t) }
-  const openSettings = () => setScreen('settings')
+  const openSettings = () => openOver('settings')
 
   const openFixture = (fixture?: Fixture, pps?: number) => {
     setEditingFixture(fixture)
     if (pps !== undefined) setNewFixturePPS(pps)
     setNewFixtureSpond(undefined)
-    setScreen('fixture')
+    openOver('fixture')
   }
 
   const importSpondFixture = (spondEventId: string, opponent: string, date: string, pps: number) => {
     setEditingFixture(undefined)
     setNewFixturePPS(pps)
     setNewFixtureSpond({ id: spondEventId, opponent, date })
-    setScreen('fixture')
+    openOver('fixture')
   }
 
   // Start — or pick back up — a team's match. initMatch resumes any events
@@ -71,12 +122,12 @@ export default function App() {
     await useMatchStore.getState().initMatch({
       fixtureId: fixture.id, teamSheet, squad: squad.players, opponent: fixture.opponent,
     })
-    setScreen('match')
+    openOver('match')
   }
 
   const startDemo = async () => {
     await useMatchStore.getState().initDemoMatch()
-    setScreen('match')
+    openOver('match')
   }
 
   // Stored matches are viewed via props, not the live match store — browsing
@@ -93,7 +144,7 @@ export default function App() {
       matchState: replayEvents(match.events, teamSheet, squad.players),
       events: match.events,
     })
-    setScreen('post-match')
+    openOver('post-match')
   }
 
   const showTabBar = screen === 'matches' || screen === 'team'
@@ -107,7 +158,7 @@ export default function App() {
   }
 
   if (screen === 'settings') {
-    return <SetupScreen onBack={() => setScreen(lastTab)} />
+    return <SetupScreen onBack={closeOver} />
   }
 
   return (
@@ -115,7 +166,7 @@ export default function App() {
       {screen === 'matches' && (
         <MatchesScreen
           onStart={(f, ts) => void startMatch(f, ts)}
-          onResume={() => setScreen('match')}
+          onResume={() => openOver('match')}
           onOpenFixture={f => openFixture(f)}
           onNew={pps => openFixture(undefined, pps)}
           onViewMatch={openStoredMatch}
@@ -127,8 +178,8 @@ export default function App() {
       {screen === 'team' && <SquadScreen onOpenSettings={openSettings} />}
       {screen === 'match' && (
         <LiveMatch
-          onBack={() => goTab('matches')}
-          onSummary={() => setScreen('post-match')}
+          onBack={closeOver}
+          onSummary={() => openOver('post-match')}
         />
       )}
       {screen === 'post-match' && (
@@ -136,7 +187,7 @@ export default function App() {
           data={viewingMatch ?? undefined}
           onBack={() => {
             setViewingMatch(null)
-            goTab('matches')
+            closeOver()
           }}
         />
       )}
@@ -147,8 +198,8 @@ export default function App() {
           initialOpponent={newFixtureSpond?.opponent}
           initialDate={newFixtureSpond?.date}
           initialSpondEventId={newFixtureSpond?.id}
-          onBack={() => goTab('matches')}
-          onSaved={() => goTab('matches')}
+          onBack={closeOver}
+          onSaved={closeOver}
         />
       )}
 
@@ -157,7 +208,7 @@ export default function App() {
       {showTabBar && (
         <nav
           className="fixed bottom-0 left-0 right-0 flex z-40"
-          style={{ background: 'white', borderTop: '1px solid #E4D0F5', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+          style={{ background: 'white', borderTop: '1px solid #E5E5EA', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
           {([
             { key: 'matches', icon: <CalendarDays size={24} strokeWidth={2} />, label: 'Matches' },
@@ -168,7 +219,7 @@ export default function App() {
               onClick={() => goTab(tab.key)}
               aria-current={screen === tab.key ? 'page' : undefined}
               className="flex-1 pt-2.5 pb-2 flex flex-col items-center gap-0.5 active:scale-95 transition"
-              style={{ color: screen === tab.key ? PURPLE : '#8A7A99' }}
+              style={{ color: screen === tab.key ? PURPLE : '#8E8E93' }}
             >
               {tab.icon}
               <span className="text-[13px] font-semibold">{tab.label}</span>

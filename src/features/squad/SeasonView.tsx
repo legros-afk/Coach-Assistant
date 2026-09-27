@@ -6,8 +6,8 @@ import { seasonStats } from '@/lib/domain/seasonStats'
 import { currentSeason } from '@/lib/domain/season'
 
 const INK   = '#1A1A1A'
-const MUTED = '#6B5B7B'
-const BORDER = '#E4D0F5'
+const MUTED = '#6E6E73'
+const BORDER = '#E5E5EA'
 
 type SortKey = 'minutes' | 'starts' | 'name'
 
@@ -39,8 +39,8 @@ export default function SeasonView({ players }: { players: Player[] }) {
   if (gamesPlayed === 0) {
     return (
       <div className="py-12 text-center px-6">
-        <div className="font-bold text-stone-600 mb-1">No matches played yet this season</div>
-        <div className="text-sm text-stone-500">Minutes, starts and tries appear here once you’ve run a match in the app.</div>
+        <div className="font-bold text-[#3C3C43] mb-1">No matches played yet this season</div>
+        <div className="text-sm text-[#6E6E73]">Minutes, starts and tries appear here once you’ve run a match in the app.</div>
       </div>
     )
   }
@@ -68,7 +68,7 @@ export default function SeasonView({ players }: { players: Player[] }) {
           <span>Player</span><span className="text-right">Games</span><span className="text-right">Starts</span><span className="text-right">Mins</span><span className="text-right">Tries</span>
         </div>
         {rows.map(({ p, s }) => (
-          <div key={p.id} className="grid grid-cols-[1fr_3.5rem_3.5rem_3.5rem_3.25rem] px-3 py-2.5 text-[15px] items-center" style={{ borderBottom: '1px solid #F4EEF9' }}>
+          <div key={p.id} className="grid grid-cols-[1fr_3.5rem_3.5rem_3.5rem_3.25rem] px-3 py-2.5 text-[15px] items-center" style={{ borderBottom: '1px solid #EFEFF4' }}>
             <span className="font-semibold truncate" style={{ color: INK }}>{p.name}</span>
             <span className="text-right mono">{s.games}</span>
             <span className="text-right mono">{s.starts}</span>

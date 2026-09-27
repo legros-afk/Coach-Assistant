@@ -15,8 +15,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+        sans: ['Inter Variable', 'Inter', '-apple-system', 'system-ui', 'sans-serif'],
+        mono: ['Inter Variable', 'Inter', 'system-ui', 'sans-serif'],
       },
       minHeight: {
         tap: '56px',

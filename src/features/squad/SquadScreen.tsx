@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { GROUP_COLOR } from '@/ui/positions'
 import {
   AlertTriangle, Plus, Settings, Trash2, UserPlus, Users,
 } from 'lucide-react'
@@ -15,7 +16,7 @@ import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
 
 const PURPLE      = '#3D0066'
 const PURPLE_DARK = '#5B1A99'
-const PURPLE_SOFT = '#F4E8F5'
+const PURPLE_SOFT = '#F1EAF6'
 const INK         = '#1A1A1A'
 
 const GROUP_LABEL: Record<Group, string> = { forward: 'Forward', back: 'Back', scrumhalf: 'Scrum-half' }
@@ -38,10 +39,10 @@ function playerToForm(p: Player): PlayerForm {
 }
 
 function GroupBadge({ group }: { group: Group }) {
-  const bg = group === 'forward' ? INK : group === 'back' ? PURPLE : PURPLE_DARK
+  const bg = GROUP_COLOR[group]
   return (
     <span
-      className="text-[10px] font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+      className="text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
       style={{ background: bg, color: 'white' }}
     >
       {GROUP_SHORT[group]}
@@ -173,10 +174,10 @@ export default function SquadScreen({ onOpenSettings }: Props) {
   const isDemo = squad?.id === DEMO_SQUAD_ID
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#F8F4FF', color: INK }}>
+    <div className="min-h-screen pb-24" style={{ background: '#F2F2F7', color: INK }}>
 
       {/* Header */}
-      <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: PURPLE }}>
         <div className="px-3 py-2.5 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
           <WoodfordMark size={24} color="white" />
           <div className="flex-1 leading-tight min-w-0">
@@ -212,7 +213,7 @@ export default function SquadScreen({ onOpenSettings }: Props) {
 
       {/* Publish conflict — needs a decision, so it stays put until one is made */}
       {conflict && (
-        <div className="mx-3 mt-3 px-3 py-3 rounded-lg" style={{ background: '#FEF3C7', border: '1px solid #FCD34D' }}>
+        <div className="mx-3 mt-3 px-3 py-3 rounded-lg" style={{ background: '#FEF3C7', border: '1px solid #F59E0B' }}>
           <div className="flex items-start gap-2">
             <AlertTriangle size={15} strokeWidth={2.5} className="flex-shrink-0 mt-0.5" style={{ color: '#92400E' }} />
             <div className="flex-1">
@@ -226,7 +227,7 @@ export default function SquadScreen({ onOpenSettings }: Props) {
                 <button
                   onClick={() => handlePublish(true)}
                   disabled={publishing}
-                  className="px-2.5 py-1.5 rounded text-[11px] font-bold uppercase tracking-wide active:scale-95 transition disabled:opacity-40"
+                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold active:scale-95 transition disabled:opacity-40"
                   style={{ background: '#92400E', color: 'white' }}
                 >
                   Use mine
@@ -234,8 +235,8 @@ export default function SquadScreen({ onOpenSettings }: Props) {
                 <button
                   onClick={handleTakeClubCopy}
                   disabled={publishing || isSyncing}
-                  className="px-2.5 py-1.5 rounded text-[11px] font-bold uppercase tracking-wide active:scale-95 transition disabled:opacity-40"
-                  style={{ background: 'white', color: '#92400E', border: '1px solid #FCD34D' }}
+                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold active:scale-95 transition disabled:opacity-40"
+                  style={{ background: 'white', color: '#92400E', border: '1px solid #F59E0B' }}
                 >
                   Use theirs
                 </button>
@@ -251,8 +252,8 @@ export default function SquadScreen({ onOpenSettings }: Props) {
         <div
           className="mx-3 mt-3 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
           style={{
-            background: banner.ok ? '#D1FAE5' : '#FEE2E2',
-            color: banner.ok ? '#065F46' : '#991B1B',
+            background: banner.ok ? '#E3F5EC' : '#FDECEC',
+            color: banner.ok ? '#065F46' : '#B42318',
           }}
         >
           {!banner.ok && <AlertTriangle size={14} strokeWidth={2.5} />}
@@ -271,7 +272,7 @@ export default function SquadScreen({ onOpenSettings }: Props) {
           </span>
           <button
             onClick={handleClearDemo}
-            className="text-xs font-bold px-2 py-1 rounded active:scale-95 transition"
+            className="text-xs font-bold px-2 py-1 rounded-lg active:scale-95 transition"
             style={{ background: PURPLE, color: 'white' }}
           >
             Clear demo
@@ -284,14 +285,14 @@ export default function SquadScreen({ onOpenSettings }: Props) {
         {view === 'season' ? (
           <SeasonView players={players} />
         ) : !isHydrated ? (
-          <div className="py-12 text-center text-stone-400 text-sm">Loading…</div>
+          <div className="py-12 text-center text-[#8E8E93] text-sm">Loading…</div>
         ) : players.length === 0 ? (
           /* Empty state */
           <div className="py-12 flex flex-col items-center gap-4">
-            <Users size={40} className="text-stone-300" strokeWidth={1.5} />
+            <Users size={40} className="text-[#C7C7CC]" strokeWidth={2} />
             <div className="text-center">
-              <div className="font-bold text-stone-500 mb-1">No players yet</div>
-              <div className="text-sm text-stone-400">Add your squad or load demo data to get started.</div>
+              <div className="font-bold text-[#6E6E73] mb-1">No players yet</div>
+              <div className="text-sm text-[#8E8E93]">Add your squad or load demo data to get started.</div>
             </div>
             {canEdit && (
             <button
@@ -314,7 +315,7 @@ export default function SquadScreen({ onOpenSettings }: Props) {
           /* Player list */
           <div className="space-y-1.5">
             {!canEdit && (
-              <div className="text-sm text-stone-500 px-1 pb-1">
+              <div className="text-sm text-[#6E6E73] px-1 pb-1">
                 Your head coach looks after the squad. Positions come from the club spreadsheet.
               </div>
             )}
@@ -324,13 +325,13 @@ export default function SquadScreen({ onOpenSettings }: Props) {
                 onClick={canEdit ? () => openEdit(p) : undefined}
                 disabled={!canEdit}
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border enabled:active:scale-[0.99] transition text-left"
-                style={{ borderColor: '#E4D0F5' }}
+                style={{ borderColor: '#E5E5EA' }}
               >
                 <GroupBadge group={p.defaultGroup} />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm truncate" style={{ color: INK }}>{p.name}</div>
                   {p.eligibleGroups.length > 1 && (
-                    <div className="text-[11px] text-stone-400">
+                    <div className="text-[11px] text-[#8E8E93]">
                       also {p.eligibleGroups.filter(g => g !== p.defaultGroup).map(g => GROUP_SHORT[g]).join(', ')}
                     </div>
                   )}
@@ -346,7 +347,7 @@ export default function SquadScreen({ onOpenSettings }: Props) {
 
       {/* Add player FAB — only when squad exists */}
       {players.length > 0 && canEdit && view === 'squad' && (
-        <div className="fixed bottom-20 right-4 z-20">
+        <div className="fixed fab-bottom right-4 z-20">
           <button
             onClick={openNew}
             className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition"
@@ -360,12 +361,12 @@ export default function SquadScreen({ onOpenSettings }: Props) {
       {/* Player edit bottom sheet */}
       {editTarget !== null && (
         <div
-          className="fixed inset-0 z-50 flex items-end"
+          className="fixed inset-0 z-50 flex items-end backdrop-in"
           style={{ background: 'rgba(32,24,32,0.7)' }}
           onClick={closeEdit}
         >
           <div
-            className="bg-white w-full rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto"
+            className="bg-white w-full rounded-t-2xl sheet-in p-4 max-h-[85vh] overflow-y-auto"
             style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
             onClick={e => e.stopPropagation()}
           >
@@ -374,14 +375,14 @@ export default function SquadScreen({ onOpenSettings }: Props) {
                 {editTarget === 'new' ? 'Add player' : 'Edit player'}
               </div>
               <button onClick={closeEdit} className="tap-target w-10 flex items-center justify-center">
-                <span className="text-stone-400 text-xl">×</span>
+                <span className="text-[#8E8E93] text-xl">×</span>
               </button>
             </div>
 
             <div className="space-y-4">
               {/* Name */}
               <div>
-                <label className="text-xs font-semibold uppercase tracking-widest text-stone-400 block mb-1">
+                <label className="text-xs font-semibold text-[#8E8E93] block mb-1">
                   Name
                 </label>
                 <input
@@ -390,14 +391,14 @@ export default function SquadScreen({ onOpenSettings }: Props) {
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="e.g. Henry W"
                   className="w-full px-3 py-3 rounded-lg border-2 text-sm outline-none"
-                  style={{ borderColor: '#E4D0F5', color: INK }}
+                  style={{ borderColor: '#E5E5EA', color: INK }}
                   autoFocus={editTarget === 'new'}
                 />
               </div>
 
               {/* Default group */}
               <div>
-                <label className="text-xs font-semibold uppercase tracking-widest text-stone-400 block mb-2">
+                <label className="text-xs font-semibold text-[#8E8E93] block mb-2">
                   Default position
                 </label>
                 <div className="flex gap-2">
@@ -407,9 +408,9 @@ export default function SquadScreen({ onOpenSettings }: Props) {
                       onClick={() => handleDefaultGroupChange(g)}
                       className="flex-1 py-2.5 rounded-lg text-sm font-bold transition active:scale-95"
                       style={{
-                        background: form.defaultGroup === g ? PURPLE : '#F8F4FF',
+                        background: form.defaultGroup === g ? PURPLE : '#F2F2F7',
                         color: form.defaultGroup === g ? 'white' : INK,
-                        border: `2px solid ${form.defaultGroup === g ? PURPLE : '#E4D0F5'}`,
+                        border: `2px solid ${form.defaultGroup === g ? PURPLE : '#E5E5EA'}`,
                       }}
                     >
                       {GROUP_SHORT[g]}
@@ -420,7 +421,7 @@ export default function SquadScreen({ onOpenSettings }: Props) {
 
               {/* Eligible groups */}
               <div>
-                <label className="text-xs font-semibold uppercase tracking-widest text-stone-400 block mb-2">
+                <label className="text-xs font-semibold text-[#8E8E93] block mb-2">
                   Can also play
                 </label>
                 <div className="flex gap-2">
@@ -434,9 +435,9 @@ export default function SquadScreen({ onOpenSettings }: Props) {
                         disabled={isDefault}
                         className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition active:scale-95 disabled:opacity-50"
                         style={{
-                          background: checked ? '#D1FAE5' : '#F8F4FF',
-                          color: checked ? '#065F46' : '#7B5FA8',
-                          border: `2px solid ${checked ? '#34D399' : '#E4D0F5'}`,
+                          background: checked ? '#E3F5EC' : '#F2F2F7',
+                          color: checked ? '#065F46' : '#6E6E73',
+                          border: `2px solid ${checked ? '#10B981' : '#E5E5EA'}`,
                         }}
                       >
                         {GROUP_LABEL[g]}
@@ -444,14 +445,14 @@ export default function SquadScreen({ onOpenSettings }: Props) {
                     )
                   })}
                 </div>
-                <div className="text-[11px] text-stone-400 mt-2 leading-snug">
+                <div className="text-[11px] text-[#8E8E93] mt-2 leading-snug">
                   Positions come from the club spreadsheet. Change them there too, or the app will switch back when it next updates.
                 </div>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="text-xs font-semibold uppercase tracking-widest text-stone-400 block mb-1">
+                <label className="text-xs font-semibold text-[#8E8E93] block mb-1">
                   Notes <span className="normal-case tracking-normal font-normal">(optional)</span>
                 </label>
                 <textarea
@@ -460,7 +461,7 @@ export default function SquadScreen({ onOpenSettings }: Props) {
                   placeholder="e.g. strong carrier, works on passing"
                   rows={2}
                   className="w-full px-3 py-2.5 rounded-lg border-2 text-sm outline-none resize-none"
-                  style={{ borderColor: '#E4D0F5', color: INK }}
+                  style={{ borderColor: '#E5E5EA', color: INK }}
                 />
               </div>
             </div>
@@ -471,7 +472,7 @@ export default function SquadScreen({ onOpenSettings }: Props) {
                 <button
                   onClick={handleDelete}
                   className="tap-target px-4 rounded-lg border-2 font-semibold flex items-center gap-1.5 active:scale-95 transition"
-                  style={{ borderColor: '#FCA5A5', color: '#DC2626' }}
+                  style={{ borderColor: '#F87171', color: '#DC2626' }}
                 >
                   <Trash2 size={16} strokeWidth={2.5} /> Delete
                 </button>

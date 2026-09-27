@@ -58,7 +58,7 @@ export default function InstallPrompt({ visible = true }: { visible?: boolean })
     }
     return (
       <div
-        className="fixed bottom-20 left-3 right-3 z-50 rounded-2xl shadow-2xl p-4 bg-white"
+        className="fixed fab-bottom left-3 right-3 z-50 rounded-2xl shadow-2xl p-4 bg-white"
         style={{ border: `2px solid ${PURPLE}` }}
       >
         <div className="flex items-start justify-between gap-2 mb-2">
@@ -66,10 +66,10 @@ export default function InstallPrompt({ visible = true }: { visible?: boolean })
             Put Coach Assistant on your Home Screen
           </div>
           <button onClick={later} className="w-9 h-9 -mr-2 -mt-2 flex items-center justify-center" aria-label="Not now">
-            <X size={18} strokeWidth={2.5} className="text-stone-400" />
+            <X size={18} strokeWidth={2.5} className="text-[#8E8E93]" />
           </button>
         </div>
-        <p className="text-sm text-stone-600 mb-3">
+        <p className="text-sm text-[#3C3C43] mb-3">
           It then opens like any app, works without signal, and keeps your teams safe.
         </p>
         <ol className="space-y-2 text-[15px]" style={{ color: INK }}>
@@ -93,7 +93,7 @@ export default function InstallPrompt({ visible = true }: { visible?: boolean })
         <button
           onClick={later}
           className="w-full mt-3 h-11 rounded-lg text-sm font-semibold"
-          style={{ background: '#F4E8F5', color: PURPLE }}
+          style={{ background: '#F1EAF6', color: PURPLE }}
         >
           Not now
         </button>
@@ -119,7 +119,7 @@ export default function InstallPrompt({ visible = true }: { visible?: boolean })
 
   return (
     <div
-      className="fixed bottom-20 left-3 right-3 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl"
+      className="fixed fab-bottom left-3 right-3 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl"
       style={{ background: PURPLE, color: 'white' }}
     >
       <Download size={20} strokeWidth={2} className="flex-shrink-0" />

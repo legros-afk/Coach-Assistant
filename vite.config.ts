@@ -12,8 +12,8 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['woodford-mark.svg', 'favicon.ico', '*.png'],
       manifest: {
-        name: 'Minis Coach Assistant — Woodford RFC',
-        short_name: 'Minis Coach',
+        name: 'Coach Assistant — Woodford RFC',
+        short_name: 'WRFC Coach',
         description: 'Match-day assistant for Woodford RFC U12',
         theme_color: '#3D0066',
         background_color: '#3D0066',
@@ -30,6 +30,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
     }),
   ],

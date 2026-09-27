@@ -37,6 +37,8 @@ interface MatchStore {
   currentElapsedMs: () => number;
   initMatch: (args: InitMatchArgs) => Promise<void>;
   initDemoMatch: () => Promise<void>;
+  /** Reload the match this phone was running (after the app was closed or reloaded). */
+  restoreActive: () => Promise<'none' | 'paused' | 'running'>;
   publishNow: () => Promise<void>;
   startClock: () => void;
   pauseClock: () => void;
@@ -60,6 +62,32 @@ function withEvent(
   return { events, matchState: replayEvents(events, state.teamSheet, state.squad) };
 }
 
+// Which match this phone is running, so it can be picked up again after the
+// phone unloads the app (iPhones do this to background apps) or it updates.
+const ACTIVE_KEY = 'coach-active-match'
+interface ActivePointer { matchId: string; fixtureId: string; opponent: string; demo?: boolean }
+function saveActive(p: ActivePointer) {
+  try { localStorage.setItem(ACTIVE_KEY, JSON.stringify(p)) } catch { /* ignore */ }
+}
+function readActive(): ActivePointer | null {
+  try { return JSON.parse(localStorage.getItem(ACTIVE_KEY) ?? 'null') as ActivePointer | null } catch { return null }
+}
+
+// A clock that was running when the app went away keeps running: its time is
+// worked out from when it was last started, so no minutes are lost.
+export function clockFromEvents(events: MatchEvent[]): { running: boolean; baseElapsedMs: number; startedAt: number | null } {
+  let running = false
+  let stoppedAt = 0
+  let startedAt: number | null = null
+  for (const e of events) {
+    if (e.type === 'CLOCK_START') { running = true; startedAt = Date.parse(e.ts) }
+    else if (e.type === 'CLOCK_PAUSE' || e.type === 'HALF_END' || e.type === 'MATCH_END') {
+      running = false; startedAt = null; stoppedAt = e.payload.elapsedMs
+    }
+  }
+  return { running, baseElapsedMs: stoppedAt, startedAt: running ? startedAt : null }
+}
+
 async function loadMatchState(
   matchId: string,
   fixtureId: string,
@@ -70,11 +98,12 @@ async function loadMatchState(
   const stored = await db.matches.get(matchId);
   if (stored && stored.events.length > 0) {
     const matchState = replayEvents(stored.events, teamSheet, squad);
+    const clock = clockFromEvents(stored.events);
     return {
       matchId, fixtureId, opponent, squad, teamSheet,
       events: stored.events, matchState,
-      baseElapsedMs: matchState.elapsedMs,
-      clockRunning: false, clockStartedAt: null, isHydrated: true,
+      baseElapsedMs: clock.running ? clock.baseElapsedMs : matchState.elapsedMs,
+      clockRunning: clock.running, clockStartedAt: clock.startedAt, isHydrated: true,
     };
   }
   return {
@@ -126,6 +155,7 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
     initMatch: async ({ fixtureId, teamSheet, squad, opponent }) => {
       const patch = await loadMatchState(teamSheet.id, fixtureId, opponent, teamSheet, squad);
       set({ ...patch, publishStatus: 'idle' } as MatchStore);
+      saveActive({ matchId: teamSheet.id, fixtureId, opponent });
     },
 
     initDemoMatch: async () => {
@@ -133,6 +163,25 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
         DEMO_TEAM_SHEET.id, 'demo-fixture', 'Opponents', DEMO_TEAM_SHEET, DEMO_SQUAD,
       );
       set(patch as MatchStore);
+      saveActive({ matchId: DEMO_TEAM_SHEET.id, fixtureId: 'demo-fixture', opponent: 'Opponents', demo: true });
+    },
+
+    restoreActive: async () => {
+      const p = readActive();
+      if (!p) return 'none';
+      const stored = await db.matches.get(p.matchId);
+      if (!stored || stored.events.length === 0 || stored.events.some(e => e.type === 'MATCH_END')) return 'none';
+      if (p.demo) {
+        await get().initDemoMatch();
+      } else {
+        const fixture = await db.fixtures.get(p.fixtureId);
+        const teamSheet = fixture?.teamSheets.find(t => t.id === p.matchId);
+        const squads = await db.squads.toArray();
+        const squad = squads.length ? squads[squads.length - 1] : null;
+        if (!fixture || !teamSheet || !squad) return 'none';
+        await get().initMatch({ fixtureId: fixture.id, teamSheet, squad: squad.players, opponent: fixture.opponent });
+      }
+      return get().clockRunning ? 'running' : 'paused';
     },
 
     startClock: () => {

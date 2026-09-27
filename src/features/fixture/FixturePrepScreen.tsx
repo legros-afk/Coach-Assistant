@@ -487,7 +487,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
           <Check size={14} className="text-emerald-500 flex-shrink-0" strokeWidth={2.5} />
           <GroupBadge group={slot.assignedGroup} size="xs" />
           <span className="text-sm flex-1">{slot.player.name}</span>
-          {isBench && <span className="text-xs text-stone-400">bench</span>}
+          {isBench && <span className="text-xs text-[#8E8E93]">bench</span>}
         </div>
       )
     }
@@ -504,8 +504,8 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
               <button
                 key={c.id}
                 onClick={() => setResolutions(m => new Map(m).set(slot.token, c))}
-                className="flex items-center gap-2 w-full py-1 px-2 rounded text-sm active:scale-[0.99]"
-                style={{ background: cur === c ? '#D1FAE5' : '#F8F4FF', color: INK }}
+                className="flex items-center gap-2 w-full py-1 px-2 rounded-lg text-sm active:scale-[0.99]"
+                style={{ background: cur === c ? '#E3F5EC' : '#F2F2F7', color: INK }}
               >
                 <GroupBadge group={c.defaultGroup} size="xs" />
                 {c.name}
@@ -513,7 +513,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
             ))}
             <button
               onClick={() => setResolutions(m => new Map(m).set(slot.token, 'skip'))}
-              className="text-xs text-stone-400 px-2 py-0.5"
+              className="text-xs text-[#8E8E93] px-2 py-0.5"
             >Skip</button>
           </div>
         </div>
@@ -527,7 +527,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
         {slot.fuzzyMatch && (
           <button
             onClick={() => setResolutions(m => new Map(m).set(slot.token, slot.fuzzyMatch!))}
-            className="ml-auto text-xs font-semibold px-2 py-0.5 rounded"
+            className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-lg"
             style={{ background: PURPLE, color: 'white' }}
           >
             Use {slot.fuzzyMatch.name}
@@ -556,20 +556,20 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   }
 
   return (
-    <div className="min-h-screen pb-44" style={{ background: '#F8F4FF', color: INK }}>
+    <div className="min-h-screen pb-44" style={{ background: '#F2F2F7', color: INK }}>
 
       {/* Header */}
-      <div className="sticky top-0 z-20" style={{ background: PURPLE }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: PURPLE }}>
         <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
           <button onClick={onBack} className="tap-target flex items-center justify-center -ml-1">
             <ChevronLeft size={24} color="white" strokeWidth={2.5} />
           </button>
           <div className="flex-1 leading-tight">
-            <div className="text-[13px] font-bold tracking-wide uppercase text-white">
+            <div className="text-[17px] font-bold text-white">
               {existing ? `vs ${existing.opponent}` : 'New fixture'}
             </div>
             {spondAvailability ? (
-              <div className="text-[10px] font-semibold flex items-center gap-1.5" style={{ color: '#4ade80' }}>
+              <div className="text-xs font-semibold flex items-center gap-1.5" style={{ color: '#4ade80' }}>
                 <Zap size={9} strokeWidth={2.5} />
                 <span>
                   {spondAvailability.accepted.length} ✓
@@ -578,7 +578,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                 </span>
               </div>
             ) : (
-              <div className="text-[10px] text-white/70">
+              <div className="text-xs text-white/75">
                 Team sheet prep
               </div>
             )}
@@ -615,7 +615,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       <div className="px-3 pt-3 space-y-3">
         {/* Unmatched Spond members warning */}
         {spondAvailability && spondAvailability.unmatched.length > 0 && (
-          <div className="flex items-start gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A' }}>
+          <div className="flex items-start gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: '#FEF3C7', color: '#92400E', border: '1px solid #FEF3C7' }}>
             <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" strokeWidth={2} />
             <span>
               <span className="font-semibold">{spondAvailability.unmatched.length} Spond {spondAvailability.unmatched.length === 1 ? 'member' : 'members'} not matched:</span>
@@ -625,7 +625,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
         )}
 
         {locked && (
-          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg" style={{ background: '#EFEAF3', border: '1px solid #D8C6EC' }}>
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg" style={{ background: '#F1EAF6', border: '1px solid #E5E5EA' }}>
             <Lock size={16} strokeWidth={2.5} className="flex-shrink-0" style={{ color: PURPLE_DARK }} />
             <span className="flex-1 text-sm" style={{ color: INK }}>
               This match has been played, so its team sheet is locked.
@@ -633,7 +633,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
             <button
               onClick={() => setUnlocked(true)}
               className="text-xs font-bold px-3 h-9 rounded-lg active:scale-95 transition flex-shrink-0"
-              style={{ background: 'white', border: '1px solid #D8C6EC', color: PURPLE_DARK }}
+              style={{ background: 'white', border: '1px solid #E5E5EA', color: PURPLE_DARK }}
             >
               Edit anyway
             </button>
@@ -642,34 +642,34 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
 
         <div className={locked ? 'pointer-events-none opacity-60 space-y-3' : 'space-y-3'} aria-disabled={locked}>
         {/* Fixture details */}
-        <div className="bg-white rounded-lg p-3 space-y-2" style={{ border: '1px solid #E4D0F5' }}>
+        <div className="bg-white rounded-lg p-3 space-y-2" style={{ border: '1px solid #E5E5EA' }}>
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 block mb-1">Date</label>
+              <label className="text-xs font-semibold text-[#8E8E93] block mb-1">Date</label>
               <input
                 type="date"
                 value={date}
                 onChange={e => setDate(e.target.value)}
-                className="w-full px-2 py-2 rounded border text-sm outline-none"
-                style={{ borderColor: '#E4D0F5', color: INK }}
+                className="w-full px-2 py-2 rounded-lg border text-sm outline-none"
+                style={{ borderColor: '#E5E5EA', color: INK }}
               />
             </div>
             <div className="flex-1">
-              <label className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 block mb-1">Opponent</label>
+              <label className="text-xs font-semibold text-[#8E8E93] block mb-1">Opponent</label>
               <input
                 ref={opponentRef}
                 type="text"
                 value={opponent}
                 onChange={e => setOpponent(e.target.value)}
                 placeholder="e.g. Saints"
-                className="w-full px-2 py-2 rounded border text-sm outline-none"
-                style={{ borderColor: '#E4D0F5', color: INK }}
+                className="w-full px-2 py-2 rounded-lg border text-sm outline-none"
+                style={{ borderColor: '#E5E5EA', color: INK }}
               />
             </div>
           </div>
           <div className="flex items-center justify-between pt-0.5">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Format</span>
-            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E4D0F5' }}>
+            <span className="text-xs font-semibold text-[#8E8E93]">Format</span>
+            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E5E5EA' }}>
               {[...FORMATS, ...(FORMATS.includes(playersPerSide as 12 | 10) ? [] : [playersPerSide])].map(n => (
                 <button
                   key={n}
@@ -677,7 +677,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                   className="px-3 py-1 text-xs font-bold transition"
                   style={{
                     background: playersPerSide === n ? PURPLE : 'white',
-                    color: playersPerSide === n ? 'white' : '#7B5FA8',
+                    color: playersPerSide === n ? 'white' : '#6E6E73',
                   }}
                 >
                   {n}-a-side
@@ -686,8 +686,8 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
             </div>
           </div>
           <div className="flex items-center justify-between pt-0.5">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Teams today</span>
-            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E4D0F5' }}>
+            <span className="text-xs font-semibold text-[#8E8E93]">Teams today</span>
+            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E5E5EA' }}>
               {([1, 2] as const).map(n => (
                 <button
                   key={n}
@@ -695,7 +695,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                   className="px-3 py-1 text-xs font-bold transition"
                   style={{
                     background: teamCount === n ? PURPLE : 'white',
-                    color: teamCount === n ? 'white' : '#7B5FA8',
+                    color: teamCount === n ? 'white' : '#6E6E73',
                   }}
                 >
                   {n === 1 ? 'One' : 'Two'}
@@ -706,15 +706,15 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
         </div>
 
         {/* Mode tabs */}
-        <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E4D0F5' }}>
+        <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E5E5EA' }}>
           {(['board', 'paste'] as const).map(m => (
             <button
               key={m}
               onClick={() => setMode(m)}
-              className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-1.5 transition"
+              className="flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 transition"
               style={{
                 background: mode === m ? PURPLE : 'white',
-                color: mode === m ? 'white' : '#7B5FA8',
+                color: mode === m ? 'white' : '#6E6E73',
               }}
             >
               {m === 'board' ? <><LayoutGrid size={13} /> Pick</> : <><ClipboardPaste size={13} /> Paste a list</>}
@@ -726,7 +726,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
         {mode === 'board' && (
           <div>
             {players.length === 0 ? (
-              <div className="py-8 text-center text-sm text-stone-400">
+              <div className="py-8 text-center text-sm text-[#8E8E93]">
                 No squad loaded — go to Squad screen to add players.
               </div>
             ) : (
@@ -744,7 +744,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                     <button
                       onClick={handleSameAsLast}
                       className="tap-target rounded-lg font-bold text-xs px-3 flex items-center gap-1.5 active:scale-95 transition"
-                      style={{ background: 'white', border: '1px solid #C8A0E8', color: PURPLE }}
+                      style={{ background: 'white', border: '1px solid #D1D1D6', color: PURPLE }}
                       aria-label={`Same line-up as vs ${lastFixture.opponent}`}
                     >
                       <History size={14} strokeWidth={2.5} />
@@ -755,23 +755,23 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                     onClick={handleClear}
                     className="tap-target rounded-lg font-bold text-xs px-4 active:scale-95 transition"
                     style={clearArmed
-                      ? { background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#B42318' }
-                      : { background: 'white', border: '1px solid #E4D0F5', color: '#7B5FA8' }}
+                      ? { background: '#FDECEC', border: '1px solid #F87171', color: '#B42318' }
+                      : { background: 'white', border: '1px solid #E5E5EA', color: '#6E6E73' }}
                   >
                     {clearArmed ? 'Clear board?' : 'Clear'}
                   </button>
                 </div>
                 {(balance.A || balance.B) && (
                   <div className="flex gap-2 mb-2">
-                    <div className="flex-1 bg-white rounded-lg px-2.5 py-1.5" style={{ border: '1px solid #E4D0F5' }}>
-                      <div className="text-[9px] font-extrabold tracking-widest text-stone-400">AVG STARTS</div>
+                    <div className="flex-1 bg-white rounded-lg px-2.5 py-1.5" style={{ border: '1px solid #E5E5EA' }}>
+                      <div className="text-[11px] font-bold text-[#8E8E93]">Average starts</div>
                       <div className="text-xs font-bold mono">
                         {teamCount === 2 ? `A ${balance.A?.starts ?? '—'} · B ${balance.B?.starts ?? '—'}` : balance.A?.starts ?? '—'}
                       </div>
                     </div>
                     {hasRatings && (
-                      <div className="flex-1 bg-white rounded-lg px-2.5 py-1.5" style={{ border: '1px solid #E4D0F5' }}>
-                        <div className="text-[9px] font-extrabold tracking-widest text-stone-400">AVG IMPACT</div>
+                      <div className="flex-1 bg-white rounded-lg px-2.5 py-1.5" style={{ border: '1px solid #E5E5EA' }}>
+                        <div className="text-[11px] font-bold text-[#8E8E93]">Average impact</div>
                         <div className="text-xs font-bold mono">
                           {teamCount === 2 ? `A ${balance.A?.impact ?? '—'} · B ${balance.B?.impact ?? '—'}` : balance.A?.impact ?? '—'}
                         </div>
@@ -779,7 +779,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                     )}
                   </div>
                 )}
-                <div className="text-xs text-stone-500 mb-2 px-1">
+                <div className="text-xs text-[#6E6E73] mb-2 px-1">
                   {draftedIds.size > 0
                     ? 'Auto-pick fills open places with whoever has played least. Change anyone with one tap; Auto-pick again keeps the players you set by hand.'
                     : teamCount === 1
@@ -812,7 +812,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
               placeholder={"Team A: Alexander, Dylan, Elliott...\nBench: Dominic, Ethan\n\nTeam B: Archie, Arlo..."}
               rows={8}
               className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none bg-white"
-              style={{ border: '1px solid #E4D0F5', color: INK }}
+              style={{ border: '1px solid #E5E5EA', color: INK }}
             />
             <button
               onClick={handleParse}
@@ -826,8 +826,8 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
             {parseResult && (
               <div className="space-y-3">
                 {parseResult.blocks.map((block, bi) => (
-                  <div key={bi} className="bg-white rounded-lg p-3" style={{ border: '1px solid #E4D0F5' }}>
-                    <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: PURPLE }}>
+                  <div key={bi} className="bg-white rounded-lg p-3" style={{ border: '1px solid #E5E5EA' }}>
+                    <div className="text-xs font-bold mb-2" style={{ color: PURPLE }}>
                       {block.label}
                     </div>
                     {block.starters.map(s => renderParsedSlot(s, false))}
@@ -852,8 +852,8 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       <div
         className="fixed bottom-0 left-0 right-0 px-3 pt-3 z-30"
         style={{
-          background: '#F8F4FF',
-          borderTop: '1px solid #C8A0E8',
+          background: '#F2F2F7',
+          borderTop: '1px solid #D1D1D6',
           paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))',
         }}
       >
@@ -861,8 +861,8 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
           <div
             className="mb-2 text-sm text-center px-2 py-1.5 rounded-lg"
             style={{
-              background: publishResult.ok ? '#D1FAE5' : '#FEE2E2',
-              color: publishResult.ok ? '#065F46' : '#991B1B',
+              background: publishResult.ok ? '#E3F5EC' : '#FDECEC',
+              color: publishResult.ok ? '#065F46' : '#B42318',
             }}
           >
             {publishResult.msg}
@@ -872,8 +872,8 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
           <div
             className="mb-2 text-sm text-center px-2 py-1.5 rounded-lg"
             style={{
-              background: copyToast.startsWith('Copied') ? '#D1FAE5' : '#FEE2E2',
-              color: copyToast.startsWith('Copied') ? '#065F46' : '#991B1B',
+              background: copyToast.startsWith('Copied') ? '#E3F5EC' : '#FDECEC',
+              color: copyToast.startsWith('Copied') ? '#065F46' : '#B42318',
             }}
           >
             {copyToast}
@@ -889,7 +889,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
           </button>
         )}
         {!canPublish && canSave && !publishResult && !copyToast && (
-          <div className="mb-2 text-xs text-center text-stone-500">
+          <div className="mb-2 text-xs text-center text-[#6E6E73]">
             To share teams with the other coaches, add the coach PIN in Coach setup.
           </div>
         )}
@@ -898,7 +898,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
             onClick={handleCopy}
             disabled={!canSave}
             className="tap-target rounded-lg px-3 flex items-center justify-center gap-1.5 text-sm font-bold active:scale-95 transition disabled:opacity-40"
-            style={{ background: 'white', border: '1px solid #C8A0E8', color: PURPLE, minHeight: '52px' }}
+            style={{ background: 'white', border: '1px solid #D1D1D6', color: PURPLE, minHeight: '52px' }}
           >
             <Copy size={16} strokeWidth={2.5} />
             WhatsApp

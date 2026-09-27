@@ -10,8 +10,8 @@ import SpondSheet from '@/features/spond/SpondSheet'
 
 const PURPLE = '#3D0066'
 const INK    = '#1A1A1A'
-const MUTED  = '#6B5B7B'
-const BORDER = '#E4D0F5'
+const MUTED  = '#6E6E73'
+const BORDER = '#E5E5EA'
 
 interface Props {
   onBack: () => void
@@ -79,12 +79,14 @@ export default function SetupScreen({ onBack }: Props) {
   const noRealSquad = !squad || squad.players.length === 0 || isDemo
 
   return (
-    <div className="min-h-screen" style={{ background: '#F8F4FF' }}>
-      <div className="sticky top-0 z-20 px-3 py-2.5 flex items-center gap-2" style={{ background: PURPLE }}>
+    <div className="min-h-screen" style={{ background: '#F2F2F7' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: PURPLE }}>
+      <div className="px-3 py-2.5 flex items-center gap-2">
         <button onClick={onBack} className="w-10 h-10 flex items-center justify-center -ml-1" aria-label="Back">
           <ChevronLeft size={26} color="white" strokeWidth={2.5} />
         </button>
         <div className="text-[17px] font-bold text-white">Settings</div>
+      </div>
       </div>
 
       <div className="px-3 py-4 space-y-3 max-w-md mx-auto pb-12">
@@ -95,7 +97,7 @@ export default function SetupScreen({ onBack }: Props) {
               <div className="flex-1 text-[15px]" style={{ color: INK }}>
                 Set — you can pick teams and share them.
               </div>
-              <button onClick={() => setEditingPin(true)} className="h-10 px-3 text-sm font-semibold rounded-lg" style={{ color: PURPLE, background: '#F4E8F5' }}>
+              <button onClick={() => setEditingPin(true)} className="h-10 px-3 text-sm font-semibold rounded-lg" style={{ color: PURPLE, background: '#F1EAF6' }}>
                 Change
               </button>
             </div>
@@ -106,8 +108,8 @@ export default function SetupScreen({ onBack }: Props) {
                 coaches. You don’t need it to run a match.
               </p>
               <div className="flex gap-2">
-                <div className="flex-1 flex items-center gap-2 px-3 rounded-lg border-2" style={{ borderColor: '#C8A0E8' }}>
-                  <KeyRound size={18} className="flex-shrink-0 text-stone-400" />
+                <div className="flex-1 flex items-center gap-2 px-3 rounded-lg border-2" style={{ borderColor: '#D1D1D6' }}>
+                  <KeyRound size={18} className="flex-shrink-0 text-[#8E8E93]" />
                   <input
                     type="text"
                     inputMode="numeric"
@@ -156,14 +158,14 @@ export default function SetupScreen({ onBack }: Props) {
         {hasPin && (
           <Section title="Spond">
             <div className="flex items-center gap-3 mb-3">
-              <Link2 size={18} strokeWidth={2.5} style={{ color: spondLinked ? '#16a34a' : MUTED }} />
+              <Link2 size={18} strokeWidth={2.5} style={{ color: spondLinked ? '#059669' : MUTED }} />
               <div className="flex-1 text-[15px]" style={{ color: INK }}>
                 {spondLinked ? `Connected${getSpondCreds().groupName ? ` · ${getSpondCreds().groupName}` : ''}` : 'Not connected'}
               </div>
               <button
                 onClick={() => setShowSpond(true)}
                 className="h-10 px-3 text-sm font-semibold rounded-lg"
-                style={{ color: PURPLE, background: '#F4E8F5' }}
+                style={{ color: PURPLE, background: '#F1EAF6' }}
               >
                 {spondLinked ? 'Manage' : 'Connect'}
               </button>
@@ -204,7 +206,7 @@ export default function SetupScreen({ onBack }: Props) {
             Have them scan this with their phone camera, then add the app to their Home Screen
             (Share → Add to Home Screen on iPhone). Give them the PIN in person.
           </p>
-          {qr && <img src={qr} alt="QR code linking to Coach Assistant" className="w-52 h-52 mx-auto rounded" />}
+          {qr && <img src={qr} alt="QR code linking to Coach Assistant" className="w-52 h-52 mx-auto rounded-lg" />}
           <button
             onClick={shareLink}
             className="w-full mt-3 h-12 rounded-lg font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition"
@@ -224,7 +226,7 @@ export default function SetupScreen({ onBack }: Props) {
               <button
                 onClick={() => void squadStore.clearSquad()}
                 className="w-full h-11 rounded-lg text-sm font-bold"
-                style={{ background: '#FEE2E2', color: '#B42318' }}
+                style={{ background: '#FDECEC', color: '#B42318' }}
               >
                 Remove practice squad
               </button>
@@ -232,7 +234,7 @@ export default function SetupScreen({ onBack }: Props) {
               <button
                 onClick={() => void squadStore.loadDemoSquad()}
                 className="w-full h-11 rounded-lg text-sm font-bold"
-                style={{ background: '#F4E8F5', color: PURPLE }}
+                style={{ background: '#F1EAF6', color: PURPLE }}
               >
                 Load practice squad
               </button>

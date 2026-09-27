@@ -58,19 +58,19 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-t-2xl overflow-hidden" style={{ maxHeight: '85vh' }}>
+      <div className="absolute inset-0 bg-black/50 backdrop-in" onClick={onClose} />
+      <div className="relative bg-white rounded-t-2xl overflow-hidden sheet-in" style={{ maxHeight: '85vh' }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-3" style={{ borderBottom: '1px solid #F3F0F8' }}>
+        <div className="flex items-center justify-between px-4 pt-4 pb-3" style={{ borderBottom: '1px solid #EFEFF4' }}>
           <div>
             <div className="font-bold text-[15px]" style={{ color: INK }}>Spond</div>
-            <div className="text-xs text-stone-400">Who's coming, straight from Spond</div>
+            <div className="text-xs text-[#8E8E93]">Who's coming, straight from Spond</div>
           </div>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full active:scale-95 transition"
-            style={{ background: '#F5F0FF' }}
+            style={{ background: '#F1EAF6' }}
           >
             <X size={16} color={PURPLE} />
           </button>
@@ -81,24 +81,24 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
           {/* ── Connected status */}
           {view === 'status' && (
             <>
-              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: '#F0FDF4' }}>
-                <CheckCircle size={18} color="#16a34a" strokeWidth={2} />
+              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: '#E3F5EC' }}>
+                <CheckCircle size={18} color="#059669" strokeWidth={2} />
                 <div className="min-w-0">
                   <div className="text-sm font-semibold truncate" style={{ color: INK }}>{creds.email}</div>
-                  <div className="text-xs text-stone-400">Team: {creds.groupName || '—'}</div>
+                  <div className="text-xs text-[#8E8E93]">Team: {creds.groupName || '—'}</div>
                 </div>
               </div>
               <button
                 onClick={() => setView('creds')}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold active:scale-95 transition"
-                style={{ background: '#F5F0FF', color: PURPLE }}
+                style={{ background: '#F1EAF6', color: PURPLE }}
               >
                 Change credentials
               </button>
               <button
                 onClick={disconnect}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold active:scale-95 transition"
-                style={{ background: '#FEF2F2', color: '#dc2626' }}
+                style={{ background: '#FDECEC', color: '#dc2626' }}
               >
                 Disconnect
               </button>
@@ -109,7 +109,7 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
           {view === 'creds' && (
             <>
               <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-widest text-stone-400 mb-1">
+                <label className="block text-xs font-semibold text-[#8E8E93] mb-1">
                   Spond email
                 </label>
                 <input
@@ -118,14 +118,14 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
                   onChange={e => setEmail(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && connect()}
                   className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none"
-                  style={{ borderColor: '#E4D0F5', color: INK }}
+                  style={{ borderColor: '#E5E5EA', color: INK }}
                   placeholder="your@email.com"
                   autoCapitalize="off"
                   autoCorrect="off"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-widest text-stone-400 mb-1">
+                <label className="block text-xs font-semibold text-[#8E8E93] mb-1">
                   Password
                 </label>
                 <input
@@ -134,7 +134,7 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
                   onChange={e => setPassword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && connect()}
                   className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none"
-                  style={{ borderColor: '#E4D0F5', color: INK }}
+                  style={{ borderColor: '#E5E5EA', color: INK }}
                   placeholder="••••••••"
                 />
               </div>
@@ -154,19 +154,19 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
           {/* ── Group picker */}
           {view === 'groups' && (
             <>
-              <p className="text-sm text-stone-500">Choose your team from Spond:</p>
+              <p className="text-sm text-[#6E6E73]">Choose your team from Spond:</p>
               {groups.map(g => (
                 <button
                   key={g.id}
                   onClick={() => pickGroup(g)}
                   className="w-full flex items-center gap-3 px-3 py-3 rounded-xl border active:scale-[0.99] transition text-left"
-                  style={{ borderColor: '#E4D0F5' }}
+                  style={{ borderColor: '#E5E5EA' }}
                 >
                   <div className="flex-1">
                     <div className="text-sm font-semibold" style={{ color: INK }}>{g.name}</div>
-                    <div className="text-xs text-stone-400">{g.members.length} members</div>
+                    <div className="text-xs text-[#8E8E93]">{g.members.length} members</div>
                   </div>
-                  <ChevronRight size={16} className="text-stone-300" />
+                  <ChevronRight size={16} className="text-[#C7C7CC]" />
                 </button>
               ))}
             </>
