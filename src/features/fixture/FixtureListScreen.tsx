@@ -196,11 +196,11 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
           {/* Spond button — green tint when connected */}
           <button
             onClick={() => setShowSpondSheet(true)}
-            className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition"
-            style={{ background: isSpondLinked ? 'rgba(74,222,128,0.25)' : 'rgba(255,255,255,0.15)' }}
-            aria-label="Spond settings"
+            className="h-9 px-2.5 flex items-center gap-1.5 rounded-lg active:scale-95 transition text-xs font-bold"
+            style={{ background: isSpondLinked ? 'rgba(74,222,128,0.25)' : 'rgba(255,255,255,0.15)', color: 'white' }}
           >
-            <Link2 size={15} color={isSpondLinked ? '#4ade80' : 'rgba(255,255,255,0.6)'} strokeWidth={2} />
+            <Link2 size={14} color={isSpondLinked ? '#4ade80' : 'white'} strokeWidth={2.5} />
+            {isSpondLinked ? 'Spond' : 'Connect Spond'}
           </button>
           <WoodfordMark size={22} color="white" />
         </div>

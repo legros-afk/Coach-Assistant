@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSquadStore } from '@/features/squad/useSquadStore'
 import type { Match, TeamSheet } from '@/lib/events/types'
 import { replayEvents } from '@/lib/events/replay'
@@ -110,7 +110,6 @@ export default function App() {
       {screen === 'match' && (
         <LiveMatch
           onBack={() => setScreen('home')}
-          onOpenSquad={() => setScreen('squad')}
           onSummary={() => setScreen('post-match')}
         />
       )}
@@ -166,7 +165,7 @@ export default function App() {
               style={{ color: screen === tab.key ? PURPLE : '#7B5FA8' }}
             >
               {tab.icon}
-              <span className="text-[10px] font-semibold">{tab.label}</span>
+              <span className="text-xs font-semibold">{tab.label}</span>
             </button>
           ))}
         </div>

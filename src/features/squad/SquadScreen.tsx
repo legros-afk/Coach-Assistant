@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AlertTriangle, ChevronLeft, CloudDownload, CloudUpload,
   Plus, RefreshCw, Trash2, UserPlus, Users,
@@ -211,7 +211,7 @@ export default function SquadScreen({ onBack }: Props) {
               ? <RefreshCw size={13} className="animate-spin" />
               : <CloudUpload size={13} strokeWidth={2.5} />
             }
-            Publish to club
+            {clubPinConfigured() ? 'Publish to club' : 'Publish (needs PIN)'}
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
-﻿import { useMemo, useRef, useState } from 'react'
-import { ArrowRight, Check, ChevronLeft, Copy, RefreshCw, Sparkles } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { ArrowRight, Check, ChevronLeft, Copy, RefreshCw, Share2, Sparkles } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, MatchEvent, MatchState, Player, TeamSheet } from '@/lib/events/types'
 import { useMatchStore } from './useMatchStore'
@@ -139,15 +139,27 @@ export default function PostMatchScreen({ onBack, data }: Props) {
     [events, playerMap],
   )
 
-  const handleCopy = async () => {
+  // The phone's share sheet goes straight to WhatsApp; clipboard is the
+  // fallback where sharing isn't available (most desktop browsers).
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+  const shareOrCopy = async (text: string, onCopied: () => void) => {
+    if (canShare) {
+      try { await navigator.share({ text }); return } catch (e) {
+        if ((e as Error).name === 'AbortError') return
+      }
+    }
     try {
-      await navigator.clipboard.writeText(shareText)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2200)
+      await navigator.clipboard.writeText(text)
+      onCopied()
     } catch {
-      // clipboard unavailable — text is visible in the box for manual copy
+      // clipboard unavailable — text is visible on screen for manual copy
     }
   }
+
+  const handleCopy = () => shareOrCopy(shareText, () => {
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2200)
+  })
 
   const handleGenerate = async () => {
     abortRef.current?.abort()
@@ -182,13 +194,12 @@ export default function PostMatchScreen({ onBack, data }: Props) {
     }
   }
 
-  const handleAiCopy = async () => {
+  const handleAiCopy = () => {
     if (!aiSummary) return
-    try {
-      await navigator.clipboard.writeText(aiSummary)
+    return shareOrCopy(aiSummary, () => {
       setAiCopied(true)
       setTimeout(() => setAiCopied(false), 2200)
-    } catch { /* ignore */ }
+    })
   }
 
   const resultColor = result === 'Won' ? '#059669' : result === 'Lost' ? '#DC2626' : '#D97706'
@@ -277,8 +288,8 @@ export default function PostMatchScreen({ onBack, data }: Props) {
             className="tap-target w-full rounded-lg font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition"
             style={{ background: copied ? '#059669' : PURPLE, color: 'white', minHeight: '48px' }}
           >
-            {copied ? <Check size={16} strokeWidth={2.5} /> : <Copy size={16} strokeWidth={2} />}
-            {copied ? 'Copied!' : 'Copy to clipboard'}
+            {copied ? <Check size={16} strokeWidth={2.5} /> : canShare ? <Share2 size={16} strokeWidth={2} /> : <Copy size={16} strokeWidth={2} />}
+            {copied ? 'Copied!' : canShare ? 'Share with parents' : 'Copy to clipboard'}
           </button>
 
           {/* AI summary card */}
@@ -307,8 +318,8 @@ export default function PostMatchScreen({ onBack, data }: Props) {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold active:scale-95 transition"
                     style={{ background: aiCopied ? '#059669' : '#F8F4FF', color: aiCopied ? 'white' : PURPLE, border: `1px solid #E4D0F5` }}
                   >
-                    {aiCopied ? <Check size={12} strokeWidth={2.5} /> : <Copy size={12} strokeWidth={2} />}
-                    {aiCopied ? 'Copied!' : 'Copy'}
+                    {aiCopied ? <Check size={12} strokeWidth={2.5} /> : canShare ? <Share2 size={12} strokeWidth={2} /> : <Copy size={12} strokeWidth={2} />}
+                    {aiCopied ? 'Copied!' : canShare ? 'Share' : 'Copy'}
                   </button>
                 </div>
               </>

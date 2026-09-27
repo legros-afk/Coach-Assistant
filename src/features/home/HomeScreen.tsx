@@ -1,8 +1,8 @@
-﻿import { useEffect } from 'react'
-import { Calendar, ChevronRight, Play, RefreshCw, RotateCcw } from 'lucide-react'
+import { useEffect } from 'react'
+import { Calendar, ChevronRight, KeyRound, Play, RefreshCw, RotateCcw } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import { useFixtureStore } from '@/features/fixture/useFixtureStore'
-import { useSquadStore } from '@/features/squad/useSquadStore'
+import { DEMO_SQUAD_ID, useSquadStore } from '@/features/squad/useSquadStore'
 import { useMatchStore } from '@/features/match/useMatchStore'
 import { useSyncStore, fmtSyncAge } from '@/lib/drive/useSyncStore'
 import type { Fixture, TeamSheet } from '@/lib/events/types'
@@ -91,9 +91,15 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
           >
             <RefreshCw size={15} color="white" strokeWidth={2} className={isSyncing ? 'animate-spin' : ''} />
           </button>
-          <button onClick={onOpenSetup} className="tap-target flex items-center justify-center" aria-label="Coach PIN settings">
-            <WoodfordMark size={22} color="white" />
+          <button
+            onClick={onOpenSetup}
+            className="h-9 px-2.5 flex items-center gap-1.5 rounded-lg active:scale-95 transition text-xs font-bold text-white"
+            style={{ background: 'rgba(255,255,255,0.15)' }}
+          >
+            <KeyRound size={14} strokeWidth={2.5} />
+            Coach PIN
           </button>
+          <WoodfordMark size={22} color="white" />
         </div>
       </div>
 
@@ -178,7 +184,8 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
           </>
         )}
 
-        {/* Demo / practice */}
+        {/* Demo / practice — only while there's no real squad to use */}
+        {(!squad || squad.players.length === 0 || squad.id === DEMO_SQUAD_ID) && (
         <section>
           <div className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">
             Practice / Demo
@@ -201,6 +208,7 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
             <ChevronRight size={16} className="text-stone-300 flex-shrink-0" />
           </button>
         </section>
+        )}
       </div>
     </div>
   )

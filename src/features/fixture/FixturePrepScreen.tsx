@@ -1,5 +1,5 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, Copy, LayoutGrid, RefreshCw, Zap } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, Copy, LayoutGrid, Lock, RefreshCw, Zap } from 'lucide-react'
 import { getSpondAvailability, type SpondAvailability } from '@/lib/spond/spondSync'
 import { spondConfigured } from '@/lib/spond/spondStore'
 import { teamLimits, validateComposition } from '@/lib/domain/validateComposition'
@@ -14,7 +14,8 @@ import type { Fixture } from '@/lib/events/types'
 import { clubPinConfigured } from '@/lib/drive/driveRead'
 import { DRIVE_FOLDER_ID } from '@/config/club'
 import { publishFixture } from '@/lib/drive/drivePublish'
-import TeamBoard, { GroupBadge, type Assignment } from './TeamBoard'
+import { db } from '@/lib/db/db'
+import SquadPicker, { GroupBadge, effectiveAssignment, type Assignment } from './SquadPicker'
 
 const PURPLE      = '#3D0066'
 const PURPLE_DARK = '#5B1A99'
@@ -86,8 +87,10 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   // falls back to whatever this coach chose last.
   const [teamCount, setTeamCountState] = useState<1 | 2>(() => {
     if (existing) return existing.teamSheets.length > 1 ? 2 : 1
+    // Most match days field one team, so that's the default until a coach
+    // chooses two.
     const stored = localStorage.getItem(TEAM_COUNT_KEY)
-    return stored === '1' ? 1 : 2
+    return stored === '2' ? 2 : 1
   })
   const [spondEventId]            = useState(existing?.spondEventId ?? initialSpondEventId)
 
@@ -128,6 +131,17 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     }
   }
 
+  // ── played lock: once a team has match events its sheet is history —
+  // editing it would rewrite the minutes and tries already recorded.
+  const [played, setPlayed] = useState(false)
+  const [unlocked, setUnlocked] = useState(false)
+  useEffect(() => {
+    if (!existing) return
+    const ids = existing.teamSheets.map(ts => ts.id)
+    db.matches.bulkGet(ids).then(ms => setPlayed(ms.some(m => (m?.events.length ?? 0) > 0)))
+  }, [existing])
+  const locked = played && !unlocked
+
   // ── mode
   const [mode, setMode] = useState<'board' | 'paste'>('board')
 
@@ -167,6 +181,15 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const setTeamCount = (n: 1 | 2) => {
     localStorage.setItem(TEAM_COUNT_KEY, String(n))
     setTeamCountState(n)
+    if (n === 2) {
+      // Benched by Auto-pick rather than by hand: free them so they can be
+      // split across the two teams.
+      setAssignments(m => {
+        const next = new Map(m)
+        for (const id of draftedIds) if (next.get(id) === 'bench-A') next.set(id, null)
+        return next
+      })
+    }
     if (n === 1) {
       // Team B is hidden from here on — anyone parked there would otherwise be
       // saved into a team sheet the coach can no longer see or edit.
@@ -197,6 +220,14 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       else next.delete(id)
       return next
     })
+
+  // What the team sheet will actually contain: in one-team mode anyone not
+  // picked counts as Bench, exactly as the picker shows them.
+  const effective = useMemo(() => {
+    const m = new Map<ID, Assignment>()
+    for (const p of players) m.set(p.id, effectiveAssignment(assignments.get(p.id), teamCount))
+    return m
+  }, [players, assignments, teamCount])
 
   // ── draft
   // Starts per player across earlier saved fixtures — the fairness evidence.
@@ -303,13 +334,13 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const [publishing, setPublishing] = useState(false)
   const [publishResult, setPublishResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
-  const teamA = useMemo(() => countTeam('A', assignments, groupOverrides, players, playersPerSide), [assignments, groupOverrides, players, playersPerSide])
-  const teamB = useMemo(() => countTeam('B', assignments, groupOverrides, players, playersPerSide), [assignments, groupOverrides, players, playersPerSide])
+  const teamA = useMemo(() => countTeam('A', effective, groupOverrides, players, playersPerSide), [effective, groupOverrides, players, playersPerSide])
+  const teamB = useMemo(() => countTeam('B', effective, groupOverrides, players, playersPerSide), [effective, groupOverrides, players, playersPerSide])
 
   const hasRatings = players.some(p => p.ratings)
   const balance = useMemo(() => {
     const calc = (team: 'A' | 'B') => {
-      const starters = players.filter(p => assignments.get(p.id) === team)
+      const starters = players.filter(p => effective.get(p.id) === team)
       if (starters.length === 0) return null
       const avg = (f: (p: Player) => number) =>
         (starters.reduce((sum, p) => sum + f(p), 0) / starters.length).toFixed(1)
@@ -319,9 +350,9 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       }
     }
     return { A: calc('A'), B: calc('B') }
-  }, [players, assignments, startsById])
-  const hasAnyA = players.some(p => assignments.get(p.id) === 'A' || assignments.get(p.id) === 'bench-A')
-  const hasAnyB = players.some(p => assignments.get(p.id) === 'B' || assignments.get(p.id) === 'bench-B')
+  }, [players, effective, startsById])
+  const hasAnyA = players.some(p => effective.get(p.id) === 'A' || effective.get(p.id) === 'bench-A')
+  const hasAnyB = players.some(p => effective.get(p.id) === 'B' || effective.get(p.id) === 'bench-B')
   const canSave = opponent.trim() && (hasAnyA || hasAnyB)
   const cantSaveReason = !opponent.trim()
     ? 'Add an opponent name to save'
@@ -337,8 +368,8 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   function buildFixture(): Fixture {
     const teamSheets: TeamSheet[] = []
     const sheetId = (team: 'A' | 'B') => existing?.teamSheets.find(ts => ts.label === team)?.id
-    if (hasAnyA) teamSheets.push(buildSheet('A', assignments, groupOverrides, players, sheetId('A')))
-    if (hasAnyB) teamSheets.push(buildSheet('B', assignments, groupOverrides, players, sheetId('B')))
+    if (hasAnyA) teamSheets.push(buildSheet('A', effective, groupOverrides, players, sheetId('A')))
+    if (hasAnyB) teamSheets.push(buildSheet('B', effective, groupOverrides, players, sheetId('B')))
     return {
       id: existing?.id ?? newId(),
       date,
@@ -363,7 +394,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       opponent: opponent.trim() || 'TBC',
       date,
       players,
-      assignments,
+      assignments: effective,
       groupOverrides,
     })
     try {
@@ -485,7 +516,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
               </div>
             ) : (
               <div className="text-[10px] text-white/70">
-                {spondEventId && spondConfigured() ? 'Tap ⚡ to sync availability' : 'Team sheet prep'}
+                Team sheet prep
               </div>
             )}
           </div>
@@ -493,13 +524,13 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
             <button
               onClick={syncSpondAvailability}
               disabled={spondSyncing}
-              className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition disabled:opacity-50"
+              className="h-9 px-2.5 flex items-center gap-1.5 rounded-lg active:scale-95 transition disabled:opacity-50 text-xs font-bold text-white"
               style={{ background: spondAvailability ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.15)' }}
-              aria-label="Sync availability from Spond"
             >
               {spondSyncing
-                ? <RefreshCw size={15} color="#4ade80" strokeWidth={2} className="animate-spin" />
-                : <Zap size={15} color={spondAvailability ? '#4ade80' : 'rgba(255,255,255,0.6)'} strokeWidth={2} />}
+                ? <RefreshCw size={14} color="#4ade80" strokeWidth={2.5} className="animate-spin" />
+                : <Zap size={14} color={spondAvailability ? '#4ade80' : 'white'} strokeWidth={2.5} />}
+              {spondAvailability ? 'Refresh' : 'Get availability'}
             </button>
           )}
         </div>
@@ -530,6 +561,23 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
           </div>
         )}
 
+        {locked && (
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg" style={{ background: '#EFEAF3', border: '1px solid #D8C6EC' }}>
+            <Lock size={16} strokeWidth={2.5} className="flex-shrink-0" style={{ color: PURPLE_DARK }} />
+            <span className="flex-1 text-sm" style={{ color: INK }}>
+              This match has been played, so its team sheet is locked.
+            </span>
+            <button
+              onClick={() => setUnlocked(true)}
+              className="text-xs font-bold px-3 h-9 rounded-lg active:scale-95 transition flex-shrink-0"
+              style={{ background: 'white', border: '1px solid #D8C6EC', color: PURPLE_DARK }}
+            >
+              Edit anyway
+            </button>
+          </div>
+        )}
+
+        <div className={locked ? 'pointer-events-none opacity-60 space-y-3' : 'space-y-3'} aria-disabled={locked}>
         {/* Fixture details */}
         <div className="bg-white rounded-lg p-3 space-y-2" style={{ border: '1px solid #E4D0F5' }}>
           <div className="flex gap-2">
@@ -592,7 +640,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                 color: mode === m ? 'white' : '#7B5FA8',
               }}
             >
-              {m === 'board' ? <><LayoutGrid size={13} /> Board</> : <><ClipboardPaste size={13} /> Paste</>}
+              {m === 'board' ? <><LayoutGrid size={13} /> Pick</> : <><ClipboardPaste size={13} /> Paste a list</>}
             </button>
           ))}
         </div>
@@ -613,7 +661,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                     style={{ background: PURPLE, color: 'white', minHeight: '44px' }}
                   >
                     <Zap size={14} strokeWidth={2.5} />
-                    {draftedIds.size > 0 ? 'Re-draft' : 'Draft teams'}
+                    {draftedIds.size > 0 ? 'Auto-pick again' : 'Auto-pick'}
                   </button>
                   <button
                     onClick={handleClear}
@@ -630,25 +678,27 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                     <div className="flex-1 bg-white rounded-lg px-2.5 py-1.5" style={{ border: '1px solid #E4D0F5' }}>
                       <div className="text-[9px] font-extrabold tracking-widest text-stone-400">AVG STARTS</div>
                       <div className="text-xs font-bold mono">
-                        A {balance.A?.starts ?? '—'} · B {balance.B?.starts ?? '—'}
+                        {teamCount === 2 ? `A ${balance.A?.starts ?? '—'} · B ${balance.B?.starts ?? '—'}` : balance.A?.starts ?? '—'}
                       </div>
                     </div>
                     {hasRatings && (
                       <div className="flex-1 bg-white rounded-lg px-2.5 py-1.5" style={{ border: '1px solid #E4D0F5' }}>
                         <div className="text-[9px] font-extrabold tracking-widest text-stone-400">AVG IMPACT</div>
                         <div className="text-xs font-bold mono">
-                          A {balance.A?.impact ?? '—'} · B {balance.B?.impact ?? '—'}
+                          {teamCount === 2 ? `A ${balance.A?.impact ?? '—'} · B ${balance.B?.impact ?? '—'}` : balance.A?.impact ?? '—'}
                         </div>
                       </div>
                     )}
                   </div>
                 )}
-                <div className="text-[10px] text-stone-400 mb-2 px-1">
+                <div className="text-xs text-stone-500 mb-2 px-1">
                   {draftedIds.size > 0
-                    ? 'Draft is a proposal — every magnet still moves, and Re-draft keeps players you placed by hand.'
-                    : 'Tap a player, then tap a slot to place them. Tap a placed player to pick them back up.'}
+                    ? 'Auto-pick is a suggestion — change anyone with one tap. Auto-pick again keeps the players you set by hand.'
+                    : teamCount === 1
+                      ? 'Everyone starts on Bench. Tap Start for your starters and Out for anyone missing.'
+                      : 'Pick each team on its tab. Tap a selected option again to free the player for the other team.'}
                 </div>
-                <TeamBoard
+                <SquadPicker
                   players={players}
                   playersPerSide={playersPerSide}
                   assignments={assignments}
@@ -700,12 +750,13 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                   className="tap-target w-full rounded-lg font-bold text-sm active:scale-95 transition"
                   style={{ background: '#10B981', color: 'white', minHeight: '48px' }}
                 >
-                  Apply to checklist
+                  Apply to team
                 </button>
               </div>
             )}
           </div>
         )}
+        </div>
       </div>
 
       {/* Save bar — the board above is the review */}
@@ -760,7 +811,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
           </button>
           <button
             onClick={handleSave}
-            disabled={!canSave || publishing}
+            disabled={!canSave || publishing || locked}
             className="tap-target flex-1 rounded-lg font-bold text-base active:scale-95 transition disabled:opacity-40"
             style={{ background: PURPLE, color: 'white', minHeight: '52px' }}
           >
@@ -769,7 +820,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
           {canPublish && (
             <button
               onClick={handleSaveAndPublish}
-              disabled={!canSave || publishing}
+              disabled={!canSave || publishing || locked}
               className="tap-target flex-1 rounded-lg font-bold text-base active:scale-95 transition flex items-center justify-center gap-2 disabled:opacity-40"
               style={{ background: '#059669', color: 'white', minHeight: '52px' }}
             >

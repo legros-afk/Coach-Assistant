@@ -1,7 +1,7 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity, AlertTriangle, ArrowRight, Check, ChevronLeft, Clock,
-  HandHelping, Pause, Play, Plus, Trophy, Undo2, Users, X,
+  HandHelping, MoreVertical, Pause, Play, Plus, Trophy, Undo2, X,
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, ID, Player, PlayerMatchState } from '@/lib/events/types'
@@ -77,28 +77,14 @@ function Section({
           <span className="mono text-sm opacity-50">({count})</span>
         </div>
         <span
-          className="text-[10px] uppercase tracking-widest font-semibold"
-          style={{ color: hint ? PURPLE : '#7B5FA8' }}
+          className="text-xs uppercase tracking-wide font-semibold"
+          style={{ color: hint ? PURPLE : '#6B5B7B' }}
         >
           {hint ?? subtitle}
         </span>
       </div>
       {children}
     </div>
-  )
-}
-
-function MiniAction({
-  onClick, color, label,
-}: { onClick: () => void; color: string; label: string }) {
-  return (
-    <button
-      onClick={e => { e.stopPropagation(); onClick() }}
-      className="flex-1 py-1 rounded text-[10px] font-bold uppercase tracking-wide flex items-center justify-center active:scale-95 transition"
-      style={{ background: color, color: 'white' }}
-    >
-      {label}
-    </button>
   )
 }
 
@@ -110,18 +96,17 @@ interface PlayerCardProps {
   picked?: boolean
   pickedTone?: 'rose' | 'emerald'
   onTap?: () => void
-  showActions?: boolean
+  /** Opens the blood / injury menu for this player */
+  onMenu?: () => void
   muted?: boolean
   suggested?: boolean   // fits the position of the player coming off
   dimmed?: boolean      // doesn't fit — still tappable, just de-emphasised
-  onBlood?: () => void
-  onInjury?: () => void
   onReturn?: () => void
 }
 
 function PlayerCard({
   player, ps, avgMs, liveElapsedMs,
-  picked, pickedTone, onTap, showActions, muted, suggested, dimmed, onBlood, onInjury, onReturn,
+  picked, pickedTone, onTap, onMenu, muted, suggested, dimmed, onReturn,
 }: PlayerCardProps) {
   const mins = liveMinMs(ps, liveElapsedMs)
   const pickedBg     = pickedTone === 'rose' ? '#FEE2E2' : '#D1FAE5'
@@ -137,7 +122,7 @@ function PlayerCard({
           ? `2px solid ${pickedBorder}`
           : suggested ? `2px solid ${PURPLE_DARK}` : '1px solid #E4D0F5',
         opacity: muted ? 0.7 : dimmed ? 0.5 : 1,
-        minHeight: '88px',
+        minHeight: '72px',
       }}
     >
       <div className="flex items-start gap-2 mb-1.5">
@@ -159,14 +144,18 @@ function PlayerCard({
             )}
           </div>
         </div>
+        {onMenu && (
+          // Blood and injury live behind this menu, well away from the tap-to-sub
+          // area, so a stray tap can't take a player off by accident.
+          <button
+            onClick={e => { e.stopPropagation(); onMenu() }}
+            aria-label={`Blood or injury — ${player.name}`}
+            className="-mr-1.5 -mt-1.5 w-11 h-11 flex items-center justify-center rounded-lg active:bg-stone-100 flex-shrink-0"
+          >
+            <MoreVertical size={18} strokeWidth={2.5} style={{ color: '#6B5B7B' }} />
+          </button>
+        )}
       </div>
-
-      {showActions && (
-        <div className="flex gap-1 mt-1.5">
-          <MiniAction onClick={onBlood!} color="#DC2626" label="Tmp" />
-          <MiniAction onClick={onInjury!} color={INK} label="Inj" />
-        </div>
-      )}
       {onReturn && (
         <button
           onClick={e => { e.stopPropagation(); onReturn() }}
@@ -202,9 +191,9 @@ function ScoreButton({
 
 // ── main screen ────────────────────────────────────────────────────────────────
 
-interface LiveMatchProps { onBack?: () => void; onOpenSquad?: () => void; onSummary?: () => void }
+interface LiveMatchProps { onBack?: () => void; onSummary?: () => void }
 
-export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchProps) {
+export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
   const store = useMatchStore()
   const { matchState, squad, clockRunning, opponent, teamSheet } = store
 
@@ -259,13 +248,35 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
   // ── injury replacement picker
   const [injuryPickerFor, setInjuryPickerFor] = useState<Player | null>(null)
 
+  // ── blood / injury menu for one on-pitch player
+  const [menuFor, setMenuFor] = useState<Player | null>(null)
+
   // ── undo confirmation
   const [pendingUndo, setPendingUndo] = useState(false)
 
   // ── toast
-  const [toast, setToast] = useState<string | null>(null)
-  const showToast = (msg: string) => {
-    setToast(msg); setTimeout(() => setToast(null), 2400)
+  // Subs and tries offer an inline Undo, so a mis-tap is one tap to reverse.
+  const [toast, setToast] = useState<{ msg: string; undo: boolean } | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showToast = (msg: string, undo = false) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    setToast({ msg, undo })
+    toastTimer.current = setTimeout(() => setToast(null), undo ? 5000 : 2400)
+  }
+  const undoFromToast = () => {
+    store.undoLast()
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    showToast('Undone')
+  }
+
+  // ── helper-mode exit needs a deliberate press-and-hold
+  const exitHold = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const startExitHold = () => {
+    exitHold.current = setTimeout(() => { setHelperMode(false); exitHold.current = null }, 1000)
+  }
+  const cancelExitHold = () => {
+    if (exitHold.current) clearTimeout(exitHold.current)
+    exitHold.current = null
   }
 
   // ── derived player data
@@ -366,7 +377,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
       // Pitch is short — send directly on with no one coming off
       if (onPitch.length < starterCount) {
         store.commitSubBatch([], [p.id])
-        showToast(`${p.name} — on`)
+        showToast(`${p.name} — on`, true)
       }
       return
     }
@@ -387,7 +398,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
       } else {
         store.commitSubBatch(comingOffIds, newOnIds)
         clearSubs()
-        showToast('Sub confirmed')
+        showToast('Sub done', true)
       }
     } else {
       setComingOnIds(newOnIds)
@@ -397,7 +408,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
   const confirmPendingSub = () => {
     store.commitSubBatch(comingOffIds, comingOnIds)
     clearSubs()
-    showToast('⚠ Position mismatch — sub done')
+    showToast('Sub done — out of position', true)
   }
   const pendingConfirm = subMode && comingOffIds.length > 0 && comingOnIds.length === comingOffIds.length
 
@@ -443,8 +454,8 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
     store.commitSubBatch(dueSwaps.map(s => s.off.id), dueSwaps.map(s => s.on.id))
     const label = dueSwaps.length === 1
       ? `${dueSwaps[0].off.name} → ${dueSwaps[0].on.name}`
-      : `${dueSwaps.length} subs confirmed`
-    showToast(label)
+      : `${dueSwaps.length} subs done`
+    showToast(label, true)
   }
 
   // ── half/full-time prompts
@@ -469,9 +480,9 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
             {onBack && !helperMode && (
               <button
                 onClick={onBack}
-                className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition -ml-1"
+                className="w-10 h-10 flex items-center justify-center rounded-lg active:scale-95 transition -ml-1"
                 style={{ background: 'rgba(255,255,255,0.15)' }}
-                aria-label="Home"
+                aria-label="Back to matches — the clock keeps running"
               >
                 <ChevronLeft size={18} color="white" strokeWidth={2.5} />
               </button>
@@ -487,27 +498,14 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase tracking-widest text-white/70 italic">
-              Nunquam Respice
-            </span>
             {!helperMode && (
               <button
                 onClick={() => setHelperMode(true)}
-                className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition"
+                className="h-10 px-3 flex items-center gap-1.5 rounded-lg active:scale-95 transition text-xs font-bold text-white"
                 style={{ background: 'rgba(255,255,255,0.15)' }}
-                aria-label="Helper mode"
               >
                 <HandHelping size={15} color="white" strokeWidth={2} />
-              </button>
-            )}
-            {onOpenSquad && !helperMode && (
-              <button
-                onClick={onOpenSquad}
-                className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition"
-                style={{ background: 'rgba(255,255,255,0.15)' }}
-                aria-label="Squad"
-              >
-                <Users size={15} color="white" strokeWidth={2} />
+                Hand to helper
               </button>
             )}
           </div>
@@ -516,15 +514,19 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
         {/* Helper mode strip */}
         {helperMode && (
           <div className="px-3 py-1.5 flex items-center justify-between" style={{ background: '#F59E0B' }}>
-            <span className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5" style={{ color: INK }}>
+            <span className="text-xs font-bold uppercase tracking-wide flex items-center gap-1.5" style={{ color: INK }}>
               <HandHelping size={13} strokeWidth={2.5} /> Helper mode — subs & scores
             </span>
             <button
-              onClick={() => setHelperMode(false)}
-              className="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded active:scale-95 transition"
+              onPointerDown={startExitHold}
+              onPointerUp={cancelExitHold}
+              onPointerLeave={cancelExitHold}
+              onPointerCancel={cancelExitHold}
+              onContextMenu={e => e.preventDefault()}
+              className="text-xs font-bold px-3 h-9 rounded select-none active:scale-95 transition"
               style={{ background: INK, color: 'white' }}
             >
-              Exit
+              Hold to exit
             </button>
           </div>
         )}
@@ -533,7 +535,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
         <div style={{ background: INK }} className="px-3 py-2.5">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-widest text-white/60">
+              <span className="text-xs font-semibold uppercase tracking-wide text-white/70">
                 H{matchState.half}
               </span>
               <span className="mono text-3xl font-bold tabular-nums tracking-tight text-white">
@@ -567,29 +569,29 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
               <span className="text-white/50">—</span>
               <ScoreButton
                 label="Them" value={matchState.scoreThem}
-                onClick={() => { store.recordTryThem(); showToast(`Try — ${opponent}`) }}
+                onClick={() => { store.recordTryThem(); showToast(`Try — ${opponent}`, true) }}
               />
             </div>
           </div>
 
-          {/* Half-end row — visible only when clock is paused and game has started */}
-          {!clockRunning && gameStarted && !matchEnded && !helperMode && (
+          {/* Half / full-time control — always there once the game is under way */}
+          {gameStarted && !matchEnded && !helperMode && (
             <div className="flex gap-2 mt-2">
               {!halfEnded ? (
                 <button
                   onClick={() => { store.endHalf(); showToast('Half time') }}
-                  className="text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded opacity-60 hover:opacity-90 transition"
-                  style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
+                  className="h-10 flex-1 text-xs font-bold uppercase tracking-wide rounded active:scale-95 transition"
+                  style={{ background: 'rgba(255,255,255,0.14)', color: 'white', border: '1px solid rgba(255,255,255,0.25)' }}
                 >
-                  End H1
+                  End first half
                 </button>
               ) : (
                 <button
                   onClick={() => { store.endMatch(); showToast('Full time') }}
-                  className="text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded opacity-60 hover:opacity-90 transition"
-                  style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
+                  className="h-10 flex-1 text-xs font-bold uppercase tracking-wide rounded active:scale-95 transition"
+                  style={{ background: 'rgba(255,255,255,0.14)', color: 'white', border: '1px solid rgba(255,255,255,0.25)' }}
                 >
-                  End match
+                  Full time
                 </button>
               )}
             </div>
@@ -672,7 +674,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
               className="text-xs px-2 py-1 text-center"
               style={{ color: PURPLE }}
             >
-              Dismiss
+              Later
             </button>
           </div>
         </div>
@@ -695,9 +697,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                 picked={comingOffIds.includes(p.id)}
                 pickedTone="rose"
                 onTap={() => togglePickOff(p)}
-                showActions={!subMode && !helperMode}
-                onBlood={() => setBloodPickerFor(p)}
-                onInjury={() => setInjuryPickerFor(p)}
+                onMenu={!subMode && !helperMode ? () => setMenuFor(p) : undefined}
               />
             ))}
           </div>
@@ -733,7 +733,6 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                       ? () => togglePickOn(p)
                       : undefined
                   }
-                  showActions={false}
                 />
               )
             })}
@@ -751,7 +750,6 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                   avgMs={avgMs}
                   liveElapsedMs={liveElapsedMs}
                   muted
-                  showActions={false}
                   onReturn={helperMode ? undefined : () => {
                     const status = matchState.playerStates.get(p.id)?.status
                     status === 'blood'
@@ -878,8 +876,8 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                 Undo
               </button>
             )}
-            <div className="flex-1 text-center text-xs text-stone-400 italic py-2">
-              {subMode ? 'tap bench to sub' : 'tap a player to sub'}
+            <div className="flex-1 text-center text-sm text-stone-500 py-2">
+              {subMode ? 'Now tap who comes on' : 'Tap a player to sub them off'}
             </div>
           </>
         )}
@@ -914,7 +912,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                   key={p.id}
                   onClick={() => {
                     store.recordTryUs(p.id)
-                    showToast(`Try — ${p.name}`)
+                    showToast(`Try — ${p.name}`, true)
                     setTryPickerOpen(false)
                   }}
                   className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
@@ -932,7 +930,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
               <button
                 onClick={() => {
                   store.recordTryUs()
-                  showToast('Try (unattributed)')
+                  showToast('Try (unattributed)', true)
                   setTryPickerOpen(false)
                 }}
                 className="tap-target w-full px-3 italic active:scale-[0.98] transition opacity-70"
@@ -940,6 +938,44 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                 Unattributed / decide later
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Blood / injury menu */}
+      {menuFor && (
+        <div
+          className="fixed inset-0 z-40 flex items-end"
+          style={{ background: 'rgba(32,24,32,0.7)' }}
+          onClick={() => setMenuFor(null)}
+        >
+          <div
+            className="bg-white w-full rounded-t-2xl p-4 space-y-2"
+            style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-2xl font-bold" style={{ color: INK }}>{menuFor.name}</div>
+              <button onClick={() => setMenuFor(null)} className="w-12 h-12 flex items-center justify-center" aria-label="Close">
+                <X />
+              </button>
+            </div>
+            <button
+              onClick={() => { setBloodPickerFor(menuFor); setMenuFor(null) }}
+              className="tap-target w-full rounded-lg px-4 text-left active:scale-[0.98] transition"
+              style={{ background: '#FEE2E2', color: '#991B1B' }}
+            >
+              <div className="font-bold text-base">Blood — temporary</div>
+              <div className="text-sm">Off now, can return once treated</div>
+            </button>
+            <button
+              onClick={() => { setInjuryPickerFor(menuFor); setMenuFor(null) }}
+              className="tap-target w-full rounded-lg px-4 text-left active:scale-[0.98] transition"
+              style={{ background: '#F5F5F4', color: INK }}
+            >
+              <div className="font-bold text-base">Injury</div>
+              <div className="text-sm text-stone-600">Off, left out of the minutes balance</div>
+            </button>
           </div>
         </div>
       )}
@@ -958,7 +994,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <div className="text-2xl font-bold" style={{ color: INK }}>
-                  Tmp — {bloodPickerFor.name}
+                  Blood — {bloodPickerFor.name}
                 </div>
               </div>
               <button
@@ -968,7 +1004,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                 <X />
               </button>
             </div>
-            <p className="text-sm text-stone-400 mb-3">Who comes on as replacement?</p>
+            <p className="text-sm text-stone-500 mb-3">Who comes on as replacement?</p>
             <div className="space-y-1.5">
               {replacementsFor(bloodPickerFor).map(({ p, fits }) => (
                 <button
@@ -1031,7 +1067,7 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
                 <X />
               </button>
             </div>
-            <p className="text-sm text-stone-400 mb-3">Who comes on as replacement?</p>
+            <p className="text-sm text-stone-500 mb-3">Who comes on as replacement?</p>
             <div className="space-y-1.5">
               {replacementsFor(injuryPickerFor).map(({ p, fits }) => (
                 <button
@@ -1072,10 +1108,19 @@ export default function LiveMatch({ onBack, onOpenSquad, onSummary }: LiveMatchP
       {/* ── Toast */}
       {toast && (
         <div
-          className="fixed bottom-32 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm shadow-lg z-50 whitespace-nowrap"
-          style={{ background: INK, color: 'white' }}
+          className="fixed bottom-32 left-1/2 -translate-x-1/2 pl-4 pr-1 py-1 rounded-full text-sm shadow-lg z-50 whitespace-nowrap flex items-center gap-2"
+          style={{ background: INK, color: 'white', minHeight: 40 }}
         >
-          {toast}
+          <span className={toast.undo ? '' : 'pr-3'}>{toast.msg}</span>
+          {toast.undo && (
+            <button
+              onClick={undoFromToast}
+              className="h-9 px-3 rounded-full text-sm font-bold active:scale-95 transition"
+              style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}
+            >
+              Undo
+            </button>
+          )}
         </div>
       )}
     </div>
