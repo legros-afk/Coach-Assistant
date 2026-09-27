@@ -3,6 +3,8 @@ import { useSquadStore } from '@/features/squad/useSquadStore';
 import { useFixtureStore } from '@/features/fixture/useFixtureStore';
 import { DRIVE_FOLDER_ID } from '@/config/club';
 import { syncFromDrive } from './driveSync';
+import { flushUnshared } from './pendingShare';
+import { friendlySyncError } from '@/lib/friendly';
 
 const LAST_SYNCED_KEY = 'coach-last-synced';
 
@@ -23,6 +25,9 @@ export const useSyncStore = create<SyncStore>()((set) => ({
 
   syncAll: async () => {
     set({ isSyncing: true, lastError: null });
+    // Anything saved here but not yet shared goes out first, so the pull
+    // below can't mistake it for something older than the club's copy.
+    await flushUnshared();
     const result = await syncFromDrive(DRIVE_FOLDER_ID);
 
     if (result.ok) {
@@ -35,12 +40,19 @@ export const useSyncStore = create<SyncStore>()((set) => ({
       localStorage.setItem(LAST_SYNCED_KEY, String(now));
       set({ isSyncing: false, lastSyncedAt: now, lastError: null });
     } else {
-      set({ isSyncing: false, lastError: result.error });
+      set({ isSyncing: false, lastError: friendlySyncError(result.error) });
     }
   },
 }));
 
-// ── helper ────────────────────────────────────────────────────────────────────
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+/** One short line for a header: what state the club data on this phone is in. */
+export function syncStatusText(s: Pick<SyncStore, 'isSyncing' | 'lastError' | 'lastSyncedAt'>): string {
+  if (s.isSyncing) return 'Updating…'
+  if (s.lastError) return s.lastError
+  return s.lastSyncedAt ? 'Up to date' : 'U12 · Coach Assistant'
+}
 
 export function fmtSyncAge(epochMs: number): string {
   const diff = Date.now() - epochMs;

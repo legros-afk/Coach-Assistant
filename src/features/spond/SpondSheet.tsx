@@ -65,7 +65,7 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
         <div className="flex items-center justify-between px-4 pt-4 pb-3" style={{ borderBottom: '1px solid #F3F0F8' }}>
           <div>
             <div className="font-bold text-[15px]" style={{ color: INK }}>Spond</div>
-            <div className="text-xs text-stone-400">Availability &amp; fixture sync</div>
+            <div className="text-xs text-stone-400">Who's coming, straight from Spond</div>
           </div>
           <button
             onClick={onClose}

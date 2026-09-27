@@ -66,9 +66,9 @@ export default function SetupScreen({ onDone, onBack }: Props) {
             Enter your coach PIN
           </h1>
           <p className="text-sm text-stone-500 leading-relaxed">
-            Ask your head coach for this. It's the same PIN for every coach — it lets whoever's
-            picking teams this week save and publish, without anyone signing in to Drive. You
-            don't need it just to view the squad or fixtures.
+            Ask your head coach for this. It's the same PIN for every coach, and it lets you
+            pick teams and share them with the other coaches. You don't need it to see
+            fixtures or run a match.
           </p>
         </div>
 

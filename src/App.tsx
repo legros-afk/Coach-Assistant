@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSquadStore } from '@/features/squad/useSquadStore'
 import type { Match, TeamSheet } from '@/lib/events/types'
 import { replayEvents } from '@/lib/events/replay'
@@ -28,6 +28,19 @@ export default function App() {
   useEffect(() => {
     useSyncStore.getState().syncAll()   // background sync, tracked in store
     setScreen('home')
+    // Coming back to the app is when coaches expect it to be current:
+    // update then, so nobody ever needs a refresh button.
+    const onVisible = () => {
+      const { isSyncing, lastSyncedAt, syncAll } = useSyncStore.getState()
+      if (document.visibilityState !== 'visible' || isSyncing) return
+      if (!lastSyncedAt || Date.now() - lastSyncedAt > 60_000) void syncAll()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', onVisible)
+    }
   }, [])
 
   const openFixturePrep = (fixture?: Fixture, pps?: number) => {
@@ -63,24 +76,6 @@ export default function App() {
 
   const showTabBar = screen === 'home' || screen === 'squad' || screen === 'fixtures'
 
-  const TAB_ORDER = ['home', 'fixtures', 'squad'] as const
-  const tabIndex = TAB_ORDER.indexOf(screen as typeof TAB_ORDER[number])
-  const swipeStart = useRef<{ x: number; y: number } | null>(null)
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (tabIndex === -1) return
-    swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-  }
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (!swipeStart.current || tabIndex === -1) return
-    const dx = e.changedTouches[0].clientX - swipeStart.current.x
-    const dy = e.changedTouches[0].clientY - swipeStart.current.y
-    swipeStart.current = null
-    if (Math.abs(dx) < 60 || Math.abs(dy) > 80) return
-    if (dx < 0 && tabIndex < TAB_ORDER.length - 1) setScreen(TAB_ORDER[tabIndex + 1])
-    if (dx > 0 && tabIndex > 0) setScreen(TAB_ORDER[tabIndex - 1])
-  }
-
   if (screen === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: PURPLE }}>
@@ -99,7 +94,7 @@ export default function App() {
   }
 
   return (
-    <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="contents">
+    <div className="contents">
       {screen === 'home' && (
         <HomeScreen
           onMatch={() => setScreen('match')}
@@ -146,7 +141,7 @@ export default function App() {
         />
       )}
 
-      <InstallPrompt />
+      <InstallPrompt visible={showTabBar} />
 
       {showTabBar && (
         <div

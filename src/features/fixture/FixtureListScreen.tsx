@@ -4,7 +4,7 @@ import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Fixture, Match, TeamSheet } from '@/lib/events/types'
 import { db } from '@/lib/db/db'
 import { useFixtureStore } from './useFixtureStore'
-import { useSyncStore, fmtSyncAge } from '@/lib/drive/useSyncStore'
+import { useSyncStore, syncStatusText } from '@/lib/drive/useSyncStore'
 import SpondSheet from '@/features/spond/SpondSheet'
 import { spondConfigured, getSpondCreds, extractOpponent, getKickoffDefaults, saveKickoffDefaults } from '@/lib/spond/spondStore'
 import { spondGetEvents, type SpondEvent } from '@/lib/spond/spondApi'
@@ -16,6 +16,12 @@ const PURPLE_DARK = '#5B1A99'
 const INK         = '#1A1A1A'
 
 const PPS_KEY = 'coach-players-per-side'
+
+// "Sat 4 Oct" — how coaches talk about match days
+const fmtFixtureDate = (iso: string) => {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+}
 
 // Matches the other screens' notion of today so a fixture can't read as
 // upcoming on one and played on another.
@@ -30,7 +36,7 @@ interface Props {
 
 export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImportSpond }: Props) {
   const { fixtures, isHydrated, hydrate, saveFixture } = useFixtureStore()
-  const { isSyncing, lastSyncedAt, syncAll } = useSyncStore()
+  const sync = useSyncStore()
   const [matchMap, setMatchMap] = useState<Map<string, Match>>(new Map())
   const [playersPerSide, setPlayersPerSideState] = useState<number>(() => {
     const stored = localStorage.getItem(PPS_KEY)
@@ -123,7 +129,9 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
       >
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-sm" style={{ color: INK }}>vs {f.opponent}</div>
-          <div className="text-xs text-stone-400">{f.date} · {f.teamSheets.length} team sheet{f.teamSheets.length !== 1 ? 's' : ''}</div>
+          <div className="text-xs text-stone-500">
+            {fmtFixtureDate(f.date)} · {f.playersPerSide ?? 12}-a-side · {f.teamSheets.length === 0 ? 'teams not picked' : f.teamSheets.length === 1 ? 'team picked' : `${f.teamSheets.length} teams picked`}
+          </div>
         </div>
         {playedSheets.length > 0 && (
           <div className="flex gap-1 items-center flex-shrink-0" onClick={e => e.stopPropagation()}>
@@ -178,23 +186,10 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
           <Calendar size={18} color="white" strokeWidth={2} />
           <div className="flex-1 leading-tight">
             <div className="text-[13px] font-bold tracking-wide uppercase text-white">Fixtures</div>
-            <div className="text-[10px] text-white/70">
-              {isSyncing
-                ? 'Syncing…'
-                : isHydrated
-                  ? `${fixtures.length} fixture${fixtures.length !== 1 ? 's' : ''}${lastSyncedAt ? ` · ${fmtSyncAge(lastSyncedAt)}` : ''}`
-                  : '…'}
+            <div className="text-xs text-white/75">
+              {isHydrated ? `${fixtures.length} fixture${fixtures.length !== 1 ? 's' : ''} · ${syncStatusText(sync)}` : '…'}
             </div>
           </div>
-          <button
-            onClick={syncAll}
-            disabled={isSyncing}
-            className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition disabled:opacity-50"
-            style={{ background: 'rgba(255,255,255,0.15)' }}
-            aria-label="Sync fixtures from Drive"
-          >
-            <RefreshCw size={15} color="white" strokeWidth={2} className={isSyncing ? 'animate-spin' : ''} />
-          </button>
           {/* Spond button — green tint when connected */}
           <button
             onClick={() => setShowSpondSheet(true)}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
-  AlertTriangle, ChevronLeft, CloudDownload, CloudUpload,
-  Plus, RefreshCw, Trash2, UserPlus, Users,
+  AlertTriangle, ChevronLeft,
+  Plus, Trash2, UserPlus, Users,
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, Player } from '@/lib/events/types'
@@ -10,6 +10,7 @@ import { publishSquad } from '@/lib/drive/drivePublish'
 import { markSquadSynced, discardLocalSquadEdits } from '@/lib/drive/squadSyncState'
 import { DRIVE_FOLDER_ID } from '@/config/club'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
+import { friendlyShareError } from '@/lib/friendly'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
 
 const PURPLE      = '#3D0066'
@@ -61,7 +62,8 @@ export default function SquadScreen({ onBack }: Props) {
   const [banner, setBanner] = useState<{ ok: boolean; msg: string } | null>(null)
   const { isSyncing, syncAll } = useSyncStore()
 
-  const canPublish = clubPinConfigured() && !!squad
+  // Only the PIN holders look after the squad; for everyone else it's a list.
+  const canEdit = clubPinConfigured()
 
   useEffect(() => { if (!isHydrated) hydrate() }, [isHydrated, hydrate])
 
@@ -106,23 +108,27 @@ export default function SquadScreen({ onBack }: Props) {
       await store.updatePlayer(editTarget.id, draft)
     }
     closeEdit()
+    void handlePublish()
   }
 
   const handleDelete = async () => {
     if (editTarget && editTarget !== 'new') {
       await store.deletePlayer(editTarget.id)
       closeEdit()
+      void handlePublish()
     }
   }
 
   const handlePull = async () => {
     await syncAll()
     const { lastError } = useSyncStore.getState()
-    showBanner(!lastError, lastError ?? 'Squad & fixtures synced from Drive.')
+    showBanner(!lastError, lastError ?? 'Up to date with the club')
   }
 
   const handlePublish = async (force = false) => {
-    if (!squad) return
+    // Read the latest squad: this runs straight after a store update
+    const squad = useSquadStore.getState().squad
+    if (!squad || !clubPinConfigured()) return
     setPublishing(true)
     const result = await publishSquad(squad, DRIVE_FOLDER_ID, force)
     setPublishing(false)
@@ -132,7 +138,7 @@ export default function SquadScreen({ onBack }: Props) {
       // unpublished — without this the device would keep refusing club updates.
       markSquadSynced(squad.version)
       setConflict(false)
-      showBanner(true, 'Squad published to Drive.')
+      showBanner(true, 'Shared with the coaches')
       return
     }
     // A conflict isn't a failure to retry — it needs the coach to choose, so
@@ -141,7 +147,7 @@ export default function SquadScreen({ onBack }: Props) {
       setConflict(true)
       return
     }
-    showBanner(false, result.error)
+    showBanner(false, friendlyShareError(result.error))
   }
 
   // Give up this device's edits and take the club copy instead.
@@ -186,34 +192,6 @@ export default function SquadScreen({ onBack }: Props) {
           <WoodfordMark size={22} color="white" />
         </div>
 
-        {/* Action row */}
-        <div className="px-3 py-2 flex gap-2" style={{ background: INK }}>
-          <button
-            onClick={handlePull}
-            disabled={isSyncing}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide transition active:scale-95 disabled:opacity-50"
-            style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
-          >
-            {isSyncing
-              ? <RefreshCw size={13} className="animate-spin" />
-              : <CloudDownload size={13} strokeWidth={2.5} />
-            }
-            Pull from club
-          </button>
-          <button
-            onClick={() => handlePublish()}
-            disabled={!canPublish || publishing}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide transition active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}
-            title={!clubPinConfigured() ? 'Add your coach PIN in settings to enable' : 'Publish squad to Drive'}
-          >
-            {publishing
-              ? <RefreshCw size={13} className="animate-spin" />
-              : <CloudUpload size={13} strokeWidth={2.5} />
-            }
-            {clubPinConfigured() ? 'Publish to club' : 'Publish (needs PIN)'}
-          </button>
-        </div>
       </div>
 
       {/* Publish conflict — needs a decision, so it stays put until one is made */}
@@ -223,11 +201,10 @@ export default function SquadScreen({ onBack }: Props) {
             <AlertTriangle size={15} strokeWidth={2.5} className="flex-shrink-0 mt-0.5" style={{ color: '#92400E' }} />
             <div className="flex-1">
               <div className="text-sm font-bold" style={{ color: '#92400E' }}>
-                Another coach published since you last synced
+                Another coach changed the squad too
               </div>
               <div className="text-xs mt-1" style={{ color: '#92400E' }}>
-                Publishing now would overwrite their changes. Your edits are still safe on this
-                phone either way.
+                Which version should everyone use?
               </div>
               <div className="flex gap-2 mt-2.5">
                 <button
@@ -236,7 +213,7 @@ export default function SquadScreen({ onBack }: Props) {
                   className="px-2.5 py-1.5 rounded text-[11px] font-bold uppercase tracking-wide active:scale-95 transition disabled:opacity-40"
                   style={{ background: '#92400E', color: 'white' }}
                 >
-                  Keep mine
+                  Use mine
                 </button>
                 <button
                   onClick={handleTakeClubCopy}
@@ -244,12 +221,10 @@ export default function SquadScreen({ onBack }: Props) {
                   className="px-2.5 py-1.5 rounded text-[11px] font-bold uppercase tracking-wide active:scale-95 transition disabled:opacity-40"
                   style={{ background: 'white', color: '#92400E', border: '1px solid #FCD34D' }}
                 >
-                  Take theirs
+                  Use theirs
                 </button>
               </div>
-              <div className="text-[10px] mt-1.5" style={{ color: '#B45309' }}>
-                "Keep mine" replaces the club copy. "Take theirs" discards your edits on this device.
-              </div>
+
             </div>
           </div>
         </div>
@@ -300,6 +275,7 @@ export default function SquadScreen({ onBack }: Props) {
               <div className="font-bold text-stone-500 mb-1">No players yet</div>
               <div className="text-sm text-stone-400">Add your squad or load demo data to get started.</div>
             </div>
+            {canEdit && (
             <button
               onClick={openNew}
               className="tap-target px-5 rounded-lg font-bold text-sm flex items-center gap-2 active:scale-95 transition"
@@ -307,6 +283,7 @@ export default function SquadScreen({ onBack }: Props) {
             >
               <UserPlus size={16} strokeWidth={2.5} /> Add first player
             </button>
+            )}
             <button
               onClick={handleLoadDemo}
               className="text-sm font-semibold active:opacity-70"
@@ -318,11 +295,17 @@ export default function SquadScreen({ onBack }: Props) {
         ) : (
           /* Player list */
           <div className="space-y-1.5">
+            {!canEdit && (
+              <div className="text-sm text-stone-500 px-1 pb-1">
+                Your head coach looks after the squad. Positions come from the club spreadsheet.
+              </div>
+            )}
             {players.map(p => (
               <button
                 key={p.id}
-                onClick={() => openEdit(p)}
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border active:scale-[0.99] transition text-left"
+                onClick={canEdit ? () => openEdit(p) : undefined}
+                disabled={!canEdit}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border enabled:active:scale-[0.99] transition text-left"
                 style={{ borderColor: '#E4D0F5' }}
               >
                 <GroupBadge group={p.defaultGroup} />
@@ -344,7 +327,7 @@ export default function SquadScreen({ onBack }: Props) {
       </div>
 
       {/* Add player FAB — only when squad exists */}
-      {players.length > 0 && (
+      {players.length > 0 && canEdit && (
         <div className="fixed bottom-20 right-4 z-20">
           <button
             onClick={openNew}
@@ -444,7 +427,7 @@ export default function SquadScreen({ onBack }: Props) {
                   })}
                 </div>
                 <div className="text-[11px] text-stone-400 mt-2 leading-snug">
-                  Position comes from the club spreadsheet — the next "Pull from club" will overwrite it if the sheet still says something different.
+                  Positions come from the club spreadsheet. Change them there too, or the app will switch back when it next updates.
                 </div>
               </div>
 

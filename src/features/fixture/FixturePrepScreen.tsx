@@ -12,8 +12,8 @@ import { useSquadStore } from '@/features/squad/useSquadStore'
 import { useFixtureStore } from './useFixtureStore'
 import type { Fixture } from '@/lib/events/types'
 import { clubPinConfigured } from '@/lib/drive/driveRead'
-import { DRIVE_FOLDER_ID } from '@/config/club'
-import { publishFixture } from '@/lib/drive/drivePublish'
+import { markFixtureUnshared, shareFixture } from '@/lib/drive/pendingShare'
+import { friendlyShareError } from '@/lib/friendly'
 import { db } from '@/lib/db/db'
 import { replayEvents } from '@/lib/events/replay'
 import type { Match } from '@/lib/events/types'
@@ -128,7 +128,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       ].filter(Boolean).join('  ')
       showSpondToast(parts || 'No responses yet')
     } catch (e) {
-      showSpondToast(e instanceof Error ? e.message : 'Spond sync failed')
+      showSpondToast(navigator.onLine === false ? 'No signal — try again when you’re back online' : 'Couldn’t reach Spond — try again')
     } finally {
       setSpondSyncing(false)
     }
@@ -439,9 +439,25 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     }
   }
 
+  // One Save: it always lands on this phone, and with the coach PIN it is
+  // shared with the other coaches straight away (or retried automatically).
   const handleSave = async () => {
-    await saveFixture(buildFixture())
-    onSaved()
+    const fixture = buildFixture()
+    await saveFixture(fixture)
+    if (!canPublish) {
+      setPublishResult({ ok: true, msg: 'Saved on this phone' })
+      setTimeout(() => onSaved(), 900)
+      return
+    }
+    markFixtureUnshared(fixture.id)
+    setPublishing(true)
+    setPublishResult(null)
+    const result = await shareFixture(fixture.id)
+    setPublishing(false)
+    setPublishResult(result.ok
+      ? { ok: true, msg: 'Saved and shared with the coaches' }
+      : { ok: false, msg: friendlyShareError(result.error) })
+    setTimeout(() => onSaved(), result.ok ? 900 : 2600)
   }
 
   const [copyToast, setCopyToast] = useState('')
@@ -456,23 +472,13 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     })
     try {
       await navigator.clipboard.writeText(msg)
-      setCopyToast('Copied — paste into WhatsApp')
+      setCopyToast('Copied — now paste it into WhatsApp')
     } catch {
-      setCopyToast('Copy failed — check browser permissions')
+      setCopyToast('Couldn’t copy — try again')
     }
     setTimeout(() => setCopyToast(''), 3000)
   }
 
-  const handleSaveAndPublish = async () => {
-    const fixture = buildFixture()
-    await saveFixture(fixture)
-    setPublishing(true)
-    setPublishResult(null)
-    const result = await publishFixture(fixture, DRIVE_FOLDER_ID)
-    setPublishing(false)
-    setPublishResult({ ok: result.ok, msg: result.ok ? 'Published to Drive.' : result.error })
-    if (result.ok) setTimeout(() => onSaved(), 900)
-  }
 
   const renderParsedSlot = (slot: ParsedSlot, isBench: boolean) => {
     if (slot.status === 'resolved') {
@@ -814,7 +820,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
               className="tap-target w-full rounded-lg font-bold text-sm active:scale-95 transition disabled:opacity-40"
               style={{ background: PURPLE, color: 'white', minHeight: '48px' }}
             >
-              Parse names
+              Read the list
             </button>
 
             {parseResult && (
@@ -882,38 +888,30 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
             {cantSaveReason}
           </button>
         )}
+        {!canPublish && canSave && !publishResult && !copyToast && (
+          <div className="mb-2 text-xs text-center text-stone-500">
+            To share teams with the other coaches, add the coach PIN in Coach setup.
+          </div>
+        )}
         <div className="flex gap-2">
           <button
             onClick={handleCopy}
             disabled={!canSave}
-            aria-label="Copy team sheet for WhatsApp"
-            className="tap-target rounded-lg px-4 flex items-center justify-center active:scale-95 transition disabled:opacity-40"
+            className="tap-target rounded-lg px-3 flex items-center justify-center gap-1.5 text-sm font-bold active:scale-95 transition disabled:opacity-40"
             style={{ background: 'white', border: '1px solid #C8A0E8', color: PURPLE, minHeight: '52px' }}
           >
-            <Copy size={18} strokeWidth={2.5} />
+            <Copy size={16} strokeWidth={2.5} />
+            WhatsApp
           </button>
           <button
             onClick={handleSave}
             disabled={!canSave || publishing || locked}
-            className="tap-target flex-1 rounded-lg font-bold text-base active:scale-95 transition disabled:opacity-40"
+            className="tap-target flex-1 rounded-lg font-bold text-base flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-40"
             style={{ background: PURPLE, color: 'white', minHeight: '52px' }}
           >
-            Save
+            {publishing ? <RefreshCw size={16} className="animate-spin" /> : canPublish ? <CloudUpload size={16} strokeWidth={2} /> : null}
+            {publishing ? 'Sharing…' : canPublish ? 'Save & share' : 'Save on this phone'}
           </button>
-          {canPublish && (
-            <button
-              onClick={handleSaveAndPublish}
-              disabled={!canSave || publishing || locked}
-              className="tap-target flex-1 rounded-lg font-bold text-base active:scale-95 transition flex items-center justify-center gap-2 disabled:opacity-40"
-              style={{ background: '#059669', color: 'white', minHeight: '52px' }}
-            >
-              {publishing
-                ? <RefreshCw size={16} className="animate-spin" />
-                : <CloudUpload size={16} strokeWidth={2} />
-              }
-              Save &amp; publish
-            </button>
-          )}
         </div>
       </div>
     </div>

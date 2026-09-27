@@ -97,7 +97,7 @@ export const useSquadStore = create<SquadStore>()((set, get) => ({
   },
 
   pullFromDrive: async () => {
-    if (!API_KEY) return { ok: false, error: 'API key not configured.' };
+    if (!API_KEY) return { ok: false, error: 'Can’t reach the club’s files — ask your head coach' };
     const result = await syncFromDrive(DRIVE_FOLDER_ID, API_KEY);
     if (result.ok && result.squadUpdated) {
       const all = await db.squads.toArray();

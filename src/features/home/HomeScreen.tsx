@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
-import { Calendar, ChevronRight, KeyRound, Play, RefreshCw, RotateCcw } from 'lucide-react'
+import { Calendar, ChevronRight, KeyRound, Play, RotateCcw } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import { useFixtureStore } from '@/features/fixture/useFixtureStore'
 import { DEMO_SQUAD_ID, useSquadStore } from '@/features/squad/useSquadStore'
 import { useMatchStore } from '@/features/match/useMatchStore'
-import { useSyncStore, fmtSyncAge } from '@/lib/drive/useSyncStore'
+import { useSyncStore, syncStatusText } from '@/lib/drive/useSyncStore'
 import type { Fixture, TeamSheet } from '@/lib/events/types'
 
 const PURPLE      = '#3D0066'
@@ -37,7 +37,7 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
   const activeEvents   = useMatchStore(s => s.events)
   const activeOpponent = useMatchStore(s => s.opponent)
   const activeTeamSheet = useMatchStore(s => s.teamSheet)
-  const { isSyncing, lastSyncedAt, lastError, syncAll } = useSyncStore()
+  const sync = useSyncStore()
 
   useEffect(() => {
     if (!fixturesReady) hydrateFixtures()
@@ -72,25 +72,8 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
         <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
           <div className="flex-1 leading-tight">
             <div className="text-[13px] font-bold tracking-wide uppercase text-white">Woodford RFC</div>
-            <div className="text-[10px] text-white/70">
-              {isSyncing
-                ? 'Syncing…'
-                : lastError
-                  ? lastError
-                  : lastSyncedAt
-                    ? `Synced ${fmtSyncAge(lastSyncedAt)}`
-                    : 'U12 · Coach Assistant'}
-            </div>
+            <div className="text-xs text-white/75">{syncStatusText(sync)}</div>
           </div>
-          <button
-            onClick={syncAll}
-            disabled={isSyncing}
-            className="tap-target w-8 h-8 flex items-center justify-center rounded-lg active:scale-95 transition disabled:opacity-50"
-            style={{ background: 'rgba(255,255,255,0.15)' }}
-            aria-label="Sync from Drive"
-          >
-            <RefreshCw size={15} color="white" strokeWidth={2} className={isSyncing ? 'animate-spin' : ''} />
-          </button>
           <button
             onClick={onOpenSetup}
             className="h-9 px-2.5 flex items-center gap-1.5 rounded-lg active:scale-95 transition text-xs font-bold text-white"

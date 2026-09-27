@@ -258,19 +258,19 @@ export default function PostMatchScreen({ onBack, data }: Props) {
           className="mx-3 mt-3 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
           style={{ background: '#FEE2E2', color: '#991B1B' }}
         >
-          <span className="flex-1">Match didn't publish to Drive — the club won't see it yet.</span>
+          <span className="flex-1">Not shared with the other coaches yet — saved on this phone.</span>
           <button
             onClick={() => void live.publishNow()}
             className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded active:scale-95 transition flex-shrink-0"
             style={{ background: '#991B1B', color: 'white' }}
           >
-            <RefreshCw size={11} strokeWidth={2.5} /> Retry
+            <RefreshCw size={11} strokeWidth={2.5} /> Try again
           </button>
         </div>
       )}
       {publishStatus === 'publishing' && (
         <div className="mx-3 mt-3 px-3 py-2 rounded-lg text-xs flex items-center gap-2 text-stone-500 bg-white border" style={{ borderColor: '#E4D0F5' }}>
-          <RefreshCw size={11} className="animate-spin" /> Publishing to Drive…
+          <RefreshCw size={11} className="animate-spin" /> Sharing with the coaches…
         </div>
       )}
 
