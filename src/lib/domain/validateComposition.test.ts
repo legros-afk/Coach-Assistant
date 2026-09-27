@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateComposition, projectOnPitchGroups } from './validateComposition';
+import { validateComposition, projectOnPitchGroups, teamLimits } from './validateComposition';
 import type { Group, ID, PlayerMatchState } from '../events/types';
 
 describe('validateComposition', () => {
@@ -97,5 +97,14 @@ describe('projectOnPitchGroups', () => {
     ]);
     const result = projectOnPitchGroups(states, [], new Map());
     expect(result).toEqual(['forward']);
+  });
+});
+
+describe('teamLimits', () => {
+  it('12-a-side is 5 forwards, 6 backs, 1 scrum-half', () => {
+    expect(teamLimits(12)).toEqual({ f: 5, b: 6, sh: 1 });
+  });
+  it('10-a-side is 4 forwards and 6 backs including the scrum-half', () => {
+    expect(teamLimits(10)).toEqual({ f: 4, b: 5, sh: 1 });
   });
 });

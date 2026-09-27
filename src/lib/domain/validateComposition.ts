@@ -6,12 +6,16 @@ export interface CompositionResult {
   counts: { forward: number; back: number; scrumhalf: number };
 }
 
-// Forwards are always 5 (scrum requirement), SH always 1, backs fill the rest.
-export const teamLimits = (playersPerSide: number) => ({
-  f: 5,
-  b: Math.max(0, playersPerSide - 6),
-  sh: 1,
-});
+/** The formats coaches can switch between on a fixture. */
+export const FORMATS = [12, 10] as const;
+
+// 12-a-side: 5 forwards, 6 backs, 1 scrum-half.
+// 10-a-side: 4 forwards and 6 backs, the scrum-half being one of the six.
+// Anything else keeps a 5-forward scrum, 1 SH, and backs fill the rest.
+export const teamLimits = (playersPerSide: number) => {
+  if (playersPerSide === 10) return { f: 4, b: 5, sh: 1 };
+  return { f: 5, b: Math.max(0, playersPerSide - 6), sh: 1 };
+};
 
 export function validateComposition(groups: Group[], playersPerSide = 11): CompositionResult {
   const limits = teamLimits(playersPerSide);

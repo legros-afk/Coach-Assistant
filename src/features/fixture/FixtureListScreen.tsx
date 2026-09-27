@@ -9,6 +9,7 @@ import SpondSheet from '@/features/spond/SpondSheet'
 import { spondConfigured, getSpondCreds, extractOpponent, getKickoffDefaults, saveKickoffDefaults } from '@/lib/spond/spondStore'
 import { spondGetEvents, type SpondEvent } from '@/lib/spond/spondApi'
 import { ensureToken, createSpondEventForFixture } from '@/lib/spond/spondSync'
+import { FORMATS } from '@/lib/domain/validateComposition'
 
 const PURPLE      = '#3D0066'
 const PURPLE_DARK = '#5B1A99'
@@ -33,7 +34,8 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
   const [matchMap, setMatchMap] = useState<Map<string, Match>>(new Map())
   const [playersPerSide, setPlayersPerSideState] = useState<number>(() => {
     const stored = localStorage.getItem(PPS_KEY)
-    return stored ? parseInt(stored, 10) : 12
+    const n = stored ? parseInt(stored, 10) : 12
+    return FORMATS.includes(n as 12 | 10) ? n : 12
   })
 
   const [kickOff,  setKickOff]  = useState(() => getKickoffDefaults().kickOff)
@@ -63,7 +65,7 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
   const [spondError,     setSpondError]        = useState('')
 
   const setPlayersPerSide = (n: number) => {
-    const clamped = Math.min(12, Math.max(1, n))
+    const clamped = FORMATS.includes(n as 12 | 10) ? n : 12
     localStorage.setItem(PPS_KEY, String(clamped))
     setPlayersPerSideState(clamped)
   }
@@ -205,21 +207,23 @@ export default function FixtureListScreen({ onNew, onEdit, onViewMatch, onImport
           <WoodfordMark size={22} color="white" />
         </div>
 
-        {/* Players per side */}
+        {/* Default format for new fixtures — each fixture can still be switched */}
         <div className="px-3 py-2 flex items-center justify-between" style={{ background: INK }}>
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-white/60">Players per side</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPlayersPerSide(playersPerSide - 1)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold active:scale-95 transition"
-              style={{ background: 'rgba(255,255,255,0.12)', color: 'white' }}
-            >−</button>
-            <span className="w-5 text-center text-sm font-bold text-white">{playersPerSide}</span>
-            <button
-              onClick={() => setPlayersPerSide(playersPerSide + 1)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold active:scale-95 transition"
-              style={{ background: 'rgba(255,255,255,0.12)', color: 'white' }}
-            >+</button>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-white/60">New fixtures</span>
+          <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.2)' }}>
+            {FORMATS.map(n => (
+              <button
+                key={n}
+                onClick={() => setPlayersPerSide(n)}
+                className="px-3 h-8 text-xs font-bold transition"
+                style={{
+                  background: playersPerSide === n ? 'white' : 'transparent',
+                  color: playersPerSide === n ? INK : 'white',
+                }}
+              >
+                {n}-a-side
+              </button>
+            ))}
           </div>
         </div>
       </div>

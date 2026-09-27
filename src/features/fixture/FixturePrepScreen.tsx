@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, Copy, History, LayoutGrid, Lock, RefreshCw, Zap } from 'lucide-react'
 import { getSpondAvailability, type SpondAvailability } from '@/lib/spond/spondSync'
 import { spondConfigured } from '@/lib/spond/spondStore'
-import { teamLimits, validateComposition } from '@/lib/domain/validateComposition'
+import { FORMATS, teamLimits, validateComposition } from '@/lib/domain/validateComposition'
 import { draftTeams } from '@/lib/domain/draftTeams'
 import { formatTeamsForWhatsApp } from '@/lib/domain/formatTeamSheet'
 import { parseTeamSheet } from '@/lib/domain/parseTeamSheet'
@@ -84,7 +84,8 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const [date, setDate]           = useState(existing?.date ?? initialDate ?? todayIso())
   const [opponent, setOpponent]   = useState(existing?.opponent ?? initialOpponent ?? '')
   const opponentRef = useRef<HTMLInputElement>(null)
-  const [playersPerSide]          = useState(existing?.playersPerSide ?? initialPlayersPerSide ?? 12)
+  // Editable here: a fixture can be switched to 10-a-side on the day.
+  const [playersPerSide, setPlayersPerSide] = useState(existing?.playersPerSide ?? initialPlayersPerSide ?? 12)
   // An existing fixture already says how many teams it was built for; a new one
   // falls back to whatever this coach chose last.
   const [teamCount, setTeamCountState] = useState<1 | 2>(() => {
@@ -661,8 +662,22 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
             </div>
           </div>
           <div className="flex items-center justify-between pt-0.5">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Players per side</span>
-            <span className="text-sm font-bold" style={{ color: INK }}>{playersPerSide}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Format</span>
+            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E4D0F5' }}>
+              {[...FORMATS, ...(FORMATS.includes(playersPerSide as 12 | 10) ? [] : [playersPerSide])].map(n => (
+                <button
+                  key={n}
+                  onClick={() => setPlayersPerSide(n)}
+                  className="px-3 py-1 text-xs font-bold transition"
+                  style={{
+                    background: playersPerSide === n ? PURPLE : 'white',
+                    color: playersPerSide === n ? 'white' : '#7B5FA8',
+                  }}
+                >
+                  {n}-a-side
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex items-center justify-between pt-0.5">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-stone-400">Teams today</span>
