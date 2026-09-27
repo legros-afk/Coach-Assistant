@@ -10,7 +10,11 @@ export interface DraftOptions {
   existing: Map<ID, ExistingAssignment>;
   groupOverrides: Map<ID, Group>;
   playersPerSide: number;
-  /** Season starts per player, used to give low-starts players priority to start. */
+  /**
+   * Season play so far per player (minutes where recorded, else starts).
+   * Those who have played least get priority for any starting slot the
+   * coach hasn't filled by hand.
+   */
   starts: Map<ID, number>;
   /** 1 drafts a single side — nobody is placed in Team B or its bench. */
   teamCount?: 1 | 2;

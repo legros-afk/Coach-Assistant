@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { CheckCircle, ChevronLeft, KeyRound } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import QRCode from 'qrcode'
+import { CheckCircle, ChevronLeft, KeyRound, Share2 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import { getClubPin, setClubPin } from '@/lib/drive/driveRead'
 
@@ -14,6 +15,27 @@ interface Props {
 export default function SetupScreen({ onDone, onBack }: Props) {
   const [pin, setPin]         = useState(() => getClubPin())
   const [saved, setSaved]     = useState(false)
+
+  // "Add a coach": a QR code of the app's address. The PIN is deliberately
+  // left out of the link — it's passed on in person, like it is today.
+  const appUrl = window.location.origin + '/'
+  const [qr, setQr] = useState<string | null>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
+  useEffect(() => {
+    QRCode.toDataURL(appUrl, { margin: 1, width: 440, color: { dark: '#1A1A1A', light: '#FFFFFF' } })
+      .then(setQr)
+      .catch(() => setQr(null))
+  }, [appUrl])
+  const shareLink = async () => {
+    if (typeof navigator.share === 'function') {
+      try { await navigator.share({ title: 'Coach Assistant', url: appUrl }); return } catch { /* fall through */ }
+    }
+    try {
+      await navigator.clipboard.writeText(appUrl)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2200)
+    } catch { /* link is shown on screen */ }
+  }
 
   const handleSave = () => {
     setClubPin(pin)
@@ -33,8 +55,8 @@ export default function SetupScreen({ onDone, onBack }: Props) {
           <WoodfordMark size={28} color="white" />
         )}
         <div className="leading-tight">
-          <div className="text-sm font-bold tracking-wide uppercase text-white">Coach PIN</div>
-          <div className="text-xs text-white/70">Needed to save & publish</div>
+          <div className="text-sm font-bold tracking-wide uppercase text-white">Coach setup</div>
+          <div className="text-xs text-white/70">PIN and adding coaches</div>
         </div>
       </div>
 
@@ -87,6 +109,28 @@ export default function SetupScreen({ onDone, onBack }: Props) {
         >
           Save PIN
         </button>
+
+        {/* Add a coach */}
+        <div className="bg-white rounded-lg p-4 border mt-2" style={{ borderColor: '#E4D0F5' }}>
+          <h2 className="text-lg font-bold mb-1" style={{ color: INK }}>Add a coach</h2>
+          <p className="text-sm text-stone-500 leading-relaxed mb-3">
+            Have them scan this with their phone camera, then add the app to their home screen:
+            Share → Add to Home Screen on iPhone, or the Install prompt on Android.
+            Give them the PIN in person.
+          </p>
+          {qr && (
+            <img src={qr} alt="QR code linking to Coach Assistant" className="w-56 h-56 mx-auto rounded" />
+          )}
+          <div className="text-center text-xs text-stone-500 mt-2 break-all">{appUrl}</div>
+          <button
+            onClick={shareLink}
+            className="w-full mt-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition"
+            style={{ minHeight: 48, background: 'white', border: `2px solid ${PURPLE}`, color: PURPLE }}
+          >
+            <Share2 size={16} strokeWidth={2.5} />
+            {linkCopied ? 'Link copied' : 'Send the link instead'}
+          </button>
+        </div>
       </div>
     </div>
   )

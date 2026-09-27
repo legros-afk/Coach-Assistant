@@ -38,10 +38,11 @@ function liveMinMs(ps: PlayerMatchState, elapsedMs: number): number {
     : ps.minutesPlayed
 }
 
-// 10% of a 40-minute game = 4 minutes tolerance per player
 const TOTAL_GAME_MS  = 40 * 60_000
 const HALF_LENGTH_MS = TOTAL_GAME_MS / 2
-const TOLERANCE_MS   = TOTAL_GAME_MS * 0.1
+// Starts reward performance; the guarantee is that everyone plays at least
+// a half, with changes batched at the break wherever possible.
+const MINIMUM_MS     = HALF_LENGTH_MS
 
 // Parent-safe helper mode: subs and scores only. Persisted so a mid-game
 // reload doesn't hand a parent the full coach UI.
@@ -210,15 +211,49 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
   const halfEnded = store.events.some(e => e.type === 'HALF_END')
   const matchEnded = store.events.some(e => e.type === 'MATCH_END')
   const gameStarted = store.events.some(e => e.type === 'CLOCK_START')
+  const secondHalfStarted = store.events.some(
+    e => e.type === 'CLOCK_START' && (e as Extract<typeof e, { type: 'CLOCK_START' }>).payload.half === 2,
+  )
+  const atBreak = halfEnded && !secondHalfStarted && !matchEnded
+
+  // ── keep the screen awake while the match screen is open — unlocking a
+  //    phone with wet hands mid-sub is the fiddliest thing pitch-side
+  useEffect(() => {
+    let lock: WakeLockSentinel | null = null
+    let cancelled = false
+    const acquire = async () => {
+      try {
+        if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return
+        const l = await navigator.wakeLock.request('screen')
+        if (cancelled) { void l.release(); return }
+        lock = l
+      } catch { /* not supported or refused (e.g. low battery) — carry on */ }
+    }
+    void acquire()
+    // The browser drops the lock when the app is hidden; take it back on return
+    const onVisible = () => { if (document.visibilityState === 'visible') void acquire() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', onVisible)
+      void lock?.release()
+    }
+  }, [])
 
   // ── standing sub plan — recomputed every ~15s of clock time, also while paused
   //    (half-time is exactly when subs get made)
   const planElapsedMs = Math.floor(liveElapsedMs / 15_000) * 15_000
   const subPlan = useMemo(
     () => gameStarted && !matchEnded
-      ? planSubs(squad, teamSheet, matchState.playerStates, planElapsedMs, TOTAL_GAME_MS, TOLERANCE_MS)
+      ? planSubs(squad, teamSheet, matchState.playerStates, planElapsedMs, {
+          gameLengthMs: TOTAL_GAME_MS,
+          halfLengthMs: HALF_LENGTH_MS,
+          minimumMs: MINIMUM_MS,
+          halfEnded,
+          secondHalfStarted,
+        })
       : [],
-    [squad, teamSheet, matchState, planElapsedMs, gameStarted, matchEnded],
+    [squad, teamSheet, matchState, planElapsedMs, gameStarted, matchEnded, halfEnded, secondHalfStarted],
   )
   const dueSwaps = subPlan.filter(s => s.dueNow)
   const dueKey = dueSwaps.map(s => `${s.off.id}>${s.on.id}`).join('|')
@@ -575,7 +610,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
           </div>
 
           {/* Half / full-time control — always there once the game is under way */}
-          {gameStarted && !matchEnded && !helperMode && (
+          {gameStarted && !matchEnded && !helperMode && !atBreak && (
             <div className="flex gap-2 mt-2">
               {!halfEnded ? (
                 <button
@@ -626,7 +661,72 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       )}
 
       {/* ── Standing sub plan */}
-      {subPlan.length > 0 && dismissedKey !== dueKey && !subMode && (
+      {/* ── Half-time panel */}
+      {atBreak && !subMode && (
+        <div className="mx-3 mt-3 rounded-lg overflow-hidden" style={{ border: `2px solid ${PURPLE}`, background: 'white' }}>
+          <div className="px-3 py-2.5 flex items-center justify-between" style={{ background: PURPLE_SOFTER }}>
+            <div className="text-lg font-bold" style={{ color: PURPLE }}>Half time</div>
+            <div className="mono text-lg font-bold tabular-nums" style={{ color: INK }}>
+              {matchState.scoreUs}–{matchState.scoreThem}
+            </div>
+          </div>
+
+          <div className="px-3 py-2.5">
+            <div className="text-xs font-bold uppercase tracking-wide mb-1.5" style={{ color: '#6B5B7B' }}>
+              {dueSwaps.length > 0 ? 'Changes for the second half' : 'No changes needed'}
+            </div>
+            {dueSwaps.length > 0 ? (
+              <div className="space-y-1.5">
+                {dueSwaps.map((swap, i) => (
+                  <div key={i} className="flex items-center gap-2 text-[15px]">
+                    <GroupBadge group={swap.group} size="sm" />
+                    <span className="font-semibold truncate" style={{ color: '#B42318' }}>{swap.off.name}</span>
+                    <ArrowRight size={14} className="flex-shrink-0 opacity-50" />
+                    <span className="font-semibold truncate" style={{ color: '#047857' }}>{swap.on.name}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-stone-500">Everyone is on course for at least a half.</div>
+            )}
+          </div>
+
+          <div className="px-3 pb-2.5">
+            <div className="text-xs font-bold uppercase tracking-wide mb-1" style={{ color: '#6B5B7B' }}>Least played so far</div>
+            <div className="text-sm" style={{ color: INK }}>
+              {squad
+                .filter(p => { const st = matchState.playerStates.get(p.id)?.status; return st === 'on' || st === 'bench' })
+                .sort((a, b) => (matchState.playerStates.get(a.id)!.minutesPlayed) - (matchState.playerStates.get(b.id)!.minutesPlayed))
+                .slice(0, 4)
+                .map(p => `${p.name} ${Math.round(matchState.playerStates.get(p.id)!.minutesPlayed / 60_000)}'`)
+                .join(' · ')}
+            </div>
+          </div>
+
+          {!helperMode && (
+            <div className="px-3 pb-3 flex gap-2">
+              {dueSwaps.length > 0 && (
+                <button
+                  onClick={applyDueSwaps}
+                  className="flex-1 rounded-lg font-bold text-sm active:scale-95 transition"
+                  style={{ minHeight: 48, background: 'white', border: `2px solid ${PURPLE}`, color: PURPLE }}
+                >
+                  Make {dueSwaps.length} change{dueSwaps.length === 1 ? '' : 's'}
+                </button>
+              )}
+              <button
+                onClick={() => { store.startClock(); showToast('Second half') }}
+                className="flex-1 rounded-lg font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition"
+                style={{ minHeight: 48, background: '#10B981', color: INK }}
+              >
+                <Play size={16} strokeWidth={2.5} /> Start second half
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {subPlan.length > 0 && dismissedKey !== dueKey && !subMode && !atBreak && (
         <div
           className="mx-3 mt-3 rounded-lg p-3 flex items-start gap-3"
           style={{
@@ -653,7 +753,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
                   <ArrowRight size={10} className="flex-shrink-0 opacity-50" />
                   <span className="font-semibold truncate">{swap.on.name}</span>
                   <span className="mono text-[11px] ml-auto flex-shrink-0 tabular-nums">
-                    {swap.dueNow ? 'now' : `~${Math.ceil(swap.dueAtMs / 60_000)}'`}
+                    {swap.dueNow ? 'now' : swap.atHalfTime ? 'HT' : `~${Math.ceil(swap.dueAtMs / 60_000)}'`}
                   </span>
                 </div>
               ))}

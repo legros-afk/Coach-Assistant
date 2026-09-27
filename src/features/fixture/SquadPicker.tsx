@@ -45,6 +45,8 @@ interface Props {
   spondAvailability: SpondAvailability | null
   /** Season starts per player; null hides the counts (e.g. first fixture of the season). */
   starts?: Map<ID, number> | null
+  /** Season minutes per player from earlier matches; null hides them. */
+  minutes?: Map<ID, number> | null
   teamCount?: 1 | 2
   onAssign: (id: ID, val: Assignment) => void
   onOverride: (id: ID, group: Group | null) => void
@@ -54,7 +56,7 @@ interface Props {
 // every decision is a single tap on the player's own row.
 export default function SquadPicker({
   players, playersPerSide, assignments, groupOverrides, spondAvailability,
-  starts = null, teamCount = 1, onAssign, onOverride,
+  starts = null, minutes = null, teamCount = 1, onAssign, onOverride,
 }: Props) {
   const [tab, setTab] = useState<Team>('A')
   const team: Team = teamCount === 1 ? 'A' : tab
@@ -155,9 +157,11 @@ export default function SquadPicker({
                 also {GROUP_SHORT[og]}
               </button>
             ))}
-            {starts && (
+            {(starts || minutes) && (
               <span className="text-xs mono" style={{ color: MUTED }}>
-                {n} start{n === 1 ? '' : 's'}
+                {starts ? `${n} start${n === 1 ? '' : 's'}` : ''}
+                {starts && minutes ? ' · ' : ''}
+                {minutes ? `${Math.round(minutes.get(p.id) ?? 0)} min` : ''}
               </span>
             )}
           </div>

@@ -97,7 +97,7 @@ export default function HomeScreen({ onMatch, onFixturePrep, onOpenSetup }: Prop
             style={{ background: 'rgba(255,255,255,0.15)' }}
           >
             <KeyRound size={14} strokeWidth={2.5} />
-            Coach PIN
+            Coach setup
           </button>
           <WoodfordMark size={22} color="white" />
         </div>

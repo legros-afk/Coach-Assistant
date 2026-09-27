@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, Copy, LayoutGrid, Lock, RefreshCw, Zap } from 'lucide-react'
+import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, Copy, History, LayoutGrid, Lock, RefreshCw, Zap } from 'lucide-react'
 import { getSpondAvailability, type SpondAvailability } from '@/lib/spond/spondSync'
 import { spondConfigured } from '@/lib/spond/spondStore'
 import { teamLimits, validateComposition } from '@/lib/domain/validateComposition'
@@ -15,6 +15,8 @@ import { clubPinConfigured } from '@/lib/drive/driveRead'
 import { DRIVE_FOLDER_ID } from '@/config/club'
 import { publishFixture } from '@/lib/drive/drivePublish'
 import { db } from '@/lib/db/db'
+import { replayEvents } from '@/lib/events/replay'
+import type { Match } from '@/lib/events/types'
 import SquadPicker, { GroupBadge, effectiveAssignment, type Assignment } from './SquadPicker'
 
 const PURPLE      = '#3D0066'
@@ -244,6 +246,60 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     return m
   }, [fixtures, existing?.id, date])
 
+  // Minutes per player across earlier matches this season. Starts now reward
+  // performance, so minutes are what Auto-pick uses to make sure everyone plays.
+  const [storedMatches, setStoredMatches] = useState<Match[]>([])
+  useEffect(() => { db.matches.toArray().then(setStoredMatches) }, [])
+  const minutesById = useMemo(() => {
+    const m = new Map<ID, number>()
+    if (!players.length) return m
+    for (const match of storedMatches) {
+      const f = fixtures.find(x => x.id === match.fixtureId)
+      if (!f || f.id === existing?.id || f.date >= date) continue
+      const ts = f.teamSheets.find(t => t.id === match.teamSheetId)
+      if (!ts) continue
+      const state = replayEvents(match.events, ts, players)
+      for (const [id, ps] of state.playerStates) {
+        if (ps.minutesPlayed > 0) m.set(id, (m.get(id) ?? 0) + ps.minutesPlayed / 60_000)
+      }
+    }
+    return m
+  }, [storedMatches, fixtures, players, existing?.id, date])
+
+  // The most recent earlier fixture with team sheets — the "same again" source.
+  const lastFixture = useMemo(
+    () => [...fixtures]
+      .filter(f => f.id !== existing?.id && f.date < date && f.teamSheets.length > 0)
+      .sort((a, b) => b.date.localeCompare(a.date))[0],
+    [fixtures, existing?.id, date],
+  )
+
+  const handleSameAsLast = () => {
+    if (!lastFixture) return
+    const next = new Map<ID, Assignment>()
+    const overrides = new Map<ID, Group>()
+    for (const p of players) {
+      // Someone who is out today (e.g. said no in Spond) stays out
+      next.set(p.id, assignments.get(p.id) === 'unavailable' ? 'unavailable' : null)
+    }
+    for (const ts of lastFixture.teamSheets) {
+      const label = ts.label as 'A' | 'B'
+      if (label === 'B' && teamCount === 1) continue
+      const put = (id: ID, val: Assignment, g?: Group) => {
+        if (!next.has(id) || next.get(id) === 'unavailable') return
+        next.set(id, val)
+        if (g) overrides.set(id, g)
+      }
+      ts.starters.forwards.forEach(id => put(id, label, 'forward'))
+      ts.starters.backs.forEach(id => put(id, label, 'back'))
+      if (ts.starters.scrumhalf) put(ts.starters.scrumhalf, label, 'scrumhalf')
+      ts.bench.forEach(id => put(id, `bench-${label}`))
+    }
+    setAssignments(next)
+    setGroupOverrides(overrides)
+    setDraftedIds(new Set())
+  }
+
   const handleDraft = () => {
     // Release what the previous draft placed; hand placements stay locked.
     const base = new Map(assignments)
@@ -259,7 +315,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       existing: base,
       groupOverrides: baseOverrides,
       playersPerSide,
-      starts: startsById,
+      starts: minutesById.size > 0 ? minutesById : startsById,
       teamCount,
     })
     result.assignments.forEach((v, k) => base.set(k, v))
@@ -663,6 +719,17 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                     <Zap size={14} strokeWidth={2.5} />
                     {draftedIds.size > 0 ? 'Auto-pick again' : 'Auto-pick'}
                   </button>
+                  {lastFixture && (
+                    <button
+                      onClick={handleSameAsLast}
+                      className="tap-target rounded-lg font-bold text-xs px-3 flex items-center gap-1.5 active:scale-95 transition"
+                      style={{ background: 'white', border: '1px solid #C8A0E8', color: PURPLE }}
+                      aria-label={`Same line-up as vs ${lastFixture.opponent}`}
+                    >
+                      <History size={14} strokeWidth={2.5} />
+                      Same as last
+                    </button>
+                  )}
                   <button
                     onClick={handleClear}
                     className="tap-target rounded-lg font-bold text-xs px-4 active:scale-95 transition"
@@ -693,7 +760,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                 )}
                 <div className="text-xs text-stone-500 mb-2 px-1">
                   {draftedIds.size > 0
-                    ? 'Auto-pick is a suggestion — change anyone with one tap. Auto-pick again keeps the players you set by hand.'
+                    ? 'Auto-pick fills open places with whoever has played least. Change anyone with one tap; Auto-pick again keeps the players you set by hand.'
                     : teamCount === 1
                       ? 'Everyone starts on Bench. Tap Start for your starters and Out for anyone missing.'
                       : 'Pick each team on its tab. Tap a selected option again to free the player for the other team.'}
@@ -705,6 +772,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                   groupOverrides={groupOverrides}
                   spondAvailability={spondAvailability}
                   starts={startsById.size > 0 ? startsById : null}
+                  minutes={minutesById.size > 0 ? minutesById : null}
                   teamCount={teamCount}
                   onAssign={assign}
                   onOverride={setOverride}

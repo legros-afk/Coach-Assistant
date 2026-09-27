@@ -4,7 +4,10 @@ import type { Group, ID, Player, PlayerMatchState, TeamSheet } from '../events/t
 
 const MIN = 60_000;
 const GAME = 40 * MIN;
-const TOLERANCE = 4 * MIN;
+const HALF = 20 * MIN;
+
+const opts = (halfEnded = false, secondHalfStarted = false) =>
+  ({ gameLengthMs: GAME, halfLengthMs: HALF, minimumMs: HALF, halfEnded, secondHalfStarted });
 
 function player(id: ID, defaultGroup: Group, eligible?: Group[]): Player {
   return { id, name: id, defaultGroup, eligibleGroups: eligible ?? [defaultGroup] };
@@ -36,48 +39,41 @@ const teamSheet: TeamSheet = {
 };
 
 describe('planSubs', () => {
-  it('proposes a future swap from kickoff (proactive, not reactive)', () => {
-    const states = new Map<ID, PlayerMatchState>([
-      ['f1', state('on', 'forward', 0, 0)],
-      ['f2', state('on', 'forward', 0, 0)],
-      ['sh1', state('on', 'scrumhalf', 0, 0)],
-      ['f3', state('bench', 'forward', 0)],
-      ['b1', state('bench', 'back', 0)],
-    ]);
-    const plan = planSubs(squad, teamSheet, states, 0, GAME, TOLERANCE);
+  const kickoff = () => new Map<ID, PlayerMatchState>([
+    ['f1', state('on', 'forward', 0, 0)],
+    ['f2', state('on', 'forward', 0, 0)],
+    ['sh1', state('on', 'scrumhalf', 0, 0)],
+    ['f3', state('bench', 'forward', 0)],
+    ['b1', state('bench', 'back', 0)],
+  ]);
+
+  it('plans bench players on at half time, not during the first half', () => {
+    const plan = planSubs(squad, teamSheet, kickoff(), 0, opts());
     const fwd = plan.find(s => s.group === 'forward');
     expect(fwd).toBeDefined();
     expect(fwd!.on.id).toBe('f3');
+    expect(fwd!.atHalfTime).toBe(true);
+    expect(fwd!.dueAtMs).toBe(HALF);
     expect(fwd!.dueNow).toBe(false);
-    // fair share = 40 * 2/3 ≈ 26.7min; f3 must be on by 40 − 26.7 ≈ 13.3min
-    expect(fwd!.dueAtMs).toBeGreaterThan(12 * MIN);
-    expect(fwd!.dueAtMs).toBeLessThan(15 * MIN);
   });
 
-  it('marks the swap due when the bench player must come on to reach fair share', () => {
+  it('marks half-time swaps due once the half-time whistle has gone', () => {
     const states = new Map<ID, PlayerMatchState>([
-      ['f1', state('on', 'forward', 14 * MIN, 14 * MIN)],
-      ['f2', state('on', 'forward', 14 * MIN, 14 * MIN)],
-      ['sh1', state('on', 'scrumhalf', 14 * MIN, 14 * MIN)],
+      ['f1', state('on', 'forward', 20 * MIN, 0)],
+      ['f2', state('on', 'forward', 20 * MIN, 0)],
+      ['sh1', state('on', 'scrumhalf', 20 * MIN, 0)],
       ['f3', state('bench', 'forward', 0)],
       ['b1', state('bench', 'back', 0)],
     ]);
-    const plan = planSubs(squad, teamSheet, states, 14 * MIN, GAME, TOLERANCE);
-    const fwd = plan.find(s => s.group === 'forward');
-    expect(fwd).toBeDefined();
-    expect(fwd!.dueNow).toBe(true);
-    expect(fwd!.off.id).toMatch(/f[12]/);
+    // stints closed at the break: minutesPlayed already includes the half
+    for (const id of ['f1', 'f2', 'sh1']) states.get(id)!.currentStintStartedAtMs = undefined;
+    const plan = planSubs(squad, teamSheet, states, 20 * MIN, opts(true, false));
+    expect(plan.length).toBeGreaterThan(0);
+    expect(plan.every(s => s.atHalfTime && s.dueNow)).toBe(true);
   });
 
   it('uses eligibleGroups for bench candidates — a back covering SH rotates the scrum-half', () => {
-    const states = new Map<ID, PlayerMatchState>([
-      ['f1', state('on', 'forward', 0, 0)],
-      ['f2', state('on', 'forward', 0, 0)],
-      ['sh1', state('on', 'scrumhalf', 0, 0)],
-      ['f3', state('bench', 'forward', 0)],
-      ['b1', state('bench', 'back', 0)],
-    ]);
-    const plan = planSubs(squad, teamSheet, states, 0, GAME, TOLERANCE);
+    const plan = planSubs(squad, teamSheet, kickoff(), 0, opts());
     const sh = plan.find(s => s.group === 'scrumhalf');
     expect(sh).toBeDefined();
     expect(sh!.on.id).toBe('b1');
@@ -85,41 +81,53 @@ describe('planSubs', () => {
   });
 
   it('does not plan the same bench player into two groups', () => {
-    const states = new Map<ID, PlayerMatchState>([
-      ['f1', state('on', 'forward', 0, 0)],
-      ['f2', state('on', 'forward', 0, 0)],
-      ['sh1', state('on', 'scrumhalf', 0, 0)],
-      ['f3', state('bench', 'forward', 0)],
-      ['b1', state('bench', 'back', 0)],
-    ]);
-    const plan = planSubs(squad, teamSheet, states, 0, GAME, TOLERANCE);
+    const plan = planSubs(squad, teamSheet, kickoff(), 0, opts());
     const ids = plan.map(s => s.on.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('skips bench players who already have their fair share', () => {
+  it('skips bench players who already have the minimum', () => {
     const states = new Map<ID, PlayerMatchState>([
       ['f1', state('on', 'forward', 20 * MIN, 30 * MIN)],
       ['f2', state('on', 'forward', 20 * MIN, 30 * MIN)],
       ['sh1', state('on', 'scrumhalf', 30 * MIN, 30 * MIN)],
-      ['f3', state('bench', 'forward', 26 * MIN)], // ≈ fair share of 26.7min
-      ['b1', state('bench', 'back', 26 * MIN)],
+      ['f3', state('bench', 'forward', 20 * MIN)],
+      ['b1', state('bench', 'back', 20 * MIN)],
     ]);
-    const plan = planSubs(squad, teamSheet, states, 30 * MIN, GAME, TOLERANCE);
-    expect(plan.find(s => s.group === 'forward')).toBeUndefined();
+    const plan = planSubs(squad, teamSheet, states, 30 * MIN, opts(true, true));
+    expect(plan).toHaveLength(0);
   });
 
-  it('orders due-now swaps before future ones', () => {
+  it('plans a second-half swap only as late as the minimum allows', () => {
+    // f3 has 5 minutes, needs 15 more: must be on by 25'
     const states = new Map<ID, PlayerMatchState>([
       ['f1', state('on', 'forward', 20 * MIN, 20 * MIN)],
       ['f2', state('on', 'forward', 20 * MIN, 20 * MIN)],
-      ['sh1', state('on', 'scrumhalf', 5 * MIN, 20 * MIN)],
-      ['f3', state('bench', 'forward', 0)],
-      ['b1', state('bench', 'back', 18 * MIN)],
+      ['sh1', state('on', 'scrumhalf', 20 * MIN, 20 * MIN)],
+      ['f3', state('bench', 'forward', 5 * MIN)],
+      ['b1', state('bench', 'back', 20 * MIN)],
     ]);
-    const plan = planSubs(squad, teamSheet, states, 20 * MIN, GAME, TOLERANCE);
-    for (let i = 1; i < plan.length; i++) {
-      expect(Number(plan[i - 1].dueNow)).toBeGreaterThanOrEqual(Number(plan[i].dueNow));
-    }
+    const early = planSubs(squad, teamSheet, states, 21 * MIN, opts(true, true));
+    expect(early[0].dueAtMs).toBe(25 * MIN);
+    expect(early[0].dueNow).toBe(false);
+    const late = planSubs(squad, teamSheet, states, 25 * MIN, opts(true, true));
+    expect(late[0].dueNow).toBe(true);
+  });
+
+  it('batches in-play swaps in the same half into one stoppage', () => {
+    const big: Player[] = [
+      player('f1', 'forward'), player('f2', 'forward'),
+      player('sh1', 'scrumhalf'), player('f3', 'forward'), player('sh2', 'scrumhalf'),
+    ];
+    const states = new Map<ID, PlayerMatchState>([
+      ['f1', state('on', 'forward', 20 * MIN, 20 * MIN)],
+      ['f2', state('on', 'forward', 20 * MIN, 20 * MIN)],
+      ['sh1', state('on', 'scrumhalf', 20 * MIN, 20 * MIN)],
+      ['f3', state('bench', 'forward', 5 * MIN)],    // must be on by 25'
+      ['sh2', state('bench', 'scrumhalf', 10 * MIN)], // must be on by 30'
+    ]);
+    const plan = planSubs(big, teamSheet, states, 21 * MIN, opts(true, true));
+    expect(plan).toHaveLength(2);
+    expect(new Set(plan.map(s => s.dueAtMs))).toEqual(new Set([25 * MIN]));
   });
 });
