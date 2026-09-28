@@ -1,8 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@fontsource-variable/inter'
+import '@fontsource-variable/roboto-flex'
 import './styles/globals.css'
 import App from './App'
+import { applyAppearance } from './ui/theme'
 import { useMatchStore } from './features/match/useMatchStore'
 
 if ('serviceWorker' in navigator) {
@@ -32,6 +33,8 @@ if ('serviceWorker' in navigator) {
 if (navigator.storage?.persist) {
   void navigator.storage.persisted().then(already => { if (!already) void navigator.storage.persist() })
 }
+
+applyAppearance()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

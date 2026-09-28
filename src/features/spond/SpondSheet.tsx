@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { X, CheckCircle, ChevronRight, Loader } from 'lucide-react'
+import { CheckCircle2, ChevronRight, Loader } from 'lucide-react'
+import { Sheet } from '@/ui/Sheet'
+import { Button } from '@/ui/Button'
+import { TextField } from '@/ui/TextField'
 import { spondLogin, spondGetGroups, type SpondGroup } from '@/lib/spond/spondApi'
 import {
   getSpondCreds, saveSpondCreds, saveSpondGroup, saveSpondToken,
   clearSpondCreds, spondConfigured,
 } from '@/lib/spond/spondStore'
 
-const PURPLE = '#3D0066'
-const INK    = '#1A1A1A'
 
 type View = 'status' | 'creds' | 'groups'
 
@@ -37,7 +38,7 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
       setGroups(gs)
       setView('groups')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Login failed')
+      setError(navigator.onLine === false ? 'No signal — try again when you’re back online.' : 'Spond didn’t accept that email and password. Check them and try again.')
     } finally {
       setLoading(false)
     }
@@ -57,123 +58,74 @@ export default function SpondSheet({ onClose, onConnected }: Props) {
   const creds = getSpondCreds()
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/50 backdrop-in" onClick={onClose} />
-      <div className="relative bg-white rounded-t-2xl overflow-hidden sheet-in" style={{ maxHeight: '85vh' }}>
+    <Sheet onClose={onClose} title="Spond">
+      <p className="text-sm -mt-2 mb-4 text-m-on-surface-variant">Who’s coming, straight from Spond</p>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-3" style={{ borderBottom: '1px solid #EFEFF4' }}>
-          <div>
-            <div className="font-bold text-[15px]" style={{ color: INK }}>Spond</div>
-            <div className="text-xs text-[#8E8E93]">Who's coming, straight from Spond</div>
+      {view === 'status' && (
+        <div className="space-y-3 pb-2">
+          <div className="flex items-center gap-3 p-4 rounded-m-lg bg-x-good-container text-x-on-good-container">
+            <CheckCircle2 size={22} strokeWidth={2.25} />
+            <div className="min-w-0">
+              <div className="text-base font-semibold truncate">{creds.email}</div>
+              <div className="text-sm opacity-80">Team: {creds.groupName || '—'}</div>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full active:scale-95 transition"
-            style={{ background: '#F1EAF6' }}
+          <Button variant="tonal" full onClick={() => setView('creds')}>Change account</Button>
+          <Button variant="danger" full onClick={disconnect}>Disconnect</Button>
+        </div>
+      )}
+
+      {view === 'creds' && (
+        <div className="space-y-4 pb-2">
+          <TextField
+            label="Spond email"
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && connect()}
+            placeholder="your@email.com"
+            autoCapitalize="off"
+            autoCorrect="off"
+          />
+          <TextField
+            label="Password"
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && connect()}
+            placeholder="••••••••"
+          />
+          {error && <p className="text-sm text-m-error">{error}</p>}
+          <Button
+            size="lg"
+            full
+            onClick={connect}
+            disabled={!email || !password || loading}
+            icon={loading ? <Loader size={18} className="animate-spin" /> : undefined}
           >
-            <X size={16} color={PURPLE} />
-          </button>
+            {loading ? 'Connecting…' : 'Connect to Spond'}
+          </Button>
         </div>
+      )}
 
-        <div className="px-4 py-4 overflow-y-auto space-y-3">
-
-          {/* ── Connected status */}
-          {view === 'status' && (
-            <>
-              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: '#E3F5EC' }}>
-                <CheckCircle size={18} color="#059669" strokeWidth={2} />
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold truncate" style={{ color: INK }}>{creds.email}</div>
-                  <div className="text-xs text-[#8E8E93]">Team: {creds.groupName || '—'}</div>
-                </div>
+      {view === 'groups' && (
+        <div className="space-y-2 pb-2">
+          <p className="text-base text-m-on-surface-variant">Choose your team:</p>
+          {groups.map(g => (
+            <button
+              key={g.id}
+              onClick={() => pickGroup(g)}
+              className="m-press w-full flex items-center gap-3 p-4 rounded-m-lg bg-m-surface-container-high text-left"
+            >
+              <div className="flex-1">
+                <div className="text-base font-semibold">{g.name}</div>
+                <div className="text-sm text-m-on-surface-variant">{g.members.length} members</div>
               </div>
-              <button
-                onClick={() => setView('creds')}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold active:scale-95 transition"
-                style={{ background: '#F1EAF6', color: PURPLE }}
-              >
-                Change credentials
-              </button>
-              <button
-                onClick={disconnect}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold active:scale-95 transition"
-                style={{ background: '#FDECEC', color: '#dc2626' }}
-              >
-                Disconnect
-              </button>
-            </>
-          )}
-
-          {/* ── Credentials form */}
-          {view === 'creds' && (
-            <>
-              <div>
-                <label className="block text-xs font-semibold text-[#8E8E93] mb-1">
-                  Spond email
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && connect()}
-                  className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none"
-                  style={{ borderColor: '#E5E5EA', color: INK }}
-                  placeholder="your@email.com"
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[#8E8E93] mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && connect()}
-                  className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none"
-                  style={{ borderColor: '#E5E5EA', color: INK }}
-                  placeholder="••••••••"
-                />
-              </div>
-              {error && <p className="text-xs text-red-500">{error}</p>}
-              <button
-                onClick={connect}
-                disabled={!email || !password || loading}
-                className="w-full py-3 rounded-xl text-sm font-bold active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-2"
-                style={{ background: PURPLE, color: 'white' }}
-              >
-                {loading && <Loader size={14} className="animate-spin" />}
-                {loading ? 'Connecting…' : 'Connect to Spond'}
-              </button>
-            </>
-          )}
-
-          {/* ── Group picker */}
-          {view === 'groups' && (
-            <>
-              <p className="text-sm text-[#6E6E73]">Choose your team from Spond:</p>
-              {groups.map(g => (
-                <button
-                  key={g.id}
-                  onClick={() => pickGroup(g)}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl border active:scale-[0.99] transition text-left"
-                  style={{ borderColor: '#E5E5EA' }}
-                >
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold" style={{ color: INK }}>{g.name}</div>
-                    <div className="text-xs text-[#8E8E93]">{g.members.length} members</div>
-                  </div>
-                  <ChevronRight size={16} className="text-[#C7C7CC]" />
-                </button>
-              ))}
-            </>
-          )}
-
+              <ChevronRight size={20} className="text-m-outline" />
+            </button>
+          ))}
         </div>
-      </div>
-    </div>
+      )}
+    </Sheet>
   )
 }

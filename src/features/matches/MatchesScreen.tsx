@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
 import { CalendarPlus, ChevronRight, Link2, Play, Plus, RotateCcw, Settings } from 'lucide-react'
+import { TopAppBar, BarButton } from '@/ui/TopAppBar'
+import { Button } from '@/ui/Button'
+import { Card, SectionTitle } from '@/ui/Card'
+import { Fab } from '@/ui/Fab'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Fixture, Match, TeamSheet } from '@/lib/events/types'
 import { db } from '@/lib/db/db'
@@ -14,11 +18,6 @@ import { spondGetEvents, type SpondEvent } from '@/lib/spond/spondApi'
 import { ensureToken, createSpondEventForFixture } from '@/lib/spond/spondSync'
 import { getDefaultFormat } from '@/lib/prefs'
 
-const PURPLE      = '#3D0066'
-const PURPLE_DARK = '#5B1A99'
-const INK         = '#1A1A1A'
-const MUTED       = '#6E6E73'
-const BORDER      = '#E5E5EA'
 
 // "Sat 4 Oct" — how coaches talk about match days
 const fmtDate = (iso: string) => {
@@ -143,181 +142,141 @@ export default function MatchesScreen({
         : sheets.length === 1 ? 'Team picked' : `${sheets.length} teams picked`
 
     return (
-      <div key={f.id} className="rounded-xl bg-white overflow-hidden" style={{ border: `1px solid ${BORDER}` }}>
+      <Card key={f.id} className="overflow-hidden">
         <button
           onClick={() => onOpenFixture(f)}
-          className="w-full px-3 pt-3 pb-2 flex items-center gap-2 text-left active:bg-[#F2F2F7] transition"
+          className="w-full px-4 pt-4 pb-2 flex items-center gap-2 text-left active:bg-m-surface-container-high transition-colors"
         >
           <div className="flex-1 min-w-0">
-            <div className="font-bold text-[16px] truncate" style={{ color: INK }}>vs {f.opponent}</div>
-            <div className="text-[13px]" style={{ color: MUTED }}>
+            <div className="text-lg font-semibold truncate text-m-on-surface">vs {f.opponent}</div>
+            <div className="text-sm text-m-on-surface-variant">
               {fmtDate(f.date)} · {f.playersPerSide ?? 12}-a-side · {statusLine}
             </div>
           </div>
-          <ChevronRight size={18} className="text-[#C7C7CC] flex-shrink-0" />
+          <ChevronRight size={20} className="text-m-outline flex-shrink-0" />
         </button>
 
-        <div className="px-3 pb-3 flex flex-wrap gap-2">
+        <div className="px-4 pb-4 pt-1 flex flex-wrap gap-2">
           {sheets.length === 0 ? (
             canEdit ? (
-              <button
-                onClick={() => onOpenFixture(f)}
-                className="h-11 px-4 rounded-lg font-bold text-sm active:scale-95 transition"
-                style={{ background: PURPLE, color: 'white' }}
-              >
-                Pick teams
-              </button>
+              <Button onClick={() => onOpenFixture(f)}>Pick teams</Button>
             ) : (
-              <span className="text-sm" style={{ color: MUTED }}>Your head coach will pick the teams.</span>
+              <span className="text-sm text-m-on-surface-variant">Your head coach will pick the teams.</span>
             )
           ) : sheets.map(ts => {
             const m = matchMap.get(ts.id)
             const label = sheets.length > 1 ? ` Team ${ts.label}` : ''
             if (hasEnded(m)) {
-              const s = score(m!)
-              const bg = s.us > s.them ? '#059669' : s.us < s.them ? '#DC2626' : '#D97706'
+              const sc = score(m!)
+              const tone = sc.us > sc.them ? 'bg-x-win' : sc.us < sc.them ? 'bg-x-loss' : 'bg-x-draw'
               return (
                 <button
                   key={ts.id}
                   onClick={() => onViewMatch(m!, ts)}
-                  className="h-11 px-3 rounded-lg font-bold text-sm text-white active:scale-95 transition"
-                  style={{ background: bg }}
+                  className={`m-press h-12 px-5 rounded-full font-semibold text-base text-white mono ${tone}`}
                 >
-                  {sheets.length > 1 ? `${ts.label} ` : ''}{s.us}–{s.them} · Result
+                  {sheets.length > 1 ? `${ts.label} ` : ''}{sc.us}–{sc.them} · Result
                 </button>
               )
             }
             if (m && m.events.length > 0) {
               return (
-                <button
-                  key={ts.id}
-                  onClick={() => onStart(f, ts)}
-                  className="h-11 px-4 rounded-lg font-bold text-sm flex items-center gap-1.5 active:scale-95 transition"
-                  style={{ background: PURPLE, color: 'white' }}
-                >
-                  <RotateCcw size={14} strokeWidth={2.5} /> Resume{label}
-                </button>
+                <Button key={ts.id} onClick={() => onStart(f, ts)} icon={<RotateCcw size={18} strokeWidth={2.25} />}>
+                  Resume{label}
+                </Button>
               )
             }
             return canStartToday ? (
-              <button
-                key={ts.id}
-                onClick={() => onStart(f, ts)}
-                className="h-11 px-4 rounded-lg font-bold text-sm flex items-center gap-1.5 active:scale-95 transition"
-                style={{ background: PURPLE, color: 'white' }}
-              >
-                <Play size={14} strokeWidth={2.5} /> Start{label}
-              </button>
+              <Button key={ts.id} onClick={() => onStart(f, ts)} icon={<Play size={18} strokeWidth={2.25} />}>
+                Start{label}
+              </Button>
             ) : null
           })}
 
           {canEdit && isSpondLinked && f.date >= today && !f.spondEventId && (
-            <button
+            <Button
+              variant="tonal"
               onClick={() => pushToSpond(f)}
               disabled={pushingId !== null}
-              className="h-11 px-3 rounded-lg text-sm font-semibold flex items-center gap-1.5 active:scale-95 transition disabled:opacity-40"
-              style={{ background: '#F1EAF6', color: PURPLE }}
+              icon={<CalendarPlus size={18} strokeWidth={2.25} />}
             >
-              <CalendarPlus size={14} strokeWidth={2.5} />
               {pushingId === f.id ? 'Adding…' : 'Add to Spond'}
-            </button>
+            </Button>
           )}
         </div>
-      </div>
+      </Card>
     )
   }
 
-  const heading = (text: string) => (
-    <h2 className="text-[13px] font-semibold mt-5 mb-2 px-1" style={{ color: MUTED }}>{text}</h2>
-  )
-
   return (
-    <div className="min-h-screen pb-28" style={{ background: '#F2F2F7', color: INK }}>
-      {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: PURPLE }}>
-        <div className="px-3 py-2.5 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
-          <WoodfordMark size={24} color="white" />
-          <div className="flex-1 leading-tight min-w-0">
-            <div className="text-[17px] font-bold text-white">Matches</div>
-            <div className="text-xs text-white/75 truncate">{syncStatusText(sync)}</div>
-          </div>
+    <div className="min-h-screen pb-32 bg-m-surface text-m-on-surface">
+      <TopAppBar
+        title="Matches"
+        subtitle={syncStatusText(sync)}
+        leading={<WoodfordMark size={32} />}
+        actions={<>
           {canEdit && (
-            <button
+            <BarButton
+              icon={<Link2 size={16} strokeWidth={2.5} style={isSpondLinked ? { color: 'var(--x-on-brand-good)' } : undefined} />}
+              label="Spond"
               onClick={() => setShowSpondSheet(true)}
-              className="h-10 px-3 flex items-center gap-1.5 rounded-lg active:scale-95 transition text-sm font-bold text-white"
-              style={{ background: isSpondLinked ? 'rgba(74,222,128,0.25)' : 'rgba(255,255,255,0.15)' }}
-            >
-              <Link2 size={15} color={isSpondLinked ? '#4ade80' : 'white'} strokeWidth={2.5} />
-              Spond
-            </button>
+            />
           )}
-          <button
-            onClick={onOpenSettings}
-            className="h-10 px-3 flex items-center gap-1.5 rounded-lg active:scale-95 transition text-sm font-bold text-white"
-            style={{ background: 'rgba(255,255,255,0.15)' }}
-          >
-            <Settings size={16} strokeWidth={2.5} />
-            Settings
-          </button>
-        </div>
-      </div>
+          <BarButton icon={<Settings size={16} strokeWidth={2.5} />} label="Settings" onClick={onOpenSettings} />
+        </>}
+      />
 
-      <div className="px-3 pt-1">
+      <div className="px-4">
         {/* In progress */}
         {hasActive && (
           <>
-            {heading('In progress')}
+            <SectionTitle>In progress</SectionTitle>
             <button
               onClick={onResume}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left active:scale-[0.99] transition"
-              style={{ background: '#F1EAF6', border: `2px solid ${PURPLE}` }}
+              className="m-press w-full flex items-center gap-3 p-4 rounded-m-xl text-left bg-m-primary-container text-m-on-primary-container pop-in"
             >
-              <div className="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: PURPLE }}>
-                <RotateCcw size={18} color="white" strokeWidth={2.5} />
+              <div className="w-12 h-12 rounded-m-lg flex items-center justify-center flex-shrink-0 bg-m-primary text-m-on-primary">
+                <RotateCcw size={22} strokeWidth={2.25} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-[16px]" style={{ color: PURPLE }}>Back to the match</div>
-                <div className="text-[13px]" style={{ color: MUTED }}>
+                <div className="text-lg emphasized">Back to the match</div>
+                <div className="text-sm opacity-80">
                   vs {active.opponent} · Team {active.label} · {active.half === 2 ? 'second half' : 'first half'}
                 </div>
               </div>
-              <ChevronRight size={18} style={{ color: PURPLE }} />
+              <ChevronRight size={22} />
             </button>
           </>
         )}
 
         {!isHydrated ? (
-          <div className="py-12 text-center text-[#8E8E93] text-sm">Loading…</div>
+          <div className="py-12 text-center text-m-on-surface-variant text-sm">Loading…</div>
         ) : fixtures.length === 0 ? (
           <div className="py-12 flex flex-col items-center gap-4 text-center">
-            <WoodfordMark size={72} />
+            <WoodfordMark size={80} />
             <div>
-              <div className="font-bold text-lg mb-1" style={{ color: INK }}>No matches yet</div>
-              <div className="text-sm text-[#6E6E73]">
+              <div className="text-xl emphasized mb-1 text-m-on-surface">No matches yet</div>
+              <div className="text-base text-m-on-surface-variant">
                 {canEdit ? 'Add your first fixture to start picking teams.' : 'Your head coach adds the fixtures — they’ll appear here.'}
               </div>
             </div>
             {canEdit && (
-              <button
-                onClick={() => onNew(defaultFormat)}
-                className="h-12 px-5 rounded-lg font-bold text-sm flex items-center gap-2 active:scale-95 transition"
-                style={{ background: PURPLE, color: 'white' }}
-              >
-                <Plus size={16} strokeWidth={2.5} /> Add a fixture
-              </button>
+              <Button size="lg" onClick={() => onNew(defaultFormat)} icon={<Plus size={20} strokeWidth={2.5} />}>
+                Add a fixture
+              </Button>
             )}
           </div>
         ) : (
           <>
-            {heading('This week')}
+            <SectionTitle>This week</SectionTitle>
             {thisWeek.length > 0
-              ? <div className="space-y-2">{thisWeek.map(card)}</div>
-              : <div className="text-sm px-1" style={{ color: MUTED }}>Nothing this week.</div>}
+              ? <div className="space-y-3">{thisWeek.map(card)}</div>
+              : <div className="text-base px-1 text-m-on-surface-variant">Nothing this week.</div>}
 
             {later.length > 0 && (
               <>
-                {heading('Coming up')}
-                <div className="space-y-2">{later.map(card)}</div>
+                <SectionTitle>Coming up</SectionTitle>
+                <div className="space-y-3">{later.map(card)}</div>
               </>
             )}
 
@@ -325,15 +284,14 @@ export default function MatchesScreen({
               <>
                 <button
                   onClick={() => setShowPlayed(v => !v)}
-                  className="w-full flex items-center gap-2 mt-5 mb-2 px-1 h-10"
+                  aria-expanded={showPlayed}
+                  className="w-full flex items-center gap-2 mt-6 mb-2 px-1 h-10"
                 >
-                  <ChevronRight size={16} strokeWidth={2.5} className="transition-transform"
-                    style={{ color: PURPLE_DARK, transform: showPlayed ? 'rotate(90deg)' : 'none' }} />
-                  <span className="text-sm font-bold" style={{ color: PURPLE_DARK }}>
-                    Played ({played.length})
-                  </span>
+                  <ChevronRight size={18} strokeWidth={2.5} className="transition-transform duration-300 ease-spring text-m-on-surface-variant"
+                    style={{ transform: showPlayed ? 'rotate(90deg)' : 'none' }} />
+                  <span className="text-sm font-semibold text-m-on-surface-variant">Played ({played.length})</span>
                 </button>
-                {showPlayed && <div className="space-y-2">{played.map(card)}</div>}
+                {showPlayed && <div className="space-y-3">{played.map(card)}</div>}
               </>
             )}
           </>
@@ -342,12 +300,11 @@ export default function MatchesScreen({
         {/* Spond events not yet in the app — organisers only */}
         {canEdit && isSpondLinked && (spondToAdd.length > 0 || spondError) && (
           <>
-            {heading('In Spond, not here yet')}
+            <SectionTitle>In Spond, not here yet</SectionTitle>
             {spondError ? (
               <button
                 onClick={() => { setShowSpondSheet(true) }}
-                className="w-full px-3 py-3 rounded-xl text-left text-sm font-semibold"
-                style={{ background: '#FDECEC', border: '1px solid #F5C2C2', color: '#B42318' }}
+                className="w-full p-4 rounded-m-lg text-left text-sm font-semibold bg-m-error-container text-m-on-error-container"
               >
                 {spondError}
               </button>
@@ -358,21 +315,14 @@ export default function MatchesScreen({
                   const date = ev.startTimestamp.slice(0, 10)
                   const yes = ev.responses.acceptedIds.length
                   return (
-                    <div key={ev.id} className="flex items-center gap-3 px-3 py-3 rounded-xl"
-                      style={{ border: `1px dashed ${BORDER}`, background: 'rgba(255,255,255,0.6)' }}>
+                    <div key={ev.id} className="flex items-center gap-3 p-4 rounded-m-lg border border-dashed border-m-outline-variant">
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-[15px]" style={{ color: INK }}>vs {opponent}</div>
-                        <div className="text-[13px]" style={{ color: MUTED }}>
+                        <div className="text-base font-semibold text-m-on-surface">vs {opponent}</div>
+                        <div className="text-sm text-m-on-surface-variant">
                           {fmtDate(date)}{yes > 0 ? ` · ${yes} coming` : ''}
                         </div>
                       </div>
-                      <button
-                        onClick={() => onImportSpond(ev.id, opponent, date, defaultFormat)}
-                        className="h-11 px-4 rounded-lg text-sm font-bold active:scale-95 transition"
-                        style={{ background: PURPLE, color: 'white' }}
-                      >
-                        Add
-                      </button>
+                      <Button variant="tonal" size="sm" onClick={() => onImportSpond(ev.id, opponent, date, defaultFormat)}>Add</Button>
                     </div>
                   )
                 })}
@@ -384,35 +334,26 @@ export default function MatchesScreen({
         {/* Demo — only while there's no real squad */}
         {showDemo && (
           <>
-            {heading('Try it out')}
+            <SectionTitle>Try it out</SectionTitle>
             <button
               onClick={onDemo}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-white text-left active:scale-[0.99] transition"
-              style={{ border: `1px solid ${BORDER}` }}
+              className="m-press w-full flex items-center gap-3 p-4 rounded-m-lg bg-m-surface-container text-left"
             >
-              <div className="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#F1EAF6' }}>
-                <Play size={18} color={PURPLE} strokeWidth={2.5} />
+              <div className="w-12 h-12 rounded-m-lg flex items-center justify-center flex-shrink-0 bg-m-tertiary-container text-m-on-tertiary-container">
+                <Play size={22} strokeWidth={2.25} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-[15px]" style={{ color: INK }}>Practice match</div>
-                <div className="text-[13px]" style={{ color: MUTED }}>Have a go with a made-up squad</div>
+                <div className="text-base font-semibold text-m-on-surface">Practice match</div>
+                <div className="text-sm text-m-on-surface-variant">Have a go with a made-up squad</div>
               </div>
-              <ChevronRight size={18} className="text-[#C7C7CC]" />
+              <ChevronRight size={20} className="text-m-outline" />
             </button>
           </>
         )}
       </div>
 
       {canEdit && fixtures.length > 0 && (
-        <div className="fixed fab-bottom right-4 z-20">
-          <button
-            onClick={() => onNew(defaultFormat)}
-            className="h-14 pl-4 pr-5 rounded-full shadow-lg flex items-center gap-2 font-bold active:scale-95 transition"
-            style={{ background: PURPLE, color: 'white' }}
-          >
-            <Plus size={22} strokeWidth={2.5} /> Fixture
-          </button>
-        </div>
+        <Fab icon={<Plus size={22} strokeWidth={2.5} />} label="Fixture" onClick={() => onNew(defaultFormat)} />
       )}
 
       {showSpondSheet && (

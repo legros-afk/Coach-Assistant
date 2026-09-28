@@ -1,10 +1,9 @@
 import type { Group } from '@/lib/events/types'
 
-// Three clearly different colours for the three position groups, used the
-// same way everywhere. None of them is red, amber or green, which are kept
-// for status (warnings, results).
+// Three clearly different hues for the position groups, the same on every
+// screen and in both themes. None of them is a status colour.
 export const GROUP_COLOR: Record<Group, string> = {
-  forward:   '#334155', // slate
-  back:      '#1D4ED8', // blue
-  scrumhalf: '#BE185D', // magenta
+  forward:   'var(--pos-forward)',
+  back:      'var(--pos-back)',
+  scrumhalf: 'var(--pos-scrumhalf)',
 }

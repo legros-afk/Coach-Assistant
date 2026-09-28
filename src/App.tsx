@@ -12,9 +12,9 @@ import MatchesScreen from '@/features/matches/MatchesScreen'
 import FixturePrepScreen from '@/features/fixture/FixturePrepScreen'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import InstallPrompt from '@/components/InstallPrompt'
+import { NavBar } from '@/ui/NavBar'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
 
-const PURPLE = '#3D0066'
 
 // Two tabs: Matches (everything about a fixture, from picking to the result)
 // and Team (the squad and the season). Everything else opens over them.
@@ -151,7 +151,7 @@ export default function App() {
 
   if (screen === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: PURPLE }}>
+      <div className="min-h-screen flex items-center justify-center bg-brand">
         <WoodfordMark size={96} />
       </div>
     )
@@ -206,26 +206,14 @@ export default function App() {
       <InstallPrompt visible={showTabBar} />
 
       {showTabBar && (
-        <nav
-          className="fixed bottom-0 left-0 right-0 flex z-40"
-          style={{ background: 'white', borderTop: '1px solid #E5E5EA', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-        >
-          {([
-            { key: 'matches', icon: <CalendarDays size={24} strokeWidth={2} />, label: 'Matches' },
-            { key: 'team',    icon: <Users        size={24} strokeWidth={2} />, label: 'Team' },
-          ] as const).map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => goTab(tab.key)}
-              aria-current={screen === tab.key ? 'page' : undefined}
-              className="flex-1 pt-2.5 pb-2 flex flex-col items-center gap-0.5 active:scale-95 transition"
-              style={{ color: screen === tab.key ? PURPLE : '#8E8E93' }}
-            >
-              {tab.icon}
-              <span className="text-[13px] font-semibold">{tab.label}</span>
-            </button>
-          ))}
-        </nav>
+        <NavBar
+          items={[
+            { key: 'matches', label: 'Matches', icon: <CalendarDays size={22} strokeWidth={2} /> },
+            { key: 'team',    label: 'Team',    icon: <Users size={22} strokeWidth={2} /> },
+          ]}
+          active={isTab(screen) ? screen : null}
+          onSelect={goTab}
+        />
       )}
     </div>
   )

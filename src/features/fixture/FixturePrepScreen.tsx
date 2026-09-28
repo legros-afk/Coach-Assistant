@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Check, ChevronLeft, ClipboardPaste, CloudUpload, Copy, History, LayoutGrid, Lock, RefreshCw, Zap } from 'lucide-react'
+import { AlertTriangle, Check, ClipboardPaste, CloudUpload, Copy, History, LayoutGrid, Lock, RefreshCw, Zap } from 'lucide-react'
 import { getSpondAvailability, type SpondAvailability } from '@/lib/spond/spondSync'
 import { spondConfigured } from '@/lib/spond/spondStore'
 import { FORMATS, teamLimits, validateComposition } from '@/lib/domain/validateComposition'
@@ -17,11 +17,13 @@ import { friendlyShareError } from '@/lib/friendly'
 import { db } from '@/lib/db/db'
 import { replayEvents } from '@/lib/events/replay'
 import type { Match } from '@/lib/events/types'
+import { TopAppBar, BarButton } from '@/ui/TopAppBar'
+import { Button } from '@/ui/Button'
+import { ButtonGroup } from '@/ui/ButtonGroup'
+import { Card } from '@/ui/Card'
+import { TextField } from '@/ui/TextField'
 import SquadPicker, { GroupBadge, effectiveAssignment, type Assignment } from './SquadPicker'
 
-const PURPLE      = '#3D0066'
-const PURPLE_DARK = '#5B1A99'
-const INK         = '#1A1A1A'
 
 const TEAM_COUNT_KEY = 'coach-team-count'
 
@@ -484,10 +486,10 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     if (slot.status === 'resolved') {
       return (
         <div key={slot.player.id} className="flex items-center gap-2 py-1.5">
-          <Check size={14} className="text-emerald-500 flex-shrink-0" strokeWidth={2.5} />
+          <Check size={14} className="text-x-good flex-shrink-0" strokeWidth={2.5} />
           <GroupBadge group={slot.assignedGroup} size="xs" />
           <span className="text-sm flex-1">{slot.player.name}</span>
-          {isBench && <span className="text-xs text-[#8E8E93]">bench</span>}
+          {isBench && <span className="text-xs text-m-outline">bench</span>}
         </div>
       )
     }
@@ -496,7 +498,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       return (
         <div key={slot.token} className="py-1.5">
           <div className="flex items-center gap-1.5 mb-1">
-            <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" strokeWidth={2.5} />
+            <AlertTriangle size={14} className="text-x-warn flex-shrink-0" strokeWidth={2.5} />
             <span className="text-sm font-semibold">"{slot.token}" — {slot.candidates.length} matches</span>
           </div>
           <div className="pl-5 space-y-0.5">
@@ -504,8 +506,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
               <button
                 key={c.id}
                 onClick={() => setResolutions(m => new Map(m).set(slot.token, c))}
-                className="flex items-center gap-2 w-full py-1 px-2 rounded-lg text-sm active:scale-[0.99]"
-                style={{ background: cur === c ? '#E3F5EC' : '#F2F2F7', color: INK }}
+                className={`m-press flex items-center gap-2 w-full h-10 px-3 rounded-m-sm text-sm ${cur === c ? 'bg-x-good-container text-x-on-good-container' : 'bg-m-surface-container-high text-m-on-surface'}`}
               >
                 <GroupBadge group={c.defaultGroup} size="xs" />
                 {c.name}
@@ -513,7 +514,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
             ))}
             <button
               onClick={() => setResolutions(m => new Map(m).set(slot.token, 'skip'))}
-              className="text-xs text-[#8E8E93] px-2 py-0.5"
+              className="text-xs text-m-outline px-2 py-0.5"
             >Skip</button>
           </div>
         </div>
@@ -522,13 +523,12 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     // unknown
     return (
       <div key={slot.token} className="flex items-center gap-2 py-1.5">
-        <AlertTriangle size={14} className="text-red-400 flex-shrink-0" strokeWidth={2.5} />
+        <AlertTriangle size={14} className="text-m-error flex-shrink-0" strokeWidth={2.5} />
         <span className="text-sm">"{slot.token}" — not found</span>
         {slot.fuzzyMatch && (
           <button
             onClick={() => setResolutions(m => new Map(m).set(slot.token, slot.fuzzyMatch!))}
-            className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-lg"
-            style={{ background: PURPLE, color: 'white' }}
+            className="m-press ml-auto h-8 px-3 text-xs font-semibold rounded-full bg-m-secondary-container text-m-on-secondary-container"
           >
             Use {slot.fuzzyMatch.name}
           </button>
@@ -539,84 +539,51 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
 
   const limits = teamLimits(playersPerSide)
 
-  // Slim fill indicator — the board itself shows composition, this just keeps
-  // orientation while the pool is scrolled into view.
-  const FillBadge = ({ label, stats }: { label: string; stats: ReturnType<typeof countTeam> }) => {
+  // How full each team is, shown under the title while scrolling the list
+  const fillChip = (label: string, stats: ReturnType<typeof countTeam>) => {
     const total = stats.f + stats.b + stats.sh
     const over = stats.f > limits.f || stats.b > limits.b || stats.sh > limits.sh
-    const color = over ? '#F87171' : stats.comp.valid ? '#4ade80' : 'rgba(255,255,255,0.85)'
+    const tone = over ? 'bg-m-error-container text-m-on-error-container'
+      : stats.comp.valid ? 'bg-x-good-container text-x-on-good-container'
+      : 'bg-brand-control text-brand-on'
     return (
-      <div className="flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold" style={{ color }}>
-        <span>Team {label} · {total}/{playersPerSide}{stats.comp.valid ? ' ✓' : ''}</span>
-        {stats.bench > 0 && (
-          <span className="font-medium" style={{ opacity: 0.7 }}>+{stats.bench} bench</span>
-        )}
-      </div>
+      <span className={`h-8 px-3 rounded-full inline-flex items-center gap-1.5 text-sm font-semibold mono ${tone}`}>
+        {teamCount === 2 ? `Team ${label} · ` : 'Starting '}{total}/{playersPerSide}{stats.comp.valid ? ' ✓' : ''}
+        {stats.bench > 0 && <span className="font-normal opacity-80">+{stats.bench} bench</span>}
+      </span>
     )
   }
 
+  const availability = spondAvailability
+    ? `${spondAvailability.accepted.length} coming · ${spondAvailability.declined.length} not · ${spondAvailability.unanswered.length} no reply`
+    : undefined
+
   return (
-    <div className="min-h-screen pb-44" style={{ background: '#F2F2F7', color: INK }}>
-
-      {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: PURPLE }}>
-        <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
-          <button onClick={onBack} className="tap-target flex items-center justify-center -ml-1">
-            <ChevronLeft size={24} color="white" strokeWidth={2.5} />
-          </button>
-          <div className="flex-1 leading-tight">
-            <div className="text-[17px] font-bold text-white">
-              {existing ? `vs ${existing.opponent}` : 'New fixture'}
-            </div>
-            {spondAvailability ? (
-              <div className="text-xs font-semibold flex items-center gap-1.5" style={{ color: '#4ade80' }}>
-                <Zap size={9} strokeWidth={2.5} />
-                <span>
-                  {spondAvailability.accepted.length} ✓
-                  {' · '}{spondAvailability.declined.length} ✗
-                  {' · '}{spondAvailability.unanswered.length} ?
-                </span>
-              </div>
-            ) : (
-              <div className="text-xs text-white/75">
-                Team sheet prep
-              </div>
-            )}
-          </div>
-          {spondEventId && spondConfigured() && (
-            <button
-              onClick={syncSpondAvailability}
-              disabled={spondSyncing}
-              className="h-9 px-2.5 flex items-center gap-1.5 rounded-lg active:scale-95 transition disabled:opacity-50 text-xs font-bold text-white"
-              style={{ background: spondAvailability ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.15)' }}
-            >
-              {spondSyncing
-                ? <RefreshCw size={14} color="#4ade80" strokeWidth={2.5} className="animate-spin" />
-                : <Zap size={14} color={spondAvailability ? '#4ade80' : 'white'} strokeWidth={2.5} />}
-              {spondAvailability ? 'Refresh' : 'Get availability'}
-            </button>
-          )}
+    <div className="min-h-screen pb-48 bg-m-surface text-m-on-surface">
+      <TopAppBar
+        large={false}
+        title={existing ? `vs ${existing.opponent}` : opponent.trim() ? `vs ${opponent.trim()}` : 'New fixture'}
+        subtitle={availability ?? 'Pick the team'}
+        onBack={onBack}
+        actions={spondEventId && spondConfigured() ? (
+          <BarButton
+            icon={spondSyncing ? <RefreshCw size={16} className="animate-spin" /> : <Zap size={16} strokeWidth={2.5} />}
+            label={spondAvailability ? 'Refresh' : 'Who’s coming'}
+            onClick={syncSpondAvailability}
+          />
+        ) : undefined}
+      >
+        <div className="flex gap-2 flex-wrap">
+          {fillChip('A', teamA)}
+          {teamCount === 2 && fillChip('B', teamB)}
         </div>
+        {spondToast && <div className="mt-2 text-sm font-medium text-brand-on-variant">{spondToast}</div>}
+      </TopAppBar>
 
-        {/* Spond toast — only shown on error now */}
-        {spondToast && (
-          <div className="px-3 py-1.5 text-center text-xs font-semibold" style={{ background: '#1A3A2A', color: '#4ade80' }}>
-            {spondToast}
-          </div>
-        )}
-
-        {/* Fill bar */}
-        <div className="px-3 py-1.5 flex gap-2" style={{ background: INK }}>
-          <FillBadge label="A" stats={teamA} />
-          {teamCount === 2 && <FillBadge label="B" stats={teamB} />}
-        </div>
-      </div>
-
-      <div className="px-3 pt-3 space-y-3">
-        {/* Unmatched Spond members warning */}
+      <div className="px-4 pt-4 space-y-3">
         {spondAvailability && spondAvailability.unmatched.length > 0 && (
-          <div className="flex items-start gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: '#FEF3C7', color: '#92400E', border: '1px solid #FEF3C7' }}>
-            <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" strokeWidth={2} />
+          <div className="flex items-start gap-2 p-4 rounded-m-lg text-sm bg-x-warn-container text-x-on-warn-container">
+            <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" strokeWidth={2.25} />
             <span>
               <span className="font-semibold">{spondAvailability.unmatched.length} Spond {spondAvailability.unmatched.length === 1 ? 'member' : 'members'} not matched:</span>
               {' '}{spondAvailability.unmatched.join(', ')}
@@ -625,167 +592,97 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
         )}
 
         {locked && (
-          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg" style={{ background: '#F1EAF6', border: '1px solid #E5E5EA' }}>
-            <Lock size={16} strokeWidth={2.5} className="flex-shrink-0" style={{ color: PURPLE_DARK }} />
-            <span className="flex-1 text-sm" style={{ color: INK }}>
-              This match has been played, so its team sheet is locked.
-            </span>
-            <button
-              onClick={() => setUnlocked(true)}
-              className="text-xs font-bold px-3 h-9 rounded-lg active:scale-95 transition flex-shrink-0"
-              style={{ background: 'white', border: '1px solid #E5E5EA', color: PURPLE_DARK }}
-            >
-              Edit anyway
-            </button>
+          <div className="flex items-center gap-3 p-4 rounded-m-lg bg-m-secondary-container text-m-on-secondary-container">
+            <Lock size={20} strokeWidth={2.25} className="flex-shrink-0" />
+            <span className="flex-1 text-sm">This match has been played, so its team sheet is locked.</span>
+            <Button variant="outlined" size="sm" onClick={() => setUnlocked(true)}>Edit anyway</Button>
           </div>
         )}
 
         <div className={locked ? 'pointer-events-none opacity-60 space-y-3' : 'space-y-3'} aria-disabled={locked}>
-        {/* Fixture details */}
-        <div className="bg-white rounded-lg p-3 space-y-2" style={{ border: '1px solid #E5E5EA' }}>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="text-xs font-semibold text-[#8E8E93] block mb-1">Date</label>
-              <input
-                type="date"
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                className="w-full px-2 py-2 rounded-lg border text-sm outline-none"
-                style={{ borderColor: '#E5E5EA', color: INK }}
+          <Card className="p-4 space-y-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-3">
+              <TextField label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} />
+              <TextField ref={opponentRef} label="Opponent" value={opponent} onChange={e => setOpponent(e.target.value)} placeholder="e.g. Saints" />
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-m-on-surface-variant">Format</span>
+              <ButtonGroup
+                size="sm"
+                ariaLabel="Format"
+                value={playersPerSide}
+                onChange={setPlayersPerSide}
+                options={[...FORMATS, ...(FORMATS.includes(playersPerSide as 12 | 10) ? [] : [playersPerSide])].map(n => ({ value: n, label: `${n}-a-side` }))}
               />
             </div>
-            <div className="flex-1">
-              <label className="text-xs font-semibold text-[#8E8E93] block mb-1">Opponent</label>
-              <input
-                ref={opponentRef}
-                type="text"
-                value={opponent}
-                onChange={e => setOpponent(e.target.value)}
-                placeholder="e.g. Saints"
-                className="w-full px-2 py-2 rounded-lg border text-sm outline-none"
-                style={{ borderColor: '#E5E5EA', color: INK }}
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-m-on-surface-variant">Teams today</span>
+              <ButtonGroup
+                size="sm"
+                ariaLabel="Teams today"
+                value={teamCount}
+                onChange={setTeamCount}
+                options={[{ value: 1, label: 'One' }, { value: 2, label: 'Two' }]}
               />
             </div>
-          </div>
-          <div className="flex items-center justify-between pt-0.5">
-            <span className="text-xs font-semibold text-[#8E8E93]">Format</span>
-            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E5E5EA' }}>
-              {[...FORMATS, ...(FORMATS.includes(playersPerSide as 12 | 10) ? [] : [playersPerSide])].map(n => (
-                <button
-                  key={n}
-                  onClick={() => setPlayersPerSide(n)}
-                  className="px-3 py-1 text-xs font-bold transition"
-                  style={{
-                    background: playersPerSide === n ? PURPLE : 'white',
-                    color: playersPerSide === n ? 'white' : '#6E6E73',
-                  }}
-                >
-                  {n}-a-side
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center justify-between pt-0.5">
-            <span className="text-xs font-semibold text-[#8E8E93]">Teams today</span>
-            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E5E5EA' }}>
-              {([1, 2] as const).map(n => (
-                <button
-                  key={n}
-                  onClick={() => setTeamCount(n)}
-                  className="px-3 py-1 text-xs font-bold transition"
-                  style={{
-                    background: teamCount === n ? PURPLE : 'white',
-                    color: teamCount === n ? 'white' : '#6E6E73',
-                  }}
-                >
-                  {n === 1 ? 'One' : 'Two'}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+          </Card>
 
-        {/* Mode tabs */}
-        <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #E5E5EA' }}>
-          {(['board', 'paste'] as const).map(m => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className="flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 transition"
-              style={{
-                background: mode === m ? PURPLE : 'white',
-                color: mode === m ? 'white' : '#6E6E73',
-              }}
-            >
-              {m === 'board' ? <><LayoutGrid size={13} /> Pick</> : <><ClipboardPaste size={13} /> Paste a list</>}
-            </button>
-          ))}
-        </div>
+          <ButtonGroup
+            full
+            ariaLabel="How to pick"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'board', label: <><LayoutGrid size={16} /> Pick</> },
+              { value: 'paste', label: <><ClipboardPaste size={16} /> Paste a list</> },
+            ]}
+          />
 
-        {/* ── Board mode */}
-        {mode === 'board' && (
-          <div>
-            {players.length === 0 ? (
-              <div className="py-8 text-center text-sm text-[#8E8E93]">
-                No squad loaded — go to Squad screen to add players.
+          {mode === 'board' && (
+            players.length === 0 ? (
+              <div className="py-8 text-center text-base text-m-on-surface-variant">
+                No squad yet — add players in the Team tab.
               </div>
             ) : (
               <>
-                <div className="flex gap-2 mb-2">
-                  <button
-                    onClick={handleDraft}
-                    className="tap-target flex-1 rounded-lg font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition"
-                    style={{ background: PURPLE, color: 'white', minHeight: '44px' }}
-                  >
-                    <Zap size={14} strokeWidth={2.5} />
+                <div className="flex gap-2 flex-wrap">
+                  <Button onClick={handleDraft} icon={<Zap size={18} strokeWidth={2.25} />} className="flex-1">
                     {draftedIds.size > 0 ? 'Auto-pick again' : 'Auto-pick'}
-                  </button>
+                  </Button>
                   {lastFixture && (
-                    <button
-                      onClick={handleSameAsLast}
-                      className="tap-target rounded-lg font-bold text-xs px-3 flex items-center gap-1.5 active:scale-95 transition"
-                      style={{ background: 'white', border: '1px solid #D1D1D6', color: PURPLE }}
-                      aria-label={`Same line-up as vs ${lastFixture.opponent}`}
-                    >
-                      <History size={14} strokeWidth={2.5} />
+                    <Button variant="tonal" onClick={handleSameAsLast} icon={<History size={18} strokeWidth={2.25} />} aria-label={`Same line-up as vs ${lastFixture.opponent}`}>
                       Same as last
-                    </button>
+                    </Button>
                   )}
-                  <button
-                    onClick={handleClear}
-                    className="tap-target rounded-lg font-bold text-xs px-4 active:scale-95 transition"
-                    style={clearArmed
-                      ? { background: '#FDECEC', border: '1px solid #F87171', color: '#B42318' }
-                      : { background: 'white', border: '1px solid #E5E5EA', color: '#6E6E73' }}
-                  >
-                    {clearArmed ? 'Clear board?' : 'Clear'}
-                  </button>
+                  <Button variant={clearArmed ? 'danger' : 'outlined'} onClick={handleClear}>
+                    {clearArmed ? 'Clear all?' : 'Clear'}
+                  </Button>
                 </div>
                 {(balance.A || balance.B) && (
-                  <div className="flex gap-2 mb-2">
-                    <div className="flex-1 bg-white rounded-lg px-2.5 py-1.5" style={{ border: '1px solid #E5E5EA' }}>
-                      <div className="text-[11px] font-bold text-[#8E8E93]">Average starts</div>
-                      <div className="text-xs font-bold mono">
+                  <div className="flex gap-2">
+                    <div className="flex-1 rounded-m-md px-3 py-2 bg-m-surface-container-high">
+                      <div className="text-xs font-medium text-m-on-surface-variant">Average starts</div>
+                      <div className="text-base font-semibold mono">
                         {teamCount === 2 ? `A ${balance.A?.starts ?? '—'} · B ${balance.B?.starts ?? '—'}` : balance.A?.starts ?? '—'}
                       </div>
                     </div>
                     {hasRatings && (
-                      <div className="flex-1 bg-white rounded-lg px-2.5 py-1.5" style={{ border: '1px solid #E5E5EA' }}>
-                        <div className="text-[11px] font-bold text-[#8E8E93]">Average impact</div>
-                        <div className="text-xs font-bold mono">
+                      <div className="flex-1 rounded-m-md px-3 py-2 bg-m-surface-container-high">
+                        <div className="text-xs font-medium text-m-on-surface-variant">Average impact</div>
+                        <div className="text-base font-semibold mono">
                           {teamCount === 2 ? `A ${balance.A?.impact ?? '—'} · B ${balance.B?.impact ?? '—'}` : balance.A?.impact ?? '—'}
                         </div>
                       </div>
                     )}
                   </div>
                 )}
-                <div className="text-xs text-[#6E6E73] mb-2 px-1">
+                <p className="text-sm text-m-on-surface-variant px-1">
                   {draftedIds.size > 0
                     ? 'Auto-pick fills open places with whoever has played least. Change anyone with one tap; Auto-pick again keeps the players you set by hand.'
                     : teamCount === 1
                       ? 'Everyone starts on Bench. Tap Start for your starters and Out for anyone missing.'
                       : 'Pick each team on its tab. Tap a selected option again to free the player for the other team.'}
-                </div>
+                </p>
                 <SquadPicker
                   players={players}
                   playersPerSide={playersPerSide}
@@ -799,119 +696,79 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                   onOverride={setOverride}
                 />
               </>
-            )}
-          </div>
-        )}
+            )
+          )}
 
-        {/* ── Paste mode */}
-        {mode === 'paste' && (
-          <div className="space-y-3">
-            <textarea
-              value={pasteText}
-              onChange={e => { setPasteText(e.target.value); setParseResult(null) }}
-              placeholder={"Team A: Alexander, Dylan, Elliott...\nBench: Dominic, Ethan\n\nTeam B: Archie, Arlo..."}
-              rows={8}
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none bg-white"
-              style={{ border: '1px solid #E5E5EA', color: INK }}
-            />
-            <button
-              onClick={handleParse}
-              disabled={!pasteText.trim() || !players.length}
-              className="tap-target w-full rounded-lg font-bold text-sm active:scale-95 transition disabled:opacity-40"
-              style={{ background: PURPLE, color: 'white', minHeight: '48px' }}
-            >
-              Read the list
-            </button>
+          {mode === 'paste' && (
+            <div className="space-y-3">
+              <textarea
+                value={pasteText}
+                onChange={e => { setPasteText(e.target.value); setParseResult(null) }}
+                placeholder={"Team A: Alexander, Dylan, Elliott...\nBench: Dominic, Ethan\n\nTeam B: Archie, Arlo..."}
+                rows={8}
+                aria-label="Team list to paste"
+                className="w-full px-4 py-3 rounded-m-xs border border-m-outline bg-transparent text-m-on-surface placeholder:text-m-outline outline-none focus:border-m-primary focus:ring-1 focus:ring-m-primary resize-none"
+              />
+              <Button full size="lg" onClick={handleParse} disabled={!pasteText.trim() || !players.length}>Read the list</Button>
 
-            {parseResult && (
-              <div className="space-y-3">
-                {parseResult.blocks.map((block, bi) => (
-                  <div key={bi} className="bg-white rounded-lg p-3" style={{ border: '1px solid #E5E5EA' }}>
-                    <div className="text-xs font-bold mb-2" style={{ color: PURPLE }}>
-                      {block.label}
-                    </div>
-                    {block.starters.map(s => renderParsedSlot(s, false))}
-                    {block.bench.map(s => renderParsedSlot(s, true))}
-                  </div>
-                ))}
-                <button
-                  onClick={applyParseResult}
-                  className="tap-target w-full rounded-lg font-bold text-sm active:scale-95 transition"
-                  style={{ background: '#10B981', color: 'white', minHeight: '48px' }}
-                >
-                  Apply to team
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+              {parseResult && (
+                <div className="space-y-3">
+                  {parseResult.blocks.map((block, bi) => (
+                    <Card key={bi} className="p-4">
+                      <div className="text-base font-semibold mb-2 text-m-primary">{block.label}</div>
+                      {block.starters.map(sl => renderParsedSlot(sl, false))}
+                      {block.bench.map(sl => renderParsedSlot(sl, true))}
+                    </Card>
+                  ))}
+                  <Button full size="lg" variant="go" onClick={applyParseResult}>Apply to team</Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Save bar — the board above is the review */}
+      {/* Save bar — the list above is the review */}
       <div
-        className="fixed bottom-0 left-0 right-0 px-3 pt-3 z-30"
-        style={{
-          background: '#F2F2F7',
-          borderTop: '1px solid #D1D1D6',
-          paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))',
-        }}
+        className="fixed bottom-0 left-0 right-0 px-4 pt-3 z-30 bg-m-surface-container elev-1"
+        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
       >
         {publishResult && (
-          <div
-            className="mb-2 text-sm text-center px-2 py-1.5 rounded-lg"
-            style={{
-              background: publishResult.ok ? '#E3F5EC' : '#FDECEC',
-              color: publishResult.ok ? '#065F46' : '#B42318',
-            }}
-          >
+          <div className={`pop-in mb-2 text-sm text-center px-3 py-2 rounded-m-md ${publishResult.ok ? 'bg-x-good-container text-x-on-good-container' : 'bg-m-error-container text-m-on-error-container'}`}>
             {publishResult.msg}
           </div>
         )}
         {copyToast && (
-          <div
-            className="mb-2 text-sm text-center px-2 py-1.5 rounded-lg"
-            style={{
-              background: copyToast.startsWith('Copied') ? '#E3F5EC' : '#FDECEC',
-              color: copyToast.startsWith('Copied') ? '#065F46' : '#B42318',
-            }}
-          >
+          <div className={`pop-in mb-2 text-sm text-center px-3 py-2 rounded-m-md ${copyToast.startsWith('Copied') ? 'bg-x-good-container text-x-on-good-container' : 'bg-m-error-container text-m-on-error-container'}`}>
             {copyToast}
           </div>
         )}
         {!canSave && !publishResult && !copyToast && cantSaveReason && (
           <button
             onClick={!opponent.trim() ? jumpToOpponent : undefined}
-            className="w-full mb-2 text-sm text-center px-2 py-1.5 rounded-lg active:opacity-70 transition"
-            style={{ background: '#FEF3C7', color: '#92400E', cursor: !opponent.trim() ? 'pointer' : 'default' }}
+            className="w-full mb-2 text-sm text-center px-3 py-2 rounded-m-md bg-x-warn-container text-x-on-warn-container"
           >
             {cantSaveReason}
           </button>
         )}
         {!canPublish && canSave && !publishResult && !copyToast && (
-          <div className="mb-2 text-xs text-center text-[#6E6E73]">
-            To share teams with the other coaches, add the coach PIN in Coach setup.
+          <div className="mb-2 text-xs text-center text-m-on-surface-variant">
+            To share teams with the other coaches, add the coach PIN in Settings.
           </div>
         )}
-        <div className="flex gap-2">
-          <button
-            onClick={handleCopy}
-            disabled={!canSave}
-            className="tap-target rounded-lg px-3 flex items-center justify-center gap-1.5 text-sm font-bold active:scale-95 transition disabled:opacity-40"
-            style={{ background: 'white', border: '1px solid #D1D1D6', color: PURPLE, minHeight: '52px' }}
-          >
-            <Copy size={16} strokeWidth={2.5} />
+        <div className="flex flex-wrap gap-2">
+          <Button variant="tonal" size="lg" className="flex-grow" onClick={handleCopy} disabled={!canSave} icon={<Copy size={18} strokeWidth={2.25} />}>
             WhatsApp
-          </button>
-          <button
+          </Button>
+          <Button
+            size="lg"
+            className="flex-[2_1_12rem]"
             onClick={handleSave}
             disabled={!canSave || publishing || locked}
-            className="tap-target flex-1 rounded-lg font-bold text-base flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-40"
-            style={{ background: PURPLE, color: 'white', minHeight: '52px' }}
+            icon={publishing ? <RefreshCw size={18} className="animate-spin" /> : canPublish ? <CloudUpload size={18} strokeWidth={2.25} /> : undefined}
           >
-            {publishing ? <RefreshCw size={16} className="animate-spin" /> : canPublish ? <CloudUpload size={16} strokeWidth={2} /> : null}
             {publishing ? 'Sharing…' : canPublish ? 'Save & share' : 'Save on this phone'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

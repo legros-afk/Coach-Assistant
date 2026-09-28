@@ -3,6 +3,13 @@ import { GROUP_COLOR } from '@/ui/positions'
 import {
   AlertTriangle, Plus, Settings, Trash2, UserPlus, Users,
 } from 'lucide-react'
+import { TopAppBar, BarButton } from '@/ui/TopAppBar'
+import { Button } from '@/ui/Button'
+import { ButtonGroup } from '@/ui/ButtonGroup'
+import { Card } from '@/ui/Card'
+import { Fab } from '@/ui/Fab'
+import { Sheet } from '@/ui/Sheet'
+import { TextField, TextArea } from '@/ui/TextField'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, Player } from '@/lib/events/types'
 import { clubPinConfigured } from '@/lib/drive/driveRead'
@@ -14,10 +21,6 @@ import { friendlyShareError } from '@/lib/friendly'
 import SeasonView from './SeasonView'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
 
-const PURPLE      = '#3D0066'
-const PURPLE_DARK = '#5B1A99'
-const PURPLE_SOFT = '#F1EAF6'
-const INK         = '#1A1A1A'
 
 const GROUP_LABEL: Record<Group, string> = { forward: 'Forward', back: 'Back', scrumhalf: 'Scrum-half' }
 const GROUP_SHORT: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf: 'SH' }
@@ -42,7 +45,7 @@ function GroupBadge({ group }: { group: Group }) {
   const bg = GROUP_COLOR[group]
   return (
     <span
-      className="text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+      className="text-xs font-bold w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
       style={{ background: bg, color: 'white' }}
     >
       {GROUP_SHORT[group]}
@@ -174,320 +177,170 @@ export default function SquadScreen({ onOpenSettings }: Props) {
   const isDemo = squad?.id === DEMO_SQUAD_ID
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#F2F2F7', color: INK }}>
+    <div className="min-h-screen pb-32 bg-m-surface text-m-on-surface">
+      <TopAppBar
+        title="Team"
+        subtitle={squad ? `${players.length} player${players.length !== 1 ? 's' : ''}` : 'No squad yet'}
+        leading={<WoodfordMark size={32} />}
+        actions={<BarButton icon={<Settings size={16} strokeWidth={2.5} />} label="Settings" onClick={onOpenSettings} />}
+      >
+        <ButtonGroup
+          onBrand
+          full
+          ariaLabel="Squad or season"
+          value={view}
+          onChange={setView}
+          options={[{ value: 'squad', label: 'Squad' }, { value: 'season', label: 'Season' }]}
+        />
+      </TopAppBar>
 
-      {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: PURPLE }}>
-        <div className="px-3 py-2.5 flex items-center gap-2" style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}>
-          <WoodfordMark size={24} color="white" />
-          <div className="flex-1 leading-tight min-w-0">
-            <div className="text-[17px] font-bold text-white">Team</div>
-            <div className="text-xs text-white/75">
-              {squad ? `${players.length} player${players.length !== 1 ? 's' : ''}` : 'No squad yet'}
+      <div className="px-4 pt-4 space-y-3">
+        {/* Publish conflict — needs a decision, so it stays put until one is made */}
+        {conflict && (
+          <Card className="p-4 !bg-x-warn-container text-x-on-warn-container">
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={20} strokeWidth={2.25} className="flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="text-base font-semibold">Another coach changed the squad too</div>
+                <div className="text-sm mt-0.5">Which version should everyone use?</div>
+                <div className="flex gap-2 mt-3">
+                  <Button size="sm" onClick={() => handlePublish(true)} disabled={publishing}>Use mine</Button>
+                  <Button size="sm" variant="outlined" onClick={handleTakeClubCopy} disabled={publishing || isSyncing}>Use theirs</Button>
+                </div>
+              </div>
             </div>
-          </div>
-          <button
-            onClick={onOpenSettings}
-            className="h-10 px-3 flex items-center gap-1.5 rounded-lg active:scale-95 transition text-sm font-bold text-white"
-            style={{ background: 'rgba(255,255,255,0.15)' }}
+          </Card>
+        )}
+
+        {banner && (
+          <div
+            className={`pop-in px-4 py-3 rounded-m-lg text-sm font-medium flex items-center gap-2 ${banner.ok ? 'bg-x-good-container text-x-on-good-container' : 'bg-m-error-container text-m-on-error-container'}`}
           >
-            <Settings size={16} strokeWidth={2.5} />
-            Settings
-          </button>
-        </div>
-        <div className="px-3 py-2 flex" style={{ background: PURPLE }}>
-          <div className="flex-1 flex rounded-lg overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.3)' }}>
-            {([['squad', 'Squad'], ['season', 'Season']] as const).map(([k, label]) => (
-              <button
-                key={k}
-                onClick={() => setView(k)}
-                className="flex-1 h-10 text-sm font-bold transition"
-                style={{ background: view === k ? 'white' : 'transparent', color: view === k ? PURPLE : 'white' }}
-              >
-                {label}
-              </button>
-            ))}
+            {!banner.ok && <AlertTriangle size={16} strokeWidth={2.25} />}
+            {banner.msg}
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Publish conflict — needs a decision, so it stays put until one is made */}
-      {conflict && (
-        <div className="mx-3 mt-3 px-3 py-3 rounded-lg" style={{ background: '#FEF3C7', border: '1px solid #F59E0B' }}>
-          <div className="flex items-start gap-2">
-            <AlertTriangle size={15} strokeWidth={2.5} className="flex-shrink-0 mt-0.5" style={{ color: '#92400E' }} />
-            <div className="flex-1">
-              <div className="text-sm font-bold" style={{ color: '#92400E' }}>
-                Another coach changed the squad too
-              </div>
-              <div className="text-xs mt-1" style={{ color: '#92400E' }}>
-                Which version should everyone use?
-              </div>
-              <div className="flex gap-2 mt-2.5">
-                <button
-                  onClick={() => handlePublish(true)}
-                  disabled={publishing}
-                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold active:scale-95 transition disabled:opacity-40"
-                  style={{ background: '#92400E', color: 'white' }}
-                >
-                  Use mine
-                </button>
-                <button
-                  onClick={handleTakeClubCopy}
-                  disabled={publishing || isSyncing}
-                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold active:scale-95 transition disabled:opacity-40"
-                  style={{ background: 'white', color: '#92400E', border: '1px solid #F59E0B' }}
-                >
-                  Use theirs
-                </button>
-              </div>
-
-            </div>
+        {isDemo && (
+          <div className="px-4 py-2 rounded-m-lg flex items-center justify-between gap-3 bg-m-tertiary-container text-m-on-tertiary-container">
+            <span className="text-sm font-medium">Practice squad — not real players</span>
+            <Button size="sm" variant="text" onClick={handleClearDemo} className="!text-m-on-tertiary-container">Remove</Button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Banner */}
-      {banner && (
-        <div
-          className="mx-3 mt-3 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
-          style={{
-            background: banner.ok ? '#E3F5EC' : '#FDECEC',
-            color: banner.ok ? '#065F46' : '#B42318',
-          }}
-        >
-          {!banner.ok && <AlertTriangle size={14} strokeWidth={2.5} />}
-          {banner.msg}
-        </div>
-      )}
-
-      {/* Demo banner */}
-      {isDemo && (
-        <div
-          className="mx-3 mt-3 px-3 py-2 rounded-lg flex items-center justify-between"
-          style={{ background: PURPLE_SOFT, border: `1px solid ${PURPLE}` }}
-        >
-          <span className="text-xs font-semibold" style={{ color: PURPLE_DARK }}>
-            Demo squad — not real player data
-          </span>
-          <button
-            onClick={handleClearDemo}
-            className="text-xs font-bold px-2 py-1 rounded-lg active:scale-95 transition"
-            style={{ background: PURPLE, color: 'white' }}
-          >
-            Clear demo
-          </button>
-        </div>
-      )}
-
-      {/* Content */}
-      <div className="px-3 pt-3">
         {view === 'season' ? (
           <SeasonView players={players} />
         ) : !isHydrated ? (
-          <div className="py-12 text-center text-[#8E8E93] text-sm">Loading…</div>
+          <div className="py-12 text-center text-m-on-surface-variant text-sm">Loading…</div>
         ) : players.length === 0 ? (
-          /* Empty state */
-          <div className="py-12 flex flex-col items-center gap-4">
-            <Users size={40} className="text-[#C7C7CC]" strokeWidth={2} />
-            <div className="text-center">
-              <div className="font-bold text-[#6E6E73] mb-1">No players yet</div>
-              <div className="text-sm text-[#8E8E93]">Add your squad or load demo data to get started.</div>
+          <div className="py-12 flex flex-col items-center gap-4 text-center">
+            <Users size={48} className="text-m-outline" strokeWidth={1.75} />
+            <div>
+              <div className="text-xl emphasized mb-1">No players yet</div>
+              <div className="text-base text-m-on-surface-variant">
+                {canEdit ? 'Add your squad, or try the app with a practice squad.' : 'Your head coach adds the squad — it will appear here.'}
+              </div>
             </div>
-            {canEdit && (
-            <button
-              onClick={openNew}
-              className="tap-target px-5 rounded-lg font-bold text-sm flex items-center gap-2 active:scale-95 transition"
-              style={{ background: PURPLE, color: 'white', minHeight: '48px' }}
-            >
-              <UserPlus size={16} strokeWidth={2.5} /> Add first player
-            </button>
-            )}
-            <button
-              onClick={handleLoadDemo}
-              className="text-sm font-semibold active:opacity-70"
-              style={{ color: PURPLE_DARK }}
-            >
-              Load demo squad
-            </button>
+            {canEdit && <Button size="lg" onClick={openNew} icon={<UserPlus size={20} strokeWidth={2.25} />}>Add first player</Button>}
+            <Button variant="text" onClick={handleLoadDemo}>Load practice squad</Button>
           </div>
         ) : (
-          /* Player list */
-          <div className="space-y-1.5">
+          <>
             {!canEdit && (
-              <div className="text-sm text-[#6E6E73] px-1 pb-1">
+              <div className="text-sm text-m-on-surface-variant px-1">
                 Your head coach looks after the squad. Positions come from the club spreadsheet.
               </div>
             )}
-            {players.map(p => (
-              <button
-                key={p.id}
-                onClick={canEdit ? () => openEdit(p) : undefined}
-                disabled={!canEdit}
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-white border enabled:active:scale-[0.99] transition text-left"
-                style={{ borderColor: '#E5E5EA' }}
-              >
-                <GroupBadge group={p.defaultGroup} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm truncate" style={{ color: INK }}>{p.name}</div>
-                  {p.eligibleGroups.length > 1 && (
-                    <div className="text-[11px] text-[#8E8E93]">
-                      also {p.eligibleGroups.filter(g => g !== p.defaultGroup).map(g => GROUP_SHORT[g]).join(', ')}
-                    </div>
-                  )}
-                </div>
-                {p.notes && (
-                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: PURPLE }} />
-                )}
-              </button>
-            ))}
-          </div>
+            <Card className="overflow-hidden divide-y divide-m-outline-variant">
+              {players.map(p => (
+                <button
+                  key={p.id}
+                  onClick={canEdit ? () => openEdit(p) : undefined}
+                  disabled={!canEdit}
+                  className="w-full flex items-center gap-3 px-4 min-h-[3.5rem] py-2 text-left enabled:active:bg-m-surface-container-high transition-colors"
+                >
+                  <GroupBadge group={p.defaultGroup} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-base font-medium truncate">{p.name}</div>
+                    {p.eligibleGroups.length > 1 && (
+                      <div className="text-xs text-m-on-surface-variant">
+                        also {p.eligibleGroups.filter(g => g !== p.defaultGroup).map(g => GROUP_SHORT[g]).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                  {p.notes && <div className="w-2 h-2 rounded-full flex-shrink-0 bg-m-primary" aria-label="Has notes" />}
+                </button>
+              ))}
+            </Card>
+          </>
         )}
       </div>
 
-      {/* Add player FAB — only when squad exists */}
       {players.length > 0 && canEdit && view === 'squad' && (
-        <div className="fixed fab-bottom right-4 z-20">
-          <button
-            onClick={openNew}
-            className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition"
-            style={{ background: PURPLE, color: 'white' }}
-          >
-            <Plus size={26} strokeWidth={2.5} />
-          </button>
-        </div>
+        <Fab icon={<Plus size={22} strokeWidth={2.5} />} label="Player" onClick={openNew} />
       )}
 
-      {/* Player edit bottom sheet */}
       {editTarget !== null && (
-        <div
-          className="fixed inset-0 z-50 flex items-end backdrop-in"
-          style={{ background: 'rgba(32,24,32,0.7)' }}
-          onClick={closeEdit}
-        >
-          <div
-            className="bg-white w-full rounded-t-2xl sheet-in p-4 max-h-[85vh] overflow-y-auto"
-            style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-xl font-bold" style={{ color: INK }}>
-                {editTarget === 'new' ? 'Add player' : 'Edit player'}
-              </div>
-              <button onClick={closeEdit} className="tap-target w-10 flex items-center justify-center">
-                <span className="text-[#8E8E93] text-xl">×</span>
-              </button>
+        <Sheet onClose={closeEdit} title={editTarget === 'new' ? 'Add player' : 'Edit player'}>
+          <div className="space-y-5">
+            <TextField
+              label="Name"
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="e.g. Henry W"
+              autoFocus={editTarget === 'new'}
+            />
+
+            <div>
+              <div className="text-sm font-medium text-m-on-surface-variant mb-1.5">Main position</div>
+              <ButtonGroup
+                full
+                ariaLabel="Main position"
+                value={form.defaultGroup}
+                onChange={handleDefaultGroupChange}
+                options={ALL_GROUPS.map(g => ({ value: g, label: GROUP_LABEL[g] }))}
+              />
             </div>
 
-            <div className="space-y-4">
-              {/* Name */}
-              <div>
-                <label className="text-xs font-semibold text-[#8E8E93] block mb-1">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Henry W"
-                  className="w-full px-3 py-3 rounded-lg border-2 text-sm outline-none"
-                  style={{ borderColor: '#E5E5EA', color: INK }}
-                  autoFocus={editTarget === 'new'}
-                />
-              </div>
-
-              {/* Default group */}
-              <div>
-                <label className="text-xs font-semibold text-[#8E8E93] block mb-2">
-                  Default position
-                </label>
-                <div className="flex gap-2">
-                  {ALL_GROUPS.map(g => (
+            <div>
+              <div className="text-sm font-medium text-m-on-surface-variant mb-1.5">Can also play</div>
+              <div className="flex gap-2 flex-wrap">
+                {ALL_GROUPS.filter(g => g !== form.defaultGroup).map(g => {
+                  const checked = form.eligibleGroups.includes(g)
+                  return (
                     <button
                       key={g}
-                      onClick={() => handleDefaultGroupChange(g)}
-                      className="flex-1 py-2.5 rounded-lg text-sm font-bold transition active:scale-95"
-                      style={{
-                        background: form.defaultGroup === g ? PURPLE : '#F2F2F7',
-                        color: form.defaultGroup === g ? 'white' : INK,
-                        border: `2px solid ${form.defaultGroup === g ? PURPLE : '#E5E5EA'}`,
-                      }}
+                      role="checkbox"
+                      aria-checked={checked}
+                      onClick={() => handleEligibleToggle(g)}
+                      className={`m-press h-10 px-4 rounded-m-sm text-sm font-semibold border ${checked ? 'bg-m-secondary-container text-m-on-secondary-container border-transparent' : 'border-m-outline text-m-on-surface-variant'}`}
                     >
-                      {GROUP_SHORT[g]}
+                      {checked ? '✓ ' : ''}{GROUP_LABEL[g]}
                     </button>
-                  ))}
-                </div>
+                  )
+                })}
               </div>
-
-              {/* Eligible groups */}
-              <div>
-                <label className="text-xs font-semibold text-[#8E8E93] block mb-2">
-                  Can also play
-                </label>
-                <div className="flex gap-2">
-                  {ALL_GROUPS.map(g => {
-                    const checked = form.eligibleGroups.includes(g)
-                    const isDefault = g === form.defaultGroup
-                    return (
-                      <button
-                        key={g}
-                        onClick={() => handleEligibleToggle(g)}
-                        disabled={isDefault}
-                        className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition active:scale-95 disabled:opacity-50"
-                        style={{
-                          background: checked ? '#E3F5EC' : '#F2F2F7',
-                          color: checked ? '#065F46' : '#6E6E73',
-                          border: `2px solid ${checked ? '#10B981' : '#E5E5EA'}`,
-                        }}
-                      >
-                        {GROUP_LABEL[g]}
-                      </button>
-                    )
-                  })}
-                </div>
-                <div className="text-[11px] text-[#8E8E93] mt-2 leading-snug">
-                  Positions come from the club spreadsheet. Change them there too, or the app will switch back when it next updates.
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="text-xs font-semibold text-[#8E8E93] block mb-1">
-                  Notes <span className="normal-case tracking-normal font-normal">(optional)</span>
-                </label>
-                <textarea
-                  value={form.notes}
-                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  placeholder="e.g. strong carrier, works on passing"
-                  rows={2}
-                  className="w-full px-3 py-2.5 rounded-lg border-2 text-sm outline-none resize-none"
-                  style={{ borderColor: '#E5E5EA', color: INK }}
-                />
+              <div className="text-xs text-m-on-surface-variant mt-2 leading-snug">
+                Positions come from the club spreadsheet. Change them there too, or the app will switch back when it next updates.
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex gap-2 mt-5">
-              {editTarget !== 'new' && (
-                <button
-                  onClick={handleDelete}
-                  className="tap-target px-4 rounded-lg border-2 font-semibold flex items-center gap-1.5 active:scale-95 transition"
-                  style={{ borderColor: '#F87171', color: '#DC2626' }}
-                >
-                  <Trash2 size={16} strokeWidth={2.5} /> Delete
-                </button>
-              )}
-              <button
-                onClick={handleSave}
-                disabled={!form.name.trim()}
-                className="tap-target flex-1 rounded-lg font-bold text-base active:scale-95 transition disabled:opacity-40"
-                style={{ background: PURPLE, color: 'white', minHeight: '52px' }}
-              >
-                Save
-              </button>
-            </div>
+            <TextArea
+              label="Notes (optional)"
+              value={form.notes}
+              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              placeholder="e.g. strong carrier, works on passing"
+              rows={2}
+            />
           </div>
-        </div>
+
+          <div className="flex gap-2 mt-6 mb-2">
+            {editTarget !== 'new' && (
+              <Button variant="danger" size="lg" onClick={handleDelete} icon={<Trash2 size={18} strokeWidth={2.25} />}>Delete</Button>
+            )}
+            <Button size="lg" full className="flex-1" onClick={handleSave} disabled={!form.name.trim()}>Save</Button>
+          </div>
+        </Sheet>
       )}
     </div>
   )

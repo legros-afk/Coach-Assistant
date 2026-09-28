@@ -1,13 +1,14 @@
 import { useMemo, useRef, useState } from 'react'
 import { GROUP_COLOR } from '@/ui/positions'
-import { ArrowRight, Check, ChevronLeft, Copy, RefreshCw, Share2, Sparkles } from 'lucide-react'
+import { ArrowRight, Check, Copy, RefreshCw, Share2, Sparkles } from 'lucide-react'
+import { TopAppBar } from '@/ui/TopAppBar'
+import { Button } from '@/ui/Button'
+import { ButtonGroup } from '@/ui/ButtonGroup'
+import { Card } from '@/ui/Card'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, MatchEvent, MatchState, Player, TeamSheet } from '@/lib/events/types'
 import { useMatchStore } from './useMatchStore'
 
-const PURPLE      = '#3D0066'
-const PURPLE_DARK = '#5B1A99'
-const INK         = '#1A1A1A'
 
 const GROUP_SHORT: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf: 'SH' }
 
@@ -15,7 +16,7 @@ function GroupBadge({ group }: { group: Group }) {
   const bg = GROUP_COLOR[group]
   return (
     <span
-      className="text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+      className="text-xs font-bold w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
       style={{ background: bg, color: 'white' }}
     >
       {GROUP_SHORT[group]}
@@ -203,219 +204,145 @@ export default function PostMatchScreen({ onBack, data }: Props) {
     })
   }
 
-  const resultColor = result === 'Won' ? '#059669' : result === 'Lost' ? '#DC2626' : '#D97706'
+  const resultTone = result === 'Won' ? 'bg-x-win' : result === 'Lost' ? 'bg-x-loss' : 'bg-x-draw'
 
   return (
-    <div className="min-h-screen pb-8" style={{ background: '#F2F2F7', color: INK }}>
-
-      {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: PURPLE }}>
-        <div
-          className="px-3 py-2 flex items-center gap-2"
-          style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}
-        >
-          <button
-            onClick={onBack}
-            className="tap-target flex items-center justify-center -ml-1"
-          >
-            <ChevronLeft size={24} color="white" strokeWidth={2.5} />
-          </button>
-          <div className="flex-1 leading-tight">
-            <div className="text-[17px] font-bold text-white">Match Summary</div>
-            <div className="text-xs text-white/75">
-              vs {opponent}{matchDate ? ` · ${matchDate}` : ''}
-            </div>
-          </div>
-          <div
-            className="px-2.5 py-1 rounded-lg font-bold text-sm flex-shrink-0"
-            style={{ background: resultColor, color: 'white' }}
-          >
+    <div className="min-h-screen pb-12 bg-m-surface text-m-on-surface">
+      <TopAppBar
+        title={`vs ${opponent}`}
+        subtitle={matchDate || undefined}
+        onBack={onBack}
+        leading={<WoodfordMark size={32} />}
+        actions={
+          <span className={`h-10 px-4 rounded-full inline-flex items-center text-lg emphasized text-white mono ${resultTone}`}>
             {scoreUs}–{scoreThem}
-          </div>
-          <WoodfordMark size={22} color="white" />
-        </div>
+          </span>
+        }
+      >
+        <ButtonGroup
+          onBrand
+          full
+          ariaLabel="Summary view"
+          value={tab}
+          onChange={setTab}
+          options={[{ value: 'share', label: 'Share' }, { value: 'coach', label: 'Coach only' }]}
+        />
+      </TopAppBar>
 
-        {/* Tabs */}
-        <div className="flex" style={{ background: INK }}>
-          {(['share', 'coach'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className="flex-1 py-2 text-xs font-bold transition"
-              style={{
-                color: tab === t ? 'white' : 'rgba(255,255,255,0.35)',
-                borderBottom: tab === t ? `2px solid ${PURPLE}` : '2px solid transparent',
-              }}
-            >
-              {t === 'share' ? 'Share' : 'Coach'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Publish status (live matches only) */}
       {publishStatus === 'failed' && (
-        <div
-          className="mx-3 mt-3 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
-          style={{ background: '#FDECEC', color: '#B42318' }}
-        >
+        <div className="mx-4 mt-4 p-4 rounded-m-lg text-sm flex items-center gap-3 bg-m-error-container text-m-on-error-container">
           <span className="flex-1">Not shared with the other coaches yet — saved on this phone.</span>
-          <button
-            onClick={() => void live.publishNow()}
-            className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg active:scale-95 transition flex-shrink-0"
-            style={{ background: '#B42318', color: 'white' }}
-          >
-            <RefreshCw size={11} strokeWidth={2.5} /> Try again
-          </button>
+          <Button size="sm" variant="outlined" onClick={() => void live.publishNow()} icon={<RefreshCw size={16} strokeWidth={2.25} />}>Try again</Button>
         </div>
       )}
       {publishStatus === 'publishing' && (
-        <div className="mx-3 mt-3 px-3 py-2 rounded-lg text-xs flex items-center gap-2 text-[#6E6E73] bg-white border" style={{ borderColor: '#E5E5EA' }}>
-          <RefreshCw size={11} className="animate-spin" /> Sharing with the coaches…
+        <div className="mx-4 mt-4 px-4 py-3 rounded-m-lg text-sm flex items-center gap-2 bg-m-surface-container text-m-on-surface-variant">
+          <RefreshCw size={16} className="animate-spin" /> Sharing with the coaches…
         </div>
       )}
 
-      {/* ── Share tab */}
       {tab === 'share' && (
-        <div className="px-3 pt-4 space-y-3">
-          <div
-            className="bg-white rounded-lg p-4 border text-sm whitespace-pre-wrap leading-relaxed"
-            style={{ borderColor: '#E5E5EA', color: INK, fontFamily: 'inherit' }}
-          >
-            {shareText}
-          </div>
-          <button
+        <div className="px-4 pt-4 space-y-3">
+          <Card className="p-4 text-base whitespace-pre-wrap leading-relaxed">{shareText}</Card>
+          <Button
+            size="lg"
+            full
             onClick={handleCopy}
-            className="tap-target w-full rounded-lg font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition"
-            style={{ background: copied ? '#059669' : PURPLE, color: 'white', minHeight: '48px' }}
+            variant={copied ? 'go' : 'filled'}
+            icon={copied ? <Check size={20} strokeWidth={2.5} /> : canShare ? <Share2 size={20} strokeWidth={2.25} /> : <Copy size={20} strokeWidth={2.25} />}
           >
-            {copied ? <Check size={16} strokeWidth={2.5} /> : canShare ? <Share2 size={16} strokeWidth={2} /> : <Copy size={16} strokeWidth={2} />}
             {copied ? 'Copied!' : canShare ? 'Share with parents' : 'Copy to clipboard'}
-          </button>
+          </Button>
 
-          {/* AI summary card */}
-          <div className="bg-white rounded-lg border overflow-hidden" style={{ borderColor: '#E5E5EA' }}>
-            <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: aiSummary ? '1px solid #E5E5EA' : undefined }}>
-              <span className="text-[11px] font-bold text-[#8E8E93]">AI match report</span>
-              <button
+          <Card className="overflow-hidden">
+            <div className="p-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-lg font-semibold">Fun match report</div>
+                <div className="text-sm text-m-on-surface-variant">Written for you, ready to share</div>
+              </div>
+              <Button
+                variant="tonal"
+                size="sm"
                 onClick={handleGenerate}
                 disabled={generating}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold active:scale-95 transition disabled:opacity-50"
-                style={{ background: PURPLE, color: 'white' }}
+                icon={<Sparkles size={16} strokeWidth={2.25} />}
               >
-                <Sparkles size={12} strokeWidth={2.5} />
-                {generating ? 'Writing…' : aiSummary ? 'Regenerate' : 'Generate'}
-              </button>
+                {generating ? 'Writing…' : aiSummary ? 'Again' : 'Write it'}
+              </Button>
             </div>
-            {aiError && (
-              <div className="px-4 py-3 text-sm text-red-500">{aiError}</div>
-            )}
+            {aiError && <div className="px-4 pb-4 text-sm text-m-error">{aiError}</div>}
             {aiSummary && (
-              <>
-                <div className="px-4 py-3 text-sm leading-relaxed" style={{ color: INK }}>{aiSummary}</div>
-                <div className="px-4 pb-3">
-                  <button
-                    onClick={handleAiCopy}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold active:scale-95 transition"
-                    style={{ background: aiCopied ? '#059669' : '#F2F2F7', color: aiCopied ? 'white' : PURPLE, border: `1px solid #E5E5EA` }}
-                  >
-                    {aiCopied ? <Check size={12} strokeWidth={2.5} /> : canShare ? <Share2 size={12} strokeWidth={2} /> : <Copy size={12} strokeWidth={2} />}
-                    {aiCopied ? 'Copied!' : canShare ? 'Share' : 'Copy'}
-                  </button>
-                </div>
-              </>
+              <div className="px-4 pb-4 space-y-3 pop-in">
+                <div className="text-base leading-relaxed">{aiSummary}</div>
+                <Button
+                  size="sm"
+                  variant={aiCopied ? 'go' : 'outlined'}
+                  onClick={handleAiCopy}
+                  icon={aiCopied ? <Check size={16} strokeWidth={2.5} /> : canShare ? <Share2 size={16} strokeWidth={2.25} /> : <Copy size={16} strokeWidth={2.25} />}
+                >
+                  {aiCopied ? 'Copied!' : canShare ? 'Share' : 'Copy'}
+                </Button>
+              </div>
             )}
-          </div>
+          </Card>
         </div>
       )}
 
-      {/* ── Coach tab */}
       {tab === 'coach' && (
-        <div className="px-3 pt-4 space-y-4">
-
-          {/* Score summary row */}
-          <div className="bg-white rounded-lg px-4 py-3 flex items-center justify-between border" style={{ borderColor: '#E5E5EA' }}>
+        <div className="px-4 pt-4 space-y-3">
+          <Card className="p-4 flex items-center justify-between">
             <div>
-              <div className="text-xs text-[#8E8E93] font-semibold mb-0.5">Result</div>
-              <div className="font-bold text-2xl tabular-nums" style={{ color: resultColor }}>
-                {scoreUs}–{scoreThem}
-              </div>
+              <div className="text-sm font-medium text-m-on-surface-variant">Result</div>
+              <div className="text-3xl emphasized mono">{scoreUs}–{scoreThem}</div>
             </div>
-            <div className="font-bold text-lg" style={{ color: resultColor }}>{result}</div>
-          </div>
+            <span className={`h-10 px-4 rounded-full inline-flex items-center text-base font-semibold text-white ${resultTone}`}>{result}</span>
+          </Card>
 
-          {/* Playing time table */}
-          <div className="bg-white rounded-lg overflow-hidden border" style={{ borderColor: '#E5E5EA' }}>
-            <div className="px-3 py-2 flex items-center justify-between"
-              style={{ borderBottom: '1px solid #F2F2F7' }}>
-              <span className="text-[11px] font-bold text-[#8E8E93]">Playing time</span>
-              <span className="text-[11px] text-[#8E8E93]">{coachRows.length} players</span>
+          <Card className="overflow-hidden">
+            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+              <span className="text-lg font-semibold">Playing time</span>
+              <span className="text-sm text-m-on-surface-variant">{coachRows.length} players</span>
             </div>
-            {coachRows.map(r => (
-              <div
-                key={r.player.id}
-                className="flex items-center gap-3 px-3 py-2 border-b last:border-0"
-                style={{ borderColor: '#F2F2F7' }}
-              >
-                <GroupBadge group={r.group} />
-                <span className="flex-1 text-sm font-semibold" style={{ color: INK }}>{r.player.name}</span>
-                {r.tries > 0 && (
-                  <span
-                    className="text-[11px] px-1.5 py-0.5 rounded-lg font-bold"
-                    style={{ background: '#FEF3C7', color: '#92400E' }}
-                  >
-                    {r.tries}T
-                  </span>
-                )}
-                <span className="mono text-sm font-bold tabular-nums w-10 text-right" style={{ color: INK }}>
-                  {r.mins}m
-                </span>
-              </div>
-            ))}
-            {coachRows.length === 0 && (
-              <div className="px-3 py-4 text-sm text-[#8E8E93] text-center">No playing time recorded</div>
-            )}
-          </div>
-
-          {/* Substitutions log */}
-          {subLog.length > 0 && (
-            <div className="bg-white rounded-lg overflow-hidden border" style={{ borderColor: '#E5E5EA' }}>
-              <div className="px-3 py-2 text-[11px] font-bold text-[#8E8E93]"
-                style={{ borderBottom: '1px solid #F2F2F7' }}>
-                Substitutions
-              </div>
-              {subLog.map((s, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-2 px-3 py-2.5 border-b last:border-0 text-sm"
-                  style={{ borderColor: '#F2F2F7' }}
-                >
-                  <span className="mono text-xs text-[#8E8E93] w-7 flex-shrink-0 font-semibold">
-                    {s.time}'
-                  </span>
-                  <span className="text-rose-500 font-semibold flex-1 min-w-0 truncate">
-                    {s.off.join(', ')}
-                  </span>
-                  <ArrowRight size={12} className="text-[#C7C7CC] flex-shrink-0" />
-                  <span className="text-emerald-600 font-semibold flex-1 min-w-0 truncate text-right">
-                    {s.on.join(', ')}
-                  </span>
+            <div className="divide-y divide-m-outline-variant">
+              {coachRows.map(r => (
+                <div key={r.player.id} className="flex items-center gap-3 px-4 min-h-[3.25rem]">
+                  <GroupBadge group={r.group} />
+                  <span className="flex-1 text-base font-medium">{r.player.name}</span>
+                  {r.tries > 0 && (
+                    <span className="h-7 px-2.5 rounded-full inline-flex items-center text-xs font-bold bg-m-tertiary-container text-m-on-tertiary-container">
+                      {r.tries} {r.tries === 1 ? 'try' : 'tries'}
+                    </span>
+                  )}
+                  <span className="mono text-base font-bold w-12 text-right">{r.mins}′</span>
                 </div>
               ))}
+              {coachRows.length === 0 && (
+                <div className="px-4 py-4 text-sm text-m-on-surface-variant text-center">No playing time recorded</div>
+              )}
             </div>
+          </Card>
+
+          {subLog.length > 0 && (
+            <Card className="overflow-hidden">
+              <div className="px-4 pt-4 pb-2 text-lg font-semibold">Substitutions</div>
+              <div className="divide-y divide-m-outline-variant">
+                {subLog.map((sl, i) => (
+                  <div key={i} className="flex items-center gap-2 px-4 min-h-[3rem] text-base">
+                    <span className="mono text-sm text-m-on-surface-variant w-9 flex-shrink-0 font-semibold">{sl.time}′</span>
+                    <span className="text-m-error font-medium flex-1 min-w-0 truncate">{sl.off.join(', ')}</span>
+                    <ArrowRight size={16} className="text-m-outline flex-shrink-0" />
+                    <span className="text-x-good font-medium flex-1 min-w-0 truncate text-right">{sl.on.join(', ')}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
 
-          {/* Tries detail */}
           {tryScorers.length > 0 && (
-            <div className="bg-white rounded-lg overflow-hidden border" style={{ borderColor: '#E5E5EA' }}>
-              <div className="px-3 py-2 text-[11px] font-bold text-[#8E8E93]"
-                style={{ borderBottom: '1px solid #F2F2F7' }}>
-                Tries scored ({tryScorers.length})
-              </div>
-              <div className="px-3 py-2.5 text-sm" style={{ color: INK }}>
-                {tryScorers.join(', ')}
-              </div>
-            </div>
+            <Card className="p-4">
+              <div className="text-lg font-semibold mb-1">Tries ({tryScorers.length})</div>
+              <div className="text-base">{tryScorers.join(', ')}</div>
+            </Card>
           )}
         </div>
       )}

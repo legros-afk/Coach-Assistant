@@ -11,11 +11,11 @@ import { useMatchStore } from './useMatchStore'
 
 // ── brand constants ────────────────────────────────────────────────────────────
 
-const PURPLE      = '#3D0066'
-const PURPLE_DARK = '#5B1A99'
-const PURPLE_SOFT = '#F1EAF6'
-const PURPLE_SOFTER = '#F1EAF6'
-const INK         = '#1A1A1A'
+const PURPLE      = 'var(--m-primary)'
+const PURPLE_DARK = 'var(--m-on-primary-container)'
+const PURPLE_SOFT = 'var(--m-primary-container)'
+const PURPLE_SOFTER = 'var(--m-primary-container)'
+const INK         = 'var(--m-on-surface)'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -28,9 +28,9 @@ function fmt(ms: number): string {
 
 function balanceColor(playerMs: number, avgMs: number): string {
   const diff = Math.abs(playerMs - avgMs)
-  if (diff < 2 * 60_000) return '#10B981'
-  if (diff < 5 * 60_000) return '#F59E0B'
-  return '#DC2626'
+  if (diff < 2 * 60_000) return 'var(--x-go)'
+  if (diff < 5 * 60_000) return 'var(--x-pause)'
+  return 'var(--m-error)'
 }
 
 function liveMinMs(ps: PlayerMatchState, elapsedMs: number): number {
@@ -80,7 +80,7 @@ function Section({
         </div>
         <span
           className="text-xs font-semibold"
-          style={{ color: hint ? PURPLE : '#6E6E73' }}
+          style={{ color: hint ? PURPLE : 'var(--m-on-surface-variant)' }}
         >
           {hint ?? subtitle}
         </span>
@@ -111,25 +111,25 @@ function PlayerCard({
   picked, pickedTone, onTap, onMenu, muted, suggested, dimmed, onReturn,
 }: PlayerCardProps) {
   const mins = liveMinMs(ps, liveElapsedMs)
-  const pickedBg     = pickedTone === 'rose' ? '#FDECEC' : '#E3F5EC'
-  const pickedBorder = pickedTone === 'rose' ? '#F87171' : '#10B981'
+  const pickedBg     = pickedTone === 'rose' ? 'var(--m-error-container)' : 'var(--x-good-container)'
+  const pickedBorder = pickedTone === 'rose' ? 'var(--m-error)' : 'var(--x-go)'
 
   return (
     <div
       onClick={onTap}
-      className={`p-2.5 rounded-lg transition relative ${onTap ? 'active:scale-[0.98] cursor-pointer' : ''}`}
+      className={`p-2.5 rounded-m-md transition relative ${onTap ? 'active:scale-[0.98] cursor-pointer' : ''}`}
       style={{
-        background: picked ? pickedBg : muted ? '#F2F2F7' : suggested ? PURPLE_SOFTER : 'white',
+        background: picked ? pickedBg : muted ? 'var(--m-surface-container-low)' : suggested ? PURPLE_SOFTER : 'var(--m-surface-container)',
         border: picked
           ? `2px solid ${pickedBorder}`
-          : suggested ? `2px solid ${PURPLE_DARK}` : '1px solid #E5E5EA',
+          : suggested ? `2px solid ${PURPLE_DARK}` : '1px solid var(--m-outline-variant)',
         opacity: muted ? 0.7 : dimmed ? 0.5 : 1,
       }}
     >
       <div className="flex items-start gap-2 mb-1.5">
         <GroupBadge group={ps.activeGroup} />
         <div className="flex-1 min-w-0">
-          <div className="font-bold text-[15px] leading-tight break-words line-clamp-2" style={{ color: INK }}>
+          <div className="font-bold text-base leading-tight line-clamp-2" style={{ color: INK }}>
             {player.name}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
@@ -151,17 +151,17 @@ function PlayerCard({
           <button
             onClick={e => { e.stopPropagation(); onMenu() }}
             aria-label={`Blood or injury — ${player.name}`}
-            className="-mr-1.5 -mt-1.5 w-11 h-11 flex items-center justify-center rounded-lg active:bg-[#E5E5EA] flex-shrink-0"
+            className="-mr-1.5 -mt-1.5 w-11 h-11 flex items-center justify-center rounded-m-md active:bg-m-outline-variant flex-shrink-0"
           >
-            <MoreVertical size={18} strokeWidth={2.5} style={{ color: '#6E6E73' }} />
+            <MoreVertical size={18} strokeWidth={2.5} style={{ color: 'var(--m-on-surface-variant)' }} />
           </button>
         )}
       </div>
       {onReturn && (
         <button
           onClick={e => { e.stopPropagation(); onReturn() }}
-          className="w-full mt-1.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 active:scale-95"
-          style={{ background: '#10B981', color: 'white' }}
+          className="w-full mt-1.5 py-1.5 rounded-m-md text-xs font-bold flex items-center justify-center gap-1 active:scale-95"
+          style={{ background: 'var(--x-go)', color: 'white' }}
         >
           <Activity size={12} strokeWidth={2.5} /> Return
         </button>
@@ -176,10 +176,10 @@ function ScoreButton({
   return (
     <button
       onClick={onClick}
-      className="tap-target flex-1 rounded-lg flex items-center justify-center gap-1.5 font-bold active:scale-95 transition"
+      className="tap-target flex-1 rounded-m-md flex items-center justify-center gap-1.5 font-bold active:scale-95 transition"
       style={{
         background: primary ? 'white' : 'rgba(255,255,255,0.1)',
-        color:      primary ? INK    : 'white',
+        color:      primary ? 'var(--x-on-bright)' : 'white',
         border:     primary ? 'none' : '1px solid rgba(255,255,255,0.2)',
       }}
     >
@@ -503,32 +503,30 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
 
   // ── render
   return (
-    <div className="min-h-screen pb-44" style={{ background: '#F2F2F7', color: INK }}>
+    <div className="min-h-screen pb-44" style={{ background: 'var(--m-surface)', color: INK }}>
 
       {/* ── Brand strip */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: PURPLE }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'var(--brand)' }}>
         <div
-          className="px-3 py-2 flex items-center justify-between"
-          style={{ borderBottom: `1px solid ${PURPLE_DARK}` }}
+          className="px-3 h-16 flex items-center justify-between gap-2"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             {onBack && !helperMode && (
               <button
                 onClick={onBack}
-                className="w-10 h-10 flex items-center justify-center rounded-lg active:scale-95 transition -ml-1"
-                style={{ background: 'rgba(255,255,255,0.15)' }}
+                className="m-press w-12 h-12 flex items-center justify-center rounded-full -ml-2"
                 aria-label="Back to matches — the clock keeps running"
               >
-                <ChevronLeft size={18} color="white" strokeWidth={2.5} />
+                <ChevronLeft size={24} color="white" strokeWidth={2.25} />
               </button>
             )}
             <WoodfordMark size={22} color="white" />
-            <div className="leading-tight">
-              <div className="text-[13px] font-bold text-white">
-                Woodford U12
+            <div className="leading-tight min-w-0">
+              <div className="text-base font-bold text-white truncate">
+                vs {opponent || '—'}
               </div>
-              <div className="text-xs text-white/80">
-                vs {opponent || '—'} · Team {teamSheet.label}
+              <div className="text-xs text-white/80 truncate">
+                Woodford U12 · Team {teamSheet.label}
               </div>
             </div>
           </div>
@@ -536,11 +534,11 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
             {!helperMode && (
               <button
                 onClick={() => setHelperMode(true)}
-                className="h-10 px-3 flex items-center gap-1.5 rounded-lg active:scale-95 transition text-xs font-bold text-white"
-                style={{ background: 'rgba(255,255,255,0.15)' }}
+                className="m-press h-10 px-3.5 flex items-center gap-1.5 rounded-full text-sm font-semibold text-white whitespace-nowrap"
+                style={{ background: 'var(--brand-bar-control)' }}
               >
-                <HandHelping size={15} color="white" strokeWidth={2} />
-                Hand to helper
+                <HandHelping size={16} color="white" strokeWidth={2.25} />
+                Helper
               </button>
             )}
           </div>
@@ -548,8 +546,8 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
 
         {/* Helper mode strip */}
         {helperMode && (
-          <div className="px-3 py-1.5 flex items-center justify-between" style={{ background: '#F59E0B' }}>
-            <span className="text-xs font-bold flex items-center gap-1.5" style={{ color: INK }}>
+          <div className="px-3 py-1.5 flex items-center justify-between" style={{ background: 'var(--x-pause)' }}>
+            <span className="text-xs font-bold flex items-center gap-1.5" style={{ color: 'var(--x-on-bright)' }}>
               <HandHelping size={13} strokeWidth={2.5} /> Helper mode — subs & scores
             </span>
             <button
@@ -558,8 +556,8 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
               onPointerLeave={cancelExitHold}
               onPointerCancel={cancelExitHold}
               onContextMenu={e => e.preventDefault()}
-              className="text-xs font-bold px-3 h-9 rounded-lg select-none active:scale-95 transition"
-              style={{ background: INK, color: 'white' }}
+              className="text-xs font-bold px-3 h-9 rounded-m-md select-none active:scale-95 transition"
+              style={{ background: 'var(--x-on-bright)', color: 'white' }}
             >
               Hold to exit
             </button>
@@ -567,7 +565,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
         )}
 
         {/* Clock + score bar */}
-        <div style={{ background: INK }} className="px-3 py-2.5">
+        <div style={{ background: 'var(--x-live-bar)' }} className="px-3 py-2.5">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-white/70">
@@ -585,8 +583,8 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
             ) : (
               <button
                 onClick={() => clockRunning ? store.pauseClock() : store.startClock()}
-                className="tap-target w-14 rounded-lg flex items-center justify-center transition active:scale-95"
-                style={{ background: clockRunning ? '#F59E0B' : '#10B981', color: INK }}
+                className="tap-target w-14 rounded-m-md flex items-center justify-center transition active:scale-95"
+                style={{ background: clockRunning ? 'var(--x-pause)' : 'var(--x-go)', color: 'var(--x-on-bright)' }}
                 aria-label={clockRunning ? 'Pause' : 'Start'}
               >
                 {clockRunning
@@ -615,7 +613,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
               {!halfEnded ? (
                 <button
                   onClick={() => { store.endHalf(); showToast('Half time') }}
-                  className="h-10 flex-1 text-xs font-bold rounded-lg active:scale-95 transition"
+                  className="h-10 flex-1 text-xs font-bold rounded-m-md active:scale-95 transition"
                   style={{ background: 'rgba(255,255,255,0.14)', color: 'white', border: '1px solid rgba(255,255,255,0.25)' }}
                 >
                   End first half
@@ -623,7 +621,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
               ) : (
                 <button
                   onClick={() => { store.endMatch(); showToast('Full time') }}
-                  className="h-10 flex-1 text-xs font-bold rounded-lg active:scale-95 transition"
+                  className="h-10 flex-1 text-xs font-bold rounded-m-md active:scale-95 transition"
                   style={{ background: 'rgba(255,255,255,0.14)', color: 'white', border: '1px solid rgba(255,255,255,0.25)' }}
                 >
                   Full time
@@ -637,11 +635,11 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       {/* ── Half / full-time prompt */}
       {(halfTimeDue || fullTimeDue) && (
         <div
-          className="mx-3 mt-3 rounded-lg p-3 flex items-center gap-3"
-          style={{ background: '#FEF3C7', border: '1px solid #F59E0B' }}
+          className="mx-3 mt-3 rounded-m-md p-3 flex items-center gap-3"
+          style={{ background: 'var(--x-warn-container)', border: '1px solid var(--x-pause)' }}
         >
-          <Clock size={18} style={{ color: '#92400E' }} className="flex-shrink-0" strokeWidth={2.5} />
-          <div className="flex-1 text-sm font-bold" style={{ color: '#92400E' }}>
+          <Clock size={18} style={{ color: 'var(--x-on-warn-container)' }} className="flex-shrink-0" strokeWidth={2.5} />
+          <div className="flex-1 text-sm font-bold" style={{ color: 'var(--x-on-warn-container)' }}>
             {halfTimeDue ? 'Half 1 has reached 20 min' : 'Game has reached full time'}
             {helperMode && <span className="block font-semibold text-xs mt-0.5">Tell the coach</span>}
           </div>
@@ -651,8 +649,8 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
                 if (halfTimeDue) { store.endHalf(); showToast('Half time') }
                 else             { store.endMatch(); showToast('Full time') }
               }}
-              className="text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap active:scale-95 transition"
-              style={{ background: '#92400E', color: 'white' }}
+              className="text-xs font-bold px-3 py-1.5 rounded-m-md whitespace-nowrap active:scale-95 transition"
+              style={{ background: 'var(--x-on-warn-container)', color: 'white' }}
             >
               {halfTimeDue ? 'End half' : 'Full time'}
             </button>
@@ -663,7 +661,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       {/* ── Standing sub plan */}
       {/* ── Half-time panel */}
       {atBreak && !subMode && (
-        <div className="mx-3 mt-3 rounded-lg overflow-hidden" style={{ border: `2px solid ${PURPLE}`, background: 'white' }}>
+        <div className="mx-3 mt-3 rounded-m-xl overflow-hidden pop-in bg-m-surface-container" style={{ border: `2px solid ${PURPLE}` }}>
           <div className="px-3 py-2.5 flex items-center justify-between" style={{ background: PURPLE_SOFTER }}>
             <div className="text-lg font-bold" style={{ color: PURPLE }}>Half time</div>
             <div className="mono text-lg font-bold tabular-nums" style={{ color: INK }}>
@@ -672,27 +670,27 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
           </div>
 
           <div className="px-3 py-2.5">
-            <div className="text-xs font-bold mb-1.5" style={{ color: '#6E6E73' }}>
+            <div className="text-xs font-bold mb-1.5" style={{ color: 'var(--m-on-surface-variant)' }}>
               {dueSwaps.length > 0 ? 'Changes for the second half' : 'No changes needed'}
             </div>
             {dueSwaps.length > 0 ? (
               <div className="space-y-1.5">
                 {dueSwaps.map((swap, i) => (
-                  <div key={i} className="flex items-center gap-2 text-[15px]">
+                  <div key={i} className="flex items-center gap-2 text-base">
                     <GroupBadge group={swap.group} size="sm" />
-                    <span className="font-semibold truncate" style={{ color: '#B42318' }}>{swap.off.name}</span>
+                    <span className="font-semibold truncate" style={{ color: 'var(--m-on-error-container)' }}>{swap.off.name}</span>
                     <ArrowRight size={14} className="flex-shrink-0 opacity-50" />
-                    <span className="font-semibold truncate" style={{ color: '#059669' }}>{swap.on.name}</span>
+                    <span className="font-semibold truncate" style={{ color: 'var(--x-good)' }}>{swap.on.name}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-[#6E6E73]">Everyone is on course for at least a half.</div>
+              <div className="text-sm text-m-on-surface-variant">Everyone is on course for at least a half.</div>
             )}
           </div>
 
           <div className="px-3 pb-2.5">
-            <div className="text-xs font-bold mb-1" style={{ color: '#6E6E73' }}>Least played so far</div>
+            <div className="text-xs font-bold mb-1" style={{ color: 'var(--m-on-surface-variant)' }}>Least played so far</div>
             <div className="text-sm" style={{ color: INK }}>
               {squad
                 .filter(p => { const st = matchState.playerStates.get(p.id)?.status; return st === 'on' || st === 'bench' })
@@ -708,16 +706,16 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
               {dueSwaps.length > 0 && (
                 <button
                   onClick={applyDueSwaps}
-                  className="flex-1 rounded-lg font-bold text-sm active:scale-95 transition"
-                  style={{ minHeight: 48, background: 'white', border: `2px solid ${PURPLE}`, color: PURPLE }}
+                  className="flex-1 rounded-m-md font-bold text-sm active:scale-95 transition"
+                  style={{ minHeight: 48, background: 'var(--m-secondary-container)', color: 'var(--m-on-secondary-container)' }}
                 >
                   Make {dueSwaps.length} change{dueSwaps.length === 1 ? '' : 's'}
                 </button>
               )}
               <button
                 onClick={() => { store.startClock(); showToast('Second half') }}
-                className="flex-1 rounded-lg font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition"
-                style={{ minHeight: 48, background: '#10B981', color: INK }}
+                className="flex-1 rounded-m-md font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition"
+                style={{ minHeight: 48, background: 'var(--x-go)', color: 'var(--x-on-bright)' }}
               >
                 <Play size={16} strokeWidth={2.5} /> Start second half
               </button>
@@ -728,23 +726,23 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
 
       {/* Before the break, half-time changes are one quiet line, not a list */}
       {subPlan.length > 0 && !subMode && !atBreak && dueSwaps.length === 0 && subPlan.every(sw => sw.atHalfTime) && (
-        <div className="mx-3 mt-3 px-3 py-2.5 rounded-lg bg-white flex items-center gap-2 text-sm" style={{ border: '1px solid #E5E5EA', color: '#3C3C43' }}>
-          <Clock size={16} strokeWidth={2} style={{ color: '#6E6E73' }} className="flex-shrink-0" />
+        <div className="mx-3 mt-3 px-3 py-2.5 rounded-m-md bg-m-surface-container flex items-center gap-2 text-sm" style={{ border: '1px solid var(--m-outline-variant)', color: 'var(--m-on-surface-variant)' }}>
+          <Clock size={16} strokeWidth={2} style={{ color: 'var(--m-on-surface-variant)' }} className="flex-shrink-0" />
           <span>{subPlan.length} change{subPlan.length === 1 ? '' : 's'} planned for half time</span>
         </div>
       )}
 
       {subPlan.length > 0 && dismissedKey !== dueKey && !subMode && !atBreak && !(dueSwaps.length === 0 && subPlan.every(sw => sw.atHalfTime)) && (
         <div
-          className="mx-3 mt-3 rounded-lg p-3 flex items-start gap-3"
+          className="mx-3 mt-3 rounded-m-md p-3 flex items-start gap-3"
           style={{
-            background: dueSwaps.length ? PURPLE_SOFTER : 'white',
+            background: dueSwaps.length ? PURPLE_SOFTER : 'var(--m-surface-container)',
             border: `1px solid ${dueSwaps.length ? PURPLE : PURPLE_SOFT}`,
           }}
         >
           {dueSwaps.length > 0
             ? <AlertTriangle size={18} style={{ color: PURPLE }} className="flex-shrink-0 mt-0.5" strokeWidth={2.5} />
-            : <Clock size={18} style={{ color: '#6E6E73' }} className="flex-shrink-0 mt-0.5" strokeWidth={2} />}
+            : <Clock size={18} style={{ color: 'var(--m-on-surface-variant)' }} className="flex-shrink-0 mt-0.5" strokeWidth={2} />}
           <div className="flex-1 text-sm min-w-0">
             <div className="font-bold mb-1" style={{ color: PURPLE_DARK }}>
               {dueSwaps.length > 0 ? 'Subs due now' : 'Next subs'}
@@ -753,14 +751,14 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
               {subPlan.map((swap, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-1.5 text-[13px]"
+                  className="flex items-center gap-1.5 text-sm"
                   style={{ color: PURPLE, opacity: swap.dueNow ? 1 : 0.6 }}
                 >
                   <GroupBadge group={swap.group} size="sm" />
                   <span className="font-semibold truncate">{swap.off.name}</span>
                   <ArrowRight size={10} className="flex-shrink-0 opacity-50" />
                   <span className="font-semibold truncate">{swap.on.name}</span>
-                  <span className="mono text-[11px] ml-auto flex-shrink-0 tabular-nums">
+                  <span className="mono text-xs ml-auto flex-shrink-0 tabular-nums">
                     {swap.dueNow ? 'now' : swap.atHalfTime ? 'HT' : `~${Math.ceil(swap.dueAtMs / 60_000)}'`}
                   </span>
                 </div>
@@ -771,8 +769,8 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
             {dueSwaps.length > 0 && (
               <button
                 onClick={applyDueSwaps}
-                className="text-xs font-bold px-2.5 py-1 rounded-lg whitespace-nowrap"
-                style={{ background: PURPLE, color: 'white' }}
+                className="text-xs font-bold px-2.5 py-1 rounded-m-md whitespace-nowrap"
+                style={{ background: PURPLE, color: 'var(--m-on-primary)' }}
               >
                 {dueSwaps.length > 1 ? 'Apply all' : 'Apply'}
               </button>
@@ -794,7 +792,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
           title="On pitch" count={onPitch.length} subtitle="most played first"
           hint={subMode ? 'tap to take off' : undefined}
         >
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-2">
             {onPitch.map(p => (
               <PlayerCard
                 key={p.id}
@@ -821,7 +819,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
                 : undefined
           }
         >
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-2">
             {bench.map(p => {
               const isPicked = comingOnIds.includes(p.id)
               const fits = wantedGroups.some(g => p.eligibleGroups.includes(g))
@@ -849,7 +847,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
 
         {offPitch.length > 0 && (
           <Section title="Off" count={offPitch.length} subtitle="blood / injured">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-2">
               {offPitch.map(p => (
                 <PlayerCard
                   key={p.id}
@@ -876,7 +874,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       {subMode && (
         <div
           className="fixed above-live-bar left-0 right-0 px-3 py-2.5 shadow-2xl z-30"
-          style={{ background: INK, color: 'white', borderTop: `2px solid ${PURPLE}` }}
+          style={{ background: 'var(--x-live-bar)', color: 'white', borderTop: '2px solid var(--brand)' }}
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-semibold opacity-60">
@@ -895,20 +893,20 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
               <div key={i} className="flex items-center gap-2 text-sm">
                 <div className="flex-1 flex items-center gap-1.5 min-w-0">
                   {pr.off
-                    ? <><GroupBadge group={pr.off.ps.activeGroup} size="sm" /><span className="font-semibold truncate" style={{ color: '#F87171' }}>{pr.off.player.name}</span></>
+                    ? <><GroupBadge group={pr.off.ps.activeGroup} size="sm" /><span className="font-semibold truncate" style={{ color: 'var(--m-error)' }}>{pr.off.player.name}</span></>
                     : <span className="opacity-40 italic text-xs">—</span>}
                 </div>
                 <ArrowRight size={13} className="opacity-40 flex-shrink-0" />
                 <div className="flex-1 flex items-center gap-1.5 min-w-0">
                   {pr.on
-                    ? <><GroupBadge group={pr.onGroup} size="sm" /><span className="font-semibold truncate" style={{ color: '#4ADE80' }}>{pr.on.player.name}</span></>
+                    ? <><GroupBadge group={pr.onGroup} size="sm" /><span className="font-semibold truncate" style={{ color: 'var(--x-on-brand-good)' }}>{pr.on.player.name}</span></>
                     : <span className="opacity-40 italic text-xs">tap bench →</span>}
                 </div>
                 <div className="w-4 flex-shrink-0">
                   {pr.off && pr.on && (
                     pr.match
-                      ? <Check size={14} style={{ color: '#10B981' }} strokeWidth={2.5} />
-                      : <AlertTriangle size={14} style={{ color: '#DC2626' }} strokeWidth={2.5} />
+                      ? <Check size={14} style={{ color: 'var(--x-go)' }} strokeWidth={2.5} />
+                      : <AlertTriangle size={14} style={{ color: 'var(--m-error)' }} strokeWidth={2.5} />
                   )}
                 </div>
               </div>
@@ -917,8 +915,8 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
           {pendingConfirm && (
             <button
               onClick={confirmPendingSub}
-              className="w-full mt-2 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition"
-              style={{ background: '#F59E0B', color: INK }}
+              className="w-full mt-2 py-2 rounded-m-md text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition"
+              style={{ background: 'var(--x-pause)', color: 'var(--x-on-bright)' }}
             >
               <AlertTriangle size={14} strokeWidth={2.5} /> Confirm sub anyway
             </button>
@@ -930,14 +928,14 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       {pendingUndo && (
         <div
           className="fixed above-live-bar left-0 right-0 px-3 py-3 flex items-center justify-between z-40"
-          style={{ background: '#DC2626', color: 'white' }}
+          style={{ background: 'var(--m-error)', color: 'var(--m-on-error)' }}
         >
           <span className="text-sm font-semibold">Undo last action?</span>
           <div className="flex gap-2">
             <button
               onClick={confirmUndo}
-              className="text-sm font-bold px-4 py-1.5 rounded-lg bg-white"
-              style={{ color: '#DC2626' }}
+              className="text-sm font-bold px-4 py-1.5 rounded-m-md bg-m-surface-container"
+              style={{ color: 'var(--m-error)' }}
             >
               Undo
             </button>
@@ -954,7 +952,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       {/* ── Bottom bar */}
       <div
         className="fixed bottom-0 left-0 right-0 px-3 pt-3 flex items-center gap-2 z-30"
-        style={{ background: '#F2F2F7', borderTop: '1px solid #D1D1D6', paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+        style={{ background: 'var(--m-surface)', borderTop: '1px solid var(--m-outline)', paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
       >
         {matchEnded ? (
           helperMode ? (
@@ -964,8 +962,8 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
           ) : (
             <button
               onClick={onSummary}
-              className="tap-target flex-1 rounded-lg font-bold text-base active:scale-95 transition flex items-center justify-center gap-2"
-              style={{ background: PURPLE, color: 'white' }}
+              className="tap-target flex-1 rounded-m-md font-bold text-base active:scale-95 transition flex items-center justify-center gap-2"
+              style={{ background: PURPLE, color: 'var(--m-on-primary)' }}
             >
               <Trophy size={18} strokeWidth={2} />
               Match summary
@@ -977,14 +975,14 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
               <button
                 onClick={handleUndoPress}
                 disabled={!store.events.length}
-                className="tap-target px-4 rounded-lg border-2 font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-95 transition"
-                style={{ borderColor: '#D1D1D6', color: INK }}
+                className="tap-target px-4 rounded-m-md border-2 font-semibold flex items-center gap-2 disabled:opacity-40 active:scale-95 transition"
+                style={{ borderColor: 'var(--m-outline)', color: INK }}
               >
                 <Undo2 size={18} strokeWidth={2.5} />
                 Undo
               </button>
             )}
-            <div className="flex-1 text-center text-sm text-[#6E6E73] py-2">
+            <div className="flex-1 text-center text-sm text-m-on-surface-variant py-2">
               {subMode ? 'Now tap who comes on' : 'Tap a player to sub them off'}
             </div>
           </>
@@ -995,13 +993,14 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       {tryPickerOpen && (
         <div
           className="fixed inset-0 z-40 flex items-end backdrop-in"
-          style={{ background: 'rgba(32,24,32,0.7)' }}
+          style={{ background: 'var(--m-scrim)' }}
           onClick={() => setTryPickerOpen(false)}
         >
           <div
-            className="bg-white w-full rounded-t-2xl sheet-in p-4 max-h-[70vh] overflow-y-auto"
+            className="bg-m-surface-container-low w-full rounded-t-m-xl sheet-in px-4 pt-2 max-h-[70vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
+            <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-m-outline-variant" aria-hidden="true" />
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Trophy size={22} style={{ color: PURPLE }} />
@@ -1023,8 +1022,8 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
                     showToast(`Try — ${p.name}`, true)
                     setTryPickerOpen(false)
                   }}
-                  className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
-                  style={{ borderColor: '#E5E5EA' }}
+                  className="tap-target w-full flex items-center gap-3 px-3 bg-m-surface-container rounded-m-md border active:scale-[0.98] transition"
+                  style={{ borderColor: 'var(--m-outline-variant)' }}
                 >
                   <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
                   <span className="font-semibold flex-1 text-left">{p.name}</span>
@@ -1054,14 +1053,14 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       {menuFor && (
         <div
           className="fixed inset-0 z-40 flex items-end backdrop-in"
-          style={{ background: 'rgba(32,24,32,0.7)' }}
+          style={{ background: 'var(--m-scrim)' }}
           onClick={() => setMenuFor(null)}
         >
           <div
-            className="bg-white w-full rounded-t-2xl sheet-in p-4 space-y-2"
-            style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+            className="bg-m-surface-container-low w-full rounded-t-m-xl sheet-in px-4 pt-2 space-y-2"
             onClick={e => e.stopPropagation()}
           >
+            <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-m-outline-variant" aria-hidden="true" />
             <div className="flex items-center justify-between mb-1">
               <div className="text-2xl font-bold" style={{ color: INK }}>{menuFor.name}</div>
               <button onClick={() => setMenuFor(null)} className="w-12 h-12 flex items-center justify-center" aria-label="Close">
@@ -1070,19 +1069,19 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
             </div>
             <button
               onClick={() => { setBloodPickerFor(menuFor); setMenuFor(null) }}
-              className="tap-target w-full rounded-lg px-4 text-left active:scale-[0.98] transition"
-              style={{ background: '#FDECEC', color: '#B42318' }}
+              className="tap-target w-full rounded-m-md px-4 text-left active:scale-[0.98] transition"
+              style={{ background: 'var(--m-error-container)', color: 'var(--m-on-error-container)' }}
             >
               <div className="font-bold text-base">Blood — temporary</div>
               <div className="text-sm">Off now, can return once treated</div>
             </button>
             <button
               onClick={() => { setInjuryPickerFor(menuFor); setMenuFor(null) }}
-              className="tap-target w-full rounded-lg px-4 text-left active:scale-[0.98] transition"
-              style={{ background: '#F2F2F7', color: INK }}
+              className="tap-target w-full rounded-m-md px-4 text-left active:scale-[0.98] transition"
+              style={{ background: 'var(--m-surface-container-high)', color: INK }}
             >
               <div className="font-bold text-base">Injury</div>
-              <div className="text-sm text-[#3C3C43]">Off, left out of the minutes balance</div>
+              <div className="text-sm text-m-on-surface-variant">Off, left out of the minutes balance</div>
             </button>
           </div>
         </div>
@@ -1092,13 +1091,14 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       {bloodPickerFor && (
         <div
           className="fixed inset-0 z-40 flex items-end backdrop-in"
-          style={{ background: 'rgba(32,24,32,0.7)' }}
+          style={{ background: 'var(--m-scrim)' }}
           onClick={() => setBloodPickerFor(null)}
         >
           <div
-            className="bg-white w-full rounded-t-2xl sheet-in p-4 max-h-[70vh] overflow-y-auto"
+            className="bg-m-surface-container-low w-full rounded-t-m-xl sheet-in px-4 pt-2 max-h-[70vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
+            <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-m-outline-variant" aria-hidden="true" />
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <div className="text-2xl font-bold" style={{ color: INK }}>
@@ -1112,7 +1112,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
                 <X />
               </button>
             </div>
-            <p className="text-sm text-[#6E6E73] mb-3">Who comes on as replacement?</p>
+            <p className="text-sm text-m-on-surface-variant mb-3">Who comes on as replacement?</p>
             <div className="space-y-1.5">
               {replacementsFor(bloodPickerFor).map(({ p, fits }) => (
                 <button
@@ -1122,8 +1122,8 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
                     showToast(`${bloodPickerFor.name} — blood · ${p.name} on`)
                     setBloodPickerFor(null)
                   }}
-                  className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
-                  style={{ borderColor: fits ? PURPLE_DARK : '#E5E5EA', opacity: fits ? 1 : 0.5 }}
+                  className="tap-target w-full flex items-center gap-3 px-3 bg-m-surface-container rounded-m-md border active:scale-[0.98] transition"
+                  style={{ borderColor: fits ? PURPLE_DARK : 'var(--m-outline-variant)', opacity: fits ? 1 : 0.5 }}
                 >
                   <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
                   <span className="font-semibold flex-1 text-left">{p.name}</span>
@@ -1133,7 +1133,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
                 </button>
               ))}
               {bench.length === 0 && (
-                <p className="text-sm italic text-[#8E8E93] px-3 py-2">No bench players available</p>
+                <p className="text-sm italic text-m-outline px-3 py-2">No bench players available</p>
               )}
               <button
                 onClick={() => {
@@ -1154,13 +1154,14 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       {injuryPickerFor && (
         <div
           className="fixed inset-0 z-40 flex items-end backdrop-in"
-          style={{ background: 'rgba(32,24,32,0.7)' }}
+          style={{ background: 'var(--m-scrim)' }}
           onClick={() => setInjuryPickerFor(null)}
         >
           <div
-            className="bg-white w-full rounded-t-2xl sheet-in p-4 max-h-[70vh] overflow-y-auto"
+            className="bg-m-surface-container-low w-full rounded-t-m-xl sheet-in px-4 pt-2 max-h-[70vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
+            <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-m-outline-variant" aria-hidden="true" />
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <AlertTriangle size={22} style={{ color: INK }} />
@@ -1175,7 +1176,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
                 <X />
               </button>
             </div>
-            <p className="text-sm text-[#6E6E73] mb-3">Who comes on as replacement?</p>
+            <p className="text-sm text-m-on-surface-variant mb-3">Who comes on as replacement?</p>
             <div className="space-y-1.5">
               {replacementsFor(injuryPickerFor).map(({ p, fits }) => (
                 <button
@@ -1185,8 +1186,8 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
                     showToast(`${injuryPickerFor.name} — injured · ${p.name} on`)
                     setInjuryPickerFor(null)
                   }}
-                  className="tap-target w-full flex items-center gap-3 px-3 bg-white rounded-lg border active:scale-[0.98] transition"
-                  style={{ borderColor: fits ? PURPLE_DARK : '#E5E5EA', opacity: fits ? 1 : 0.5 }}
+                  className="tap-target w-full flex items-center gap-3 px-3 bg-m-surface-container rounded-m-md border active:scale-[0.98] transition"
+                  style={{ borderColor: fits ? PURPLE_DARK : 'var(--m-outline-variant)', opacity: fits ? 1 : 0.5 }}
                 >
                   <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
                   <span className="font-semibold flex-1 text-left">{p.name}</span>
@@ -1196,7 +1197,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
                 </button>
               ))}
               {bench.length === 0 && (
-                <p className="text-sm italic text-[#8E8E93] px-3 py-2">No bench players available</p>
+                <p className="text-sm italic text-m-outline px-3 py-2">No bench players available</p>
               )}
               <button
                 onClick={() => {
@@ -1217,14 +1218,14 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       {toast && (
         <div
           className="fixed bottom-32 left-1/2 -translate-x-1/2 pl-4 pr-1 py-1 rounded-full text-sm shadow-lg z-50 whitespace-nowrap flex items-center gap-2"
-          style={{ background: INK, color: 'white', minHeight: 40 }}
+          style={{ background: 'var(--m-inverse-surface)', color: 'var(--m-inverse-on-surface)', minHeight: 48 }}
         >
           <span className={toast.undo ? '' : 'pr-3'}>{toast.msg}</span>
           {toast.undo && (
             <button
               onClick={undoFromToast}
               className="h-9 px-3 rounded-full text-sm font-bold active:scale-95 transition"
-              style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}
+              style={{ color: 'var(--m-primary-container)' }}
             >
               Undo
             </button>

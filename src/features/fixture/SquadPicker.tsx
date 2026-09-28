@@ -3,11 +3,9 @@ import { GROUP_COLOR } from '@/ui/positions'
 import type { Group, ID, Player } from '@/lib/events/types'
 import type { SpondAvailability } from '@/lib/spond/spondSync'
 import { teamLimits } from '@/lib/domain/validateComposition'
+import { ButtonGroup } from '@/ui/ButtonGroup'
+import { Card } from '@/ui/Card'
 
-const PURPLE      = '#3D0066'
-const PURPLE_DARK = '#5B1A99'
-const INK         = '#1A1A1A'
-const MUTED       = '#6E6E73'
 
 export type Assignment = 'A' | 'bench-A' | 'B' | 'bench-B' | 'unavailable' | null
 type Team = 'A' | 'B'
@@ -19,7 +17,7 @@ const GROUP_ORDER: Group[] = ['forward', 'back', 'scrumhalf']
 
 export function GroupBadge({ group, size = 'sm' }: { group: Group; size?: 'sm' | 'xs' }) {
   const bg = GROUP_COLOR[group]
-  const cls = size === 'xs' ? 'w-5 h-5 text-[11px]' : 'w-6 h-6 text-xs'
+  const cls = size === 'xs' ? 'w-5 h-5 text-xs' : 'w-6 h-6 text-xs'
   return (
     <span className={`font-bold rounded-full flex items-center justify-center flex-shrink-0 ${cls}`}
       style={{ background: bg, color: 'white' }}>
@@ -128,38 +126,33 @@ export default function SquadPicker({
     return (
       <div
         key={p.id}
-        className="flex items-center gap-2 py-1.5"
-        style={{ borderBottom: '1px solid #EFEFF4', opacity: choice === 'out' || elsewhere ? 0.6 : 1 }}
+        className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-4 py-2 transition-opacity"
+        style={{ opacity: choice === 'out' || elsewhere ? 0.55 : 1 }}
       >
-        <div className="flex-1 min-w-0">
+        {/* With large text the switch wraps under the name rather than squeezing it */}
+        <div className="flex-1 min-w-[7.5rem]">
           <div className="flex items-center gap-1.5">
-            <span className="text-[15px] font-semibold truncate" style={{ color: INK }}>{p.name}</span>
+            <span className="text-base font-semibold truncate text-m-on-surface">{p.name}</span>
             {spond && (
-              <span
-                className="text-xs font-semibold flex-shrink-0"
-                style={{ color: spond === 'yes' ? '#059669' : spond === 'no' ? '#dc2626' : MUTED }}
-              >
+              <span className={`text-xs font-semibold flex-shrink-0 ${spond === 'yes' ? 'text-x-good' : spond === 'no' ? 'text-m-error' : 'text-m-on-surface-variant'}`}>
                 {spond === 'yes' ? '✓' : spond === 'no' ? 'said no' : '?'}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            {elsewhere && (
-              <span className="text-xs font-semibold" style={{ color: MUTED }}>in Team {other}</span>
-            )}
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            {elsewhere && <span className="text-xs font-semibold text-m-on-surface-variant">in Team {other}</span>}
             {otherGroups.map(og => (
               <button
                 key={og}
                 onClick={() => moveGroup(p, og)}
                 aria-label={`Move ${p.name} to ${GROUP_TITLE[og]}`}
-                className="text-xs font-semibold px-2 py-0.5 rounded-full active:scale-95 transition"
-                style={{ border: `1px solid ${PURPLE_DARK}`, color: PURPLE_DARK, background: 'white' }}
+                className="m-press h-7 px-2.5 rounded-m-sm text-xs font-semibold border border-m-outline text-m-on-surface-variant"
               >
                 also {GROUP_SHORT[og]}
               </button>
             ))}
             {(starts || minutes) && (
-              <span className="text-xs mono" style={{ color: MUTED }}>
+              <span className="text-xs mono text-m-on-surface-variant">
                 {starts ? `${n} start${n === 1 ? '' : 's'}` : ''}
                 {starts && minutes ? ' · ' : ''}
                 {minutes ? `${Math.round(minutes.get(p.id) ?? 0)} min` : ''}
@@ -167,68 +160,40 @@ export default function SquadPicker({
             )}
           </div>
         </div>
-        <div
-          role="radiogroup"
-          aria-label={`${p.name}${teamCount === 2 ? `, Team ${team}` : ''}`}
-          className="flex rounded-lg overflow-hidden flex-shrink-0"
-          style={{ border: '1px solid #E5E5EA' }}
-        >
-          {(['start', 'bench', 'out'] as const).map((c, i) => {
-            const on = choice === c
-            const selected = c === 'start'
-              ? { background: PURPLE, color: 'white' }
-              : c === 'bench'
-                ? { background: '#E5E5EA', color: INK }
-                : { background: '#FDECEC', color: '#B42318' }
-            return (
-              <button
-                key={c}
-                role="radio"
-                aria-checked={on}
-                onClick={() => choose(p, c)}
-                className="w-[58px] text-[13px] font-semibold active:scale-95 transition"
-                style={{
-                  minHeight: 44,
-                  borderLeft: i > 0 ? '1px solid #E5E5EA' : undefined,
-                  ...(on ? selected : { background: 'white', color: MUTED }),
-                }}
-              >
-                {c === 'start' ? 'Start' : c === 'bench' ? 'Bench' : 'Out'}
-              </button>
-            )
-          })}
-        </div>
+        <ButtonGroup
+          size="md"
+          ariaLabel={`${p.name}${teamCount === 2 ? `, Team ${team}` : ''}`}
+          value={choice}
+          onChange={c => choose(p, c)}
+          className="flex-shrink-0 ml-auto"
+          options={[
+            { value: 'start', label: 'Start' },
+            { value: 'bench', label: 'Bench', selectedClass: 'bg-m-secondary-container text-m-on-secondary-container' },
+            { value: 'out', label: 'Out', selectedClass: 'bg-m-error-container text-m-on-error-container' },
+          ]}
+        />
       </div>
     )
   }
 
   return (
-    <div>
+    <div className="space-y-3">
       {teamCount === 2 && (
-        <div className="flex rounded-lg overflow-hidden mb-2" style={{ border: '1px solid #E5E5EA' }}>
-          {(['A', 'B'] as const).map(t => {
-            const n = players.filter(p => assignOf(p.id) === t).length
-            return (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className="flex-1 text-sm font-bold transition"
-                style={{
-                  minHeight: 44,
-                  background: tab === t ? PURPLE : 'white',
-                  color: tab === t ? 'white' : PURPLE_DARK,
-                }}
-              >
-                Team {t} · {n}/{playersPerSide}
-              </button>
-            )
-          })}
-        </div>
+        <ButtonGroup
+          full
+          ariaLabel="Team"
+          value={tab}
+          onChange={setTab}
+          options={(['A', 'B'] as const).map(t => ({
+            value: t,
+            label: `Team ${t} · ${players.filter(p => assignOf(p.id) === t).length}/${playersPerSide}`,
+          }))}
+        />
       )}
 
-      <div className="text-[13px] font-semibold mb-1 px-1" style={{ color: INK }}>
+      <div className="text-base font-semibold px-1 text-m-on-surface">
         Starting {starters.length}/{playersPerSide} · Bench {benchCount} · Out {outCount}
-        {teamCount === 2 && unpicked > 0 && <span style={{ color: MUTED }}> · Not picked {unpicked}</span>}
+        {teamCount === 2 && unpicked > 0 && <span className="text-m-on-surface-variant"> · Not picked {unpicked}</span>}
       </div>
 
       {GROUP_ORDER.map(g => {
@@ -236,17 +201,21 @@ export default function SquadPicker({
         if (inGroup.length === 0) return null
         const count = starters.filter(p => groupOf(p) === g).length
         const limit = limitOf[g]
-        const color = count > limit ? '#DC2626' : count === limit ? '#059669' : MUTED
+        const tone = count > limit
+          ? 'bg-m-error-container text-m-on-error-container'
+          : count === limit
+            ? 'bg-x-good-container text-x-on-good-container'
+            : 'bg-m-surface-container-highest text-m-on-surface-variant'
         return (
-          <section key={g} className="mt-3">
-            <div className="flex items-baseline justify-between px-1 pb-1" style={{ borderBottom: `2px solid ${PURPLE_DARK}` }}>
-              <h3 className="text-sm font-bold" style={{ color: PURPLE }}>{GROUP_TITLE[g]}</h3>
-              <span className="text-sm font-bold mono" style={{ color }}>
+          <Card key={g} className="overflow-hidden">
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <h3 className="text-lg emphasized text-m-on-surface">{GROUP_TITLE[g]}</h3>
+              <span className={`h-8 px-3 rounded-full inline-flex items-center text-sm font-bold mono transition-colors ${tone}`}>
                 {count}/{limit}{count === limit ? ' ✓' : ''}
               </span>
             </div>
-            <div className="px-1">{inGroup.map(row)}</div>
-          </section>
+            <div className="divide-y divide-m-outline-variant pb-1">{inGroup.map(row)}</div>
+          </Card>
         )
       })}
     </div>
