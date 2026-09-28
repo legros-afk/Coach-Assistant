@@ -434,7 +434,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const canPublish = clubPinConfigured()
 
   const [publishing, setPublishing] = useState(false)
-  const [publishResult, setPublishResult] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [publishResult, setPublishResult] = useState<{ ok: boolean; msg: string; detail?: string } | null>(null)
 
   const teamA = useMemo(() => countTeam('A', effective, groupOverrides, players, playersPerSide), [effective, groupOverrides, players, playersPerSide])
   const teamB = useMemo(() => countTeam('B', effective, groupOverrides, players, playersPerSide), [effective, groupOverrides, players, playersPerSide])
@@ -501,8 +501,9 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     setPublishing(false)
     setPublishResult(result.ok
       ? { ok: true, msg: 'Saved and shared with the coaches' }
-      : { ok: false, msg: friendlyShareError(result.error) })
-    setTimeout(() => onSaved(), result.ok ? 900 : 2600)
+      : { ok: false, msg: friendlyShareError(result.error), detail: result.error })
+    // On failure stay put, so the reason can be read (or screenshotted)
+    if (result.ok) setTimeout(() => onSaved(), 900)
   }
 
   const [copyToast, setCopyToast] = useState('')
@@ -817,6 +818,9 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
         {publishResult && (
           <div className={`pop-in mb-2 text-sm text-center px-3 py-2 rounded-m-md ${publishResult.ok ? 'bg-x-good-container text-x-on-good-container' : 'bg-m-error-container text-m-on-error-container'}`}>
             {publishResult.msg}
+            {publishResult.detail && (
+              <div className="mt-1 text-xs opacity-80 break-words">Details: {publishResult.detail.slice(0, 240)}</div>
+            )}
           </div>
         )}
         {copyToast && (

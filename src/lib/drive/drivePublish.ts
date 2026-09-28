@@ -62,8 +62,12 @@ async function publishToCollection(folderId: string, collection: 'fixtures' | 'm
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, folderId, collection, item }),
     });
-    const data = await res.json() as { ok?: boolean; error?: string };
-    if (!res.ok || data.ok !== true) return { ok: false, error: data.error ?? `Publish failed (${res.status})` };
+    const text = await res.text();
+    let data: { ok?: boolean; error?: string } = {};
+    try { data = JSON.parse(text); } catch { /* not JSON: server crashed or wasn't reached */ }
+    if (!res.ok || data.ok !== true) {
+      return { ok: false, error: data.error ?? `Server replied ${res.status}: ${text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160)}` };
+    }
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Network error' };

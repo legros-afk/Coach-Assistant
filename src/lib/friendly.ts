@@ -11,7 +11,7 @@ export function friendlyShareError(raw: string | undefined): string {
   if (isOffline() || msg.includes('network') || msg.includes('fetch') || msg.includes('load failed')) {
     return "No signal — it's saved on this phone and will be shared when you're back online."
   }
-  if (msg.includes('pin') || msg.includes('401') || msg.includes('403') || msg.includes('unauthor') || msg.includes('code')) {
+  if (msg.includes('wrong pin') || msg.includes('no coach pin') || msg.includes('too many wrong')) {
     return "The coach PIN on this phone isn't right. Check it in Coach setup."
   }
   return "Couldn't share just now — it's saved on this phone and we'll try again automatically."
