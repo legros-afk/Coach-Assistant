@@ -1,7 +1,7 @@
 // Higher-level Spond helpers used by the app UI.
 
 import { spondLogin, spondGetGroups, spondGetEvents, spondCreateEvent } from './spondApi'
-import { getSpondCreds, saveSpondToken, clearSpondToken, matchMember, getKickoffDefaults, eventWindow } from './spondStore'
+import { getSpondCreds, saveSpondToken, clearSpondToken, matchMember, memberName, getKickoffDefaults, eventWindow } from './spondStore'
 import type { Fixture, Player } from '@/lib/events/types'
 
 export async function ensureToken(forceRefresh = false): Promise<string> {
@@ -67,8 +67,9 @@ export async function getSpondAvailability(
     const player = matchMember(member, players)
     if (player) {
       memberToPlayerId.set(member.id, player.id)
-    } else if (member.profile) {
-      const name = [member.profile.firstName, member.profile.lastName].filter(Boolean).join(' ').trim()
+    } else {
+      const n = memberName(member)
+      const name = n ? [n.firstName, n.lastName].filter(Boolean).join(' ').trim() : ''
       if (name) unmatchedNames.push(name)
     }
   }

@@ -43,6 +43,10 @@ export async function spondLogin(email: string, password: string): Promise<strin
 
 export interface SpondMember {
   id: string
+  /** The member's own name — for a child, the child's name */
+  firstName?: string
+  lastName?: string
+  /** The Spond account attached to the membership, which for a child can be a parent's */
   profile?: {
     id: string
     firstName: string

@@ -85,20 +85,31 @@ export function spondConfigured(): boolean {
   return !!(localStorage.getItem(SPOND_EMAIL_KEY) && localStorage.getItem(SPOND_GROUP_ID_KEY))
 }
 
-// Match a Spond member to an app player by name.
-// Spond has firstName + lastName; app uses short names like "Henry W".
-export function matchMember(member: SpondMember, players: Player[]): Player | undefined {
-  if (!member.profile) return undefined
-  const { firstName, lastName } = member.profile
-  if (!firstName) return undefined
-  const fullLower  = `${firstName} ${lastName}`.toLowerCase().trim()
-  const initLower  = `${firstName} ${lastName.charAt(0)}`.toLowerCase().trim()
-  const firstLower = firstName.toLowerCase().trim()
+/** The member's own name. The attached account comes last: for a child it
+ *  can be a parent's, which is how parents ended up looking like players. */
+export function memberName(member: SpondMember): { firstName: string; lastName: string } | undefined {
+  if (member.firstName) return { firstName: member.firstName, lastName: member.lastName ?? '' }
+  if (member.profile?.firstName) return { firstName: member.profile.firstName, lastName: member.profile.lastName ?? '' }
+  return undefined
+}
 
-  return players.find(p => {
-    const n = p.name.toLowerCase().trim()
-    return n === fullLower || n === initLower || n.startsWith(firstLower + ' ')
-  })
+// Match a Spond member to an app player by name.
+// Spond has first + last name; the app uses "Alexander", or "Henry W" where
+// first names clash.
+export function matchMember(member: SpondMember, players: Player[]): Player | undefined {
+  const name = memberName(member)
+  if (!name) return undefined
+  const first = name.firstName.toLowerCase().trim()
+  const last = name.lastName.toLowerCase().trim()
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+  const full = `${first} ${last}`.trim()
+
+  return players.find(p => norm(p.name) === full)                       // "Seth Fayinka"
+    ?? (last ? players.find(p => norm(p.name) === `${first} ${last.charAt(0)}`) : undefined) // "Henry W"
+    ?? (() => {                                                          // "Alexander"
+      const byFirst = players.filter(p => norm(p.name) === first)
+      return byFirst.length === 1 ? byFirst[0] : undefined
+    })()
 }
 
 // Extract opponent name from a Spond event heading.

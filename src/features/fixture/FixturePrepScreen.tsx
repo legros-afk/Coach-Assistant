@@ -110,20 +110,38 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     setTimeout(() => setSpondToast(''), 3500)
   }
 
+  const spondOutIds = useRef<Set<ID>>(new Set())
+
+  // Who's coming loads by itself when an upcoming fixture linked to Spond is
+  // opened — no button to find.
+  const autoSynced = useRef(false)
+  useEffect(() => {
+    if (autoSynced.current || !spondEventId || !spondConfigured() || players.length === 0) return
+    if (date < new Date().toISOString().slice(0, 10)) return
+    autoSynced.current = true
+    void syncSpondAvailability()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spondEventId, players.length])
+
   const syncSpondAvailability = async () => {
     if (!spondEventId) return
     setSpondSyncing(true)
     try {
       const avail = await getSpondAvailability(spondEventId, players)
       setSpondAvailability(avail)
-      // Mark declined players as unavailable; leave accepted/unanswered alone
-      if (avail.declined.length > 0) {
-        setAssignments(m => {
-          const next = new Map(m)
-          for (const id of avail.declined) next.set(id, 'unavailable')
-          return next
-        })
-      }
+      // "Not coming" in Spond → Out. Anyone Spond had put Out who has since
+      // changed their answer goes back to Bench. Coming / no reply stay as
+      // they are (Bench by default, with ✓ or ? beside the name).
+      const declined = new Set(avail.declined)
+      setAssignments(m => {
+        const next = new Map(m)
+        for (const id of spondOutIds.current) {
+          if (!declined.has(id) && next.get(id) === 'unavailable') next.set(id, null)
+        }
+        for (const id of declined) next.set(id, 'unavailable')
+        return next
+      })
+      spondOutIds.current = declined
       const parts = [
         avail.accepted.length   > 0 && `${avail.accepted.length} ✓`,
         avail.declined.length   > 0 && `${avail.declined.length} ✗`,
