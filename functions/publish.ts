@@ -10,6 +10,12 @@
 // it for a junior club's team-sheet folder.
 //
 // Accepts POST { code, folderId, subfolder?, fileName, content, baseVersion?, force? }
+//      or POST { code, folderId, collection: 'fixtures' | 'matches', item }
+//
+// Why collections: a service account has no Drive storage of its own, so it
+// can't create files in a personal Drive — it can only edit files a person
+// owns. fixtures.json and matches.json are created once by the club's Drive
+// owner; every fixture and match is then an update to one of them.
 
 interface Env {
   GOOGLE_SERVICE_ACCOUNT_EMAIL: string
@@ -32,6 +38,50 @@ interface PublishRequest {
   baseVersion?: number
   /** Publish over a conflict deliberately, after the coach has been shown it. */
   force?: boolean
+  /** Upsert `item` into <collection>.json in the folder root instead of writing a file */
+  collection?: 'fixtures' | 'matches'
+  item?: { id: string; version?: number; events?: unknown[] }
+}
+
+type CollectionItem = NonNullable<PublishRequest['item']>
+
+// Which copy of the same fixture/match to keep. Fixtures: the higher version.
+// Matches: the one with more recorded events (a match only ever grows).
+function newer(kind: 'fixtures' | 'matches', incoming: CollectionItem, stored: CollectionItem): boolean {
+  if (kind === 'matches') return (incoming.events?.length ?? 0) >= (stored.events?.length ?? 0)
+  return (incoming.version ?? 0) >= (stored.version ?? 0)
+}
+
+async function readJson(fileId: string, token: string): Promise<Record<string, unknown>> {
+  const res = await fetch(`${DRIVE_BASE}/files/${fileId}?alt=media`, { headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok) throw new Error(`Drive API error (${res.status}): ${(await res.text()).slice(0, 300)}`)
+  try { return await res.json() as Record<string, unknown> } catch { return {} }
+}
+
+async function upsertIntoCollection(kind: 'fixtures' | 'matches', item: CollectionItem, folderId: string, token: string): Promise<void> {
+  const fileId = await findFileId(`${kind}.json`, folderId, token)
+  if (!fileId) throw new Error(`${kind}.json is missing from the club folder — it has to be created by the folder's owner.`)
+
+  // Read-modify-write, then check it stuck: two coaches saving at the same
+  // moment can overwrite each other, so the loser tries again.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const doc = await readJson(fileId, token)
+    const list = Array.isArray(doc[kind]) ? doc[kind] as CollectionItem[] : []
+    const i = list.findIndex(x => x && x.id === item.id)
+    if (i >= 0 && !newer(kind, item, list[i])) return // stored copy is already newer
+    const next = i >= 0 ? list.map((x, j) => j === i ? item : x) : [...list, item]
+    const body = { ...doc, [kind]: next, version: (typeof doc.version === 'number' ? doc.version : 0) + 1 }
+    await driveJson(`${UPLOAD_BASE}/files/${fileId}?uploadType=multipart`, token, {
+      method: 'PATCH',
+      headers: { 'Content-Type': `multipart/related; boundary=${BOUNDARY}` },
+      body: multipartBody({}, body),
+    })
+    const check = await readJson(fileId, token)
+    const saved = (Array.isArray(check[kind]) ? check[kind] as CollectionItem[] : []).find(x => x && x.id === item.id)
+    if (saved && !newer(kind, item, saved) || saved && JSON.stringify(saved) === JSON.stringify(item)) return
+    await sleep(150 + Math.random() * 300)
+  }
+  throw new Error('Could not save — too many coaches saving at once. It will be retried.')
 }
 
 class ConflictError extends Error {
@@ -247,6 +297,19 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return Response.json({ ok: false, error: 'Wrong PIN.' }, { status: 403 })
   }
   clearAttempts(ip)
+  if (payload.collection) {
+    if (!payload.folderId || !payload.item?.id || (payload.collection !== 'fixtures' && payload.collection !== 'matches')) {
+      return Response.json({ ok: false, error: 'Missing folderId, collection or item.' }, { status: 400 })
+    }
+    try {
+      const token = await getAccessToken(env)
+      await upsertIntoCollection(payload.collection, payload.item, payload.folderId, token)
+      return Response.json({ ok: true })
+    } catch (e) {
+      return Response.json({ ok: false, error: e instanceof Error ? e.message : 'Publish failed' }, { status: 502 })
+    }
+  }
+
   if (!payload.folderId || !payload.fileName || payload.content === undefined) {
     return Response.json({ ok: false, error: 'Missing folderId, fileName, or content.' }, { status: 400 })
   }

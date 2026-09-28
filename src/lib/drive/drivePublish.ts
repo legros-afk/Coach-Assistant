@@ -50,14 +50,30 @@ export async function publishSquad(squad: Squad, folderId: string, force = false
   });
 }
 
-export async function publishFixture(fixture: Fixture, folderId: string): Promise<PublishResult> {
-  const safeName = fixture.opponent.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
-  const fileName = `${fixture.date}-vs-${safeName}.json`;
-  return publish(folderId, 'fixtures', fileName, fixture);
+// Fixtures and matches go into fixtures.json / matches.json rather than a
+// file each: the server's service account can edit files but can't create
+// them in a personal Drive (it has no storage of its own).
+async function publishToCollection(folderId: string, collection: 'fixtures' | 'matches', item: Fixture | Match): Promise<PublishResult> {
+  const code = getClubPin();
+  if (!code) return { ok: false, error: 'No coach PIN set. Add it in settings.' };
+  try {
+    const res = await fetch('/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, folderId, collection, item }),
+    });
+    const data = await res.json() as { ok?: boolean; error?: string };
+    if (!res.ok || data.ok !== true) return { ok: false, error: data.error ?? `Publish failed (${res.status})` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Network error' };
+  }
 }
 
-export async function publishMatch(match: Match, folderId: string, date: string): Promise<PublishResult> {
-  const safeName = match.opponent.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
-  const fileName = `${date}-vs-${safeName}-${match.teamSheetId}.json`;
-  return publish(folderId, 'matches', fileName, match);
+export async function publishFixture(fixture: Fixture, folderId: string): Promise<PublishResult> {
+  return publishToCollection(folderId, 'fixtures', fixture);
+}
+
+export async function publishMatch(match: Match, folderId: string, _date?: string): Promise<PublishResult> {
+  return publishToCollection(folderId, 'matches', match);
 }

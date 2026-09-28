@@ -51,6 +51,36 @@ export async function syncFromDrive(folderId: string, _apiKey?: string): Promise
       // Sheets API unavailable — positions stay as-is, don't fail the whole sync
     }
 
+    // fixtures.json / matches.json — where everything is shared now. The
+    // older one-file-each folders below are still read for history.
+    const upsertFixture = async (fixture: Fixture) => {
+      const local = await db.fixtures.get(fixture.id);
+      // Local unpublished edits (higher version) win over the Drive copy
+      if (local && (local.version ?? 0) > (fixture.version ?? 0)) return false;
+      if (local && (local.version ?? 0) === (fixture.version ?? 0)) return false;
+      await db.fixtures.put(fixture);
+      return true;
+    };
+    const upsertMatch = async (match: Match) => {
+      const local = await db.matches.get(match.id);
+      // Never lose locally recorded events (e.g. a match in progress on this device)
+      if (local && local.events.length >= match.events.length) return false;
+      await db.matches.put(match);
+      return true;
+    };
+    let collectionFixtures = 0;
+    let collectionMatches = 0;
+    const fixturesFile = rootFiles.find(f => f.name === 'fixtures.json');
+    if (fixturesFile) {
+      const doc = await fetchFileJson<{ fixtures?: Fixture[] }>(fixturesFile.id);
+      for (const f of doc.fixtures ?? []) if (f?.id && await upsertFixture(f)) collectionFixtures++;
+    }
+    const matchesFile = rootFiles.find(f => f.name === 'matches.json');
+    if (matchesFile) {
+      const doc = await fetchFileJson<{ matches?: Match[] }>(matchesFile.id);
+      for (const m of doc.matches ?? []) if (m?.id && await upsertMatch(m)) collectionMatches++;
+    }
+
     // fixtures/ subfolder
     const FOLDER_MIME = 'application/vnd.google-apps.folder';
     const fixturesFolder = rootFiles.find(
@@ -87,7 +117,7 @@ export async function syncFromDrive(folderId: string, _apiKey?: string): Promise
       }
     }
 
-    return { ok: true, squadUpdated, fixturesUpdated, matchesUpdated };
+    return { ok: true, squadUpdated, fixturesUpdated: fixturesUpdated + collectionFixtures, matchesUpdated: matchesUpdated + collectionMatches };
   } catch (err) {
     if (err instanceof DriveError && (err.status === 403 || err.status === 404)) {
       return {
