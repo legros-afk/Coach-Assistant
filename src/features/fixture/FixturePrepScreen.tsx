@@ -15,6 +15,7 @@ import { clubPinConfigured } from '@/lib/drive/driveRead'
 import { markFixtureUnshared, shareFixture } from '@/lib/drive/pendingShare'
 import { friendlyShareError } from '@/lib/friendly'
 import { db } from '@/lib/db/db'
+import { COUNTING_FROM } from '@/config/club'
 import { replayEvents } from '@/lib/events/replay'
 import type { Match } from '@/lib/events/types'
 import { TopAppBar, BarButton } from '@/ui/TopAppBar'
@@ -239,7 +240,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const startsById = useMemo(() => {
     const m = new Map<ID, number>()
     for (const f of fixtures) {
-      if (f.id === existing?.id || f.date >= date) continue
+      if (f.id === existing?.id || f.date >= date || f.date < COUNTING_FROM) continue
       for (const ts of f.teamSheets) {
         const ids = [...ts.starters.forwards, ...ts.starters.backs]
         if (ts.starters.scrumhalf) ids.push(ts.starters.scrumhalf)
@@ -258,7 +259,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     if (!players.length) return m
     for (const match of storedMatches) {
       const f = fixtures.find(x => x.id === match.fixtureId)
-      if (!f || f.id === existing?.id || f.date >= date) continue
+      if (!f || f.id === existing?.id || f.date >= date || f.date < COUNTING_FROM) continue
       const ts = f.teamSheets.find(t => t.id === match.teamSheetId)
       if (!ts) continue
       const state = replayEvents(match.events, ts, players)

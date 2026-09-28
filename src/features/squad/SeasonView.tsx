@@ -4,6 +4,7 @@ import { db } from '@/lib/db/db'
 import { useFixtureStore } from '@/features/fixture/useFixtureStore'
 import { seasonStats } from '@/lib/domain/seasonStats'
 import { currentSeason } from '@/lib/domain/season'
+import { COUNTING_FROM } from '@/config/club'
 import { ButtonGroup } from '@/ui/ButtonGroup'
 import { Card } from '@/ui/Card'
 
@@ -22,7 +23,7 @@ export default function SeasonView({ players }: { players: Player[] }) {
 
   const season = currentSeason()
   const stats = useMemo(
-    () => seasonStats(fixtures, matches, players, season),
+    () => seasonStats(fixtures, matches, players, season, COUNTING_FROM),
     [fixtures, matches, players, season],
   )
 
@@ -33,12 +34,17 @@ export default function SeasonView({ players }: { players: Player[] }) {
         : sort === 'starts' ? b.s.starts - a.s.starts || a.p.name.localeCompare(b.p.name)
           : a.s.minutes - b.s.minutes || a.p.name.localeCompare(b.p.name))
 
-  const gamesPlayed = new Set(matches.filter(m => m.events.some(e => e.type === 'MATCH_END')).map(m => m.id)).size
+  // Only matches that count: finished, on a fixture dated from the reset on
+  const fixtureDate = new Map(fixtures.map(f => [f.id, f.date]))
+  const gamesPlayed = matches.filter(m =>
+    m.events.some(e => e.type === 'MATCH_END') && (fixtureDate.get(m.fixtureId) ?? '') >= COUNTING_FROM,
+  ).length
+  const fromLabel = new Date(COUNTING_FROM + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
 
   if (gamesPlayed === 0) {
     return (
       <div className="py-12 text-center px-6">
-        <div className="text-xl emphasized mb-1">No matches played yet</div>
+        <div className="text-xl emphasized mb-1">No matches since {fromLabel}</div>
         <div className="text-base text-m-on-surface-variant">Minutes, starts and tries appear here once you’ve run a match in the app.</div>
       </div>
     )
@@ -77,7 +83,7 @@ export default function SeasonView({ players }: { players: Player[] }) {
         </div>
       </Card>
       <p className="text-xs px-1 text-m-on-surface-variant">
-        {gamesPlayed} match{gamesPlayed === 1 ? '' : 'es'} this season. Coaches only — not shared with parents.
+        {gamesPlayed} match{gamesPlayed === 1 ? '' : 'es'} since {fromLabel}. Coaches only — not shared with parents.
       </p>
     </div>
   )

@@ -23,6 +23,8 @@ export function seasonStats(
   matches: Match[],
   players: Player[],
   season: string,
+  /** Matches before this date ('YYYY-MM-DD') don't count. */
+  countingFrom = '',
 ): Map<ID, PlayerSeason> {
   const out = new Map<ID, PlayerSeason>();
   const get = (id: ID) => {
@@ -35,7 +37,7 @@ export function seasonStats(
   for (const m of matches) {
     if (m.events.length === 0) continue;
     const f = byId.get(m.fixtureId);
-    if (!f || seasonFor(parseIso(f.date)) !== season) continue;
+    if (!f || seasonFor(parseIso(f.date)) !== season || f.date < countingFrom) continue;
     const ts = f.teamSheets.find(t => t.id === m.teamSheetId);
     if (!ts) continue;
 
