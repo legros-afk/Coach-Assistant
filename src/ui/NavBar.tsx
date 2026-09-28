@@ -6,7 +6,7 @@ export interface NavItem<T extends string> { key: T; label: string; icon: ReactN
 export function NavBar<T extends string>({ items, active, onSelect }: { items: NavItem<T>[]; active: T | null; onSelect: (k: T) => void }) {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 bg-m-surface-container flex"
+      className="fixed bottom-0 app-x z-40 bg-m-surface-container flex"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       {items.map(it => {

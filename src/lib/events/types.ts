@@ -35,6 +35,8 @@ export interface Fixture {
   teamSheets: TeamSheet[];
   playersPerSide?: number;
   spondEventId?: string;
+  /** Cancelled or no longer in Spond: kept (so every phone learns) but hidden. */
+  cancelled?: boolean;
   publishedAt?: string;
   updatedAt: string;
   version: number;

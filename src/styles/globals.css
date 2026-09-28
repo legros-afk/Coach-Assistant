@@ -205,8 +205,23 @@ body {
   color: var(--m-on-surface);
 }
 
+/* ─── Wide screens (tablet, computer): keep a phone-like column ───────── */
+:root { --app-max: 40rem; --gutter: max(0px, calc((100vw - var(--app-max)) / 2)); }
+#root {
+  max-width: var(--app-max);
+  margin-inline: auto;
+  min-height: 100%;
+}
+/* Only once the app has drawn — before that the purple launch colour shows */
+#root:not(:empty) { background: var(--m-surface); }
+
 /* ─── Utilities ─────────────────────────────────────────── */
 @layer utilities {
+  /* Fixed bars span the app column, not the whole window */
+  .app-x { left: var(--gutter); right: var(--gutter); }
+  .app-x-inset { left: calc(var(--gutter) + 0.75rem); right: calc(var(--gutter) + 0.75rem); }
+  .app-right { right: calc(var(--gutter) + 1rem); }
+
   .tap-target { min-height: 3.25rem; }
 
   /* Numbers line up in columns */

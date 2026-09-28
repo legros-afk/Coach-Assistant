@@ -248,7 +248,7 @@ export default function SquadScreen({ onOpenSettings }: Props) {
           <>
             {!canEdit && (
               <div className="text-sm text-m-on-surface-variant px-1">
-                Your head coach looks after the squad. Positions come from the club spreadsheet.
+                Your head coach looks after the squad and positions.
               </div>
             )}
             <Card className="overflow-hidden divide-y divide-m-outline-variant">
@@ -321,7 +321,7 @@ export default function SquadScreen({ onOpenSettings }: Props) {
                 })}
               </div>
               <div className="text-xs text-m-on-surface-variant mt-2 leading-snug">
-                Positions come from the club spreadsheet. Change them there too, or the app will switch back when it next updates.
+                Saved changes are shared with the other coaches.
               </div>
             </div>
 

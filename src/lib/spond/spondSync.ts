@@ -103,3 +103,11 @@ export async function createSpondEventForFixture(fixture: Fixture): Promise<stri
     endTimestamp,
   }))
 }
+
+// ── keep the app's fixtures in step with Spond ───────────────────────────────
+
+export async function getUpcomingSpondEvents() {
+  const { groupId } = getSpondCreds()
+  if (!groupId) return []
+  return withFreshToken(token => spondGetEvents(token, groupId))
+}

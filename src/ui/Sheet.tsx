@@ -26,7 +26,7 @@ export function Sheet({ onClose, title, children, maxHeight = '85vh' }: Props) {
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full bg-m-surface-container-low text-m-on-surface rounded-t-m-xl sheet-in px-4 pt-2 overflow-y-auto"
+        className="w-full max-w-[40rem] mx-auto bg-m-surface-container-low text-m-on-surface rounded-t-m-xl sheet-in px-4 pt-2 overflow-y-auto"
         style={{ maxHeight }}
         onClick={e => e.stopPropagation()}
       >

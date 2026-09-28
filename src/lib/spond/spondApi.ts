@@ -65,6 +65,10 @@ export interface SpondEvent {
   heading: string
   startTimestamp: string
   endTimestamp?: string
+  cancelled?: boolean
+  /** Spond's own match events carry the opponent and home/away */
+  matchEvent?: boolean
+  matchInfo?: { type?: 'HOME' | 'AWAY' | string; opponentName?: string; teamName?: string }
   responses: {
     acceptedIds: string[]
     declinedIds: string[]
@@ -75,7 +79,7 @@ export interface SpondEvent {
 export async function spondGetEvents(token: string, groupId: string): Promise<SpondEvent[]> {
   const now = new Date().toISOString()
   return proxy<SpondEvent[]>(
-    `sponds?groupId=${groupId}&includeComments=false&includeHidden=true&addProfileInfo=true&order=asc&max=20&minEndTimestamp=${encodeURIComponent(now)}`,
+    `sponds?groupId=${groupId}&includeComments=false&includeHidden=true&addProfileInfo=true&order=asc&max=200&minEndTimestamp=${encodeURIComponent(now)}`,
     { token },
   )
 }

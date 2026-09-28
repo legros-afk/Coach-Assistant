@@ -56,7 +56,7 @@ export default function InstallPrompt({ visible = true }: { visible?: boolean })
     }
     return (
       <div
-        className="fixed fab-bottom left-3 right-3 z-50 rounded-m-xl elev-3 p-5 bg-m-surface-container-high text-m-on-surface pop-in"
+        className="fixed fab-bottom app-x-inset z-50 rounded-m-xl elev-3 p-5 bg-m-surface-container-high text-m-on-surface pop-in"
       >
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="text-lg emphasized leading-snug">
@@ -115,7 +115,7 @@ export default function InstallPrompt({ visible = true }: { visible?: boolean })
 
   return (
     <div
-      className="fixed fab-bottom left-3 right-3 z-50 flex items-center gap-3 px-4 py-3 rounded-m-xl elev-3 bg-m-inverse-surface text-m-inverse-on-surface pop-in"
+      className="fixed fab-bottom app-x-inset z-50 flex items-center gap-3 px-4 py-3 rounded-m-xl elev-3 bg-m-inverse-surface text-m-inverse-on-surface pop-in"
     >
       <Download size={20} strokeWidth={2} className="flex-shrink-0" />
       <div className="flex-1 min-w-0">

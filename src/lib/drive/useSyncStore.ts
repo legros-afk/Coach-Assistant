@@ -4,6 +4,8 @@ import { useFixtureStore } from '@/features/fixture/useFixtureStore';
 import { DRIVE_FOLDER_ID } from '@/config/club';
 import { syncFromDrive } from './driveSync';
 import { flushUnshared } from './pendingShare';
+import { clubPinConfigured } from './driveRead';
+import { syncFixturesFromSpond } from '@/lib/spond/syncFixturesFromSpond';
 import { friendlySyncError } from '@/lib/friendly';
 
 const LAST_SYNCED_KEY = 'coach-last-synced';
@@ -31,6 +33,10 @@ export const useSyncStore = create<SyncStore>()((set) => ({
     const result = await syncFromDrive(DRIVE_FOLDER_ID);
 
     if (result.ok) {
+      // Spond is the fixture list: fold in its changes, then share them
+      const canShare = clubPinConfigured();
+      const spondChanges = await syncFixturesFromSpond(canShare);
+      if (spondChanges > 0 && canShare) await flushUnshared();
       // Re-read Dexie into both stores so UI picks up fresh data
       await Promise.all([
         useSquadStore.getState().hydrate(),

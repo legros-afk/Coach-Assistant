@@ -730,7 +730,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
 
       {/* Save bar — the list above is the review */}
       <div
-        className="fixed bottom-0 left-0 right-0 px-4 pt-3 z-30 bg-m-surface-container elev-1"
+        className="fixed bottom-0 app-x px-4 pt-3 z-30 bg-m-surface-container elev-1"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
       >
         {publishResult && (

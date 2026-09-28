@@ -873,7 +873,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       {/* ── Sub status tray */}
       {subMode && (
         <div
-          className="fixed above-live-bar left-0 right-0 px-3 py-2.5 shadow-2xl z-30"
+          className="fixed above-live-bar app-x px-3 py-2.5 shadow-2xl z-30"
           style={{ background: 'var(--x-live-bar)', color: 'white', borderTop: '2px solid var(--brand)' }}
         >
           <div className="flex items-center justify-between mb-1.5">
@@ -927,7 +927,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       {/* ── Undo confirmation bar */}
       {pendingUndo && (
         <div
-          className="fixed above-live-bar left-0 right-0 px-3 py-3 flex items-center justify-between z-40"
+          className="fixed above-live-bar app-x px-3 py-3 flex items-center justify-between z-40"
           style={{ background: 'var(--m-error)', color: 'var(--m-on-error)' }}
         >
           <span className="text-sm font-semibold">Undo last action?</span>
@@ -951,7 +951,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
 
       {/* ── Bottom bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 px-3 pt-3 flex items-center gap-2 z-30"
+        className="fixed bottom-0 app-x px-3 pt-3 flex items-center gap-2 z-30"
         style={{ background: 'var(--m-surface)', borderTop: '1px solid var(--m-outline)', paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
       >
         {matchEnded ? (
@@ -997,7 +997,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
           onClick={() => setTryPickerOpen(false)}
         >
           <div
-            className="bg-m-surface-container-low w-full rounded-t-m-xl sheet-in px-4 pt-2 max-h-[70vh] overflow-y-auto"
+            className="bg-m-surface-container-low w-full max-w-[40rem] mx-auto rounded-t-m-xl sheet-in px-4 pt-2 max-h-[70vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-m-outline-variant" aria-hidden="true" />
@@ -1057,7 +1057,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
           onClick={() => setMenuFor(null)}
         >
           <div
-            className="bg-m-surface-container-low w-full rounded-t-m-xl sheet-in px-4 pt-2 space-y-2"
+            className="bg-m-surface-container-low w-full max-w-[40rem] mx-auto rounded-t-m-xl sheet-in px-4 pt-2 space-y-2"
             onClick={e => e.stopPropagation()}
           >
             <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-m-outline-variant" aria-hidden="true" />
@@ -1095,7 +1095,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
           onClick={() => setBloodPickerFor(null)}
         >
           <div
-            className="bg-m-surface-container-low w-full rounded-t-m-xl sheet-in px-4 pt-2 max-h-[70vh] overflow-y-auto"
+            className="bg-m-surface-container-low w-full max-w-[40rem] mx-auto rounded-t-m-xl sheet-in px-4 pt-2 max-h-[70vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-m-outline-variant" aria-hidden="true" />
@@ -1158,7 +1158,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
           onClick={() => setInjuryPickerFor(null)}
         >
           <div
-            className="bg-m-surface-container-low w-full rounded-t-m-xl sheet-in px-4 pt-2 max-h-[70vh] overflow-y-auto"
+            className="bg-m-surface-container-low w-full max-w-[40rem] mx-auto rounded-t-m-xl sheet-in px-4 pt-2 max-h-[70vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-m-outline-variant" aria-hidden="true" />

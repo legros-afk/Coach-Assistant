@@ -13,9 +13,8 @@ import { useMatchStore } from '@/features/match/useMatchStore'
 import { useSyncStore, syncStatusText } from '@/lib/drive/useSyncStore'
 import { clubPinConfigured } from '@/lib/drive/driveRead'
 import SpondSheet from '@/features/spond/SpondSheet'
-import { spondConfigured, getSpondCreds, extractOpponent } from '@/lib/spond/spondStore'
-import { spondGetEvents, type SpondEvent } from '@/lib/spond/spondApi'
-import { ensureToken, createSpondEventForFixture } from '@/lib/spond/spondSync'
+import { spondConfigured } from '@/lib/spond/spondStore'
+import { createSpondEventForFixture } from '@/lib/spond/spondSync'
 import { getDefaultFormat } from '@/lib/prefs'
 
 
@@ -52,7 +51,7 @@ interface Props {
 // Every fixture moves Pick → Play → Share; its card always offers the next
 // step as the one obvious button.
 export default function MatchesScreen({
-  onStart, onResume, onOpenFixture, onNew, onViewMatch, onImportSpond, onOpenSettings, onDemo,
+  onStart, onResume, onOpenFixture, onNew, onViewMatch, onOpenSettings, onDemo,
 }: Props) {
   const { fixtures, isHydrated, hydrate, saveFixture } = useFixtureStore()
   const { squad, isHydrated: squadReady, hydrate: hydrateSquad } = useSquadStore()
@@ -79,26 +78,11 @@ export default function MatchesScreen({
   // ── Spond (organisers only)
   const isSpondLinked = spondConfigured()
   const [showSpondSheet, setShowSpondSheet] = useState(false)
-  const [spondEvents, setSpondEvents] = useState<SpondEvent[]>([])
-  const [spondError, setSpondError] = useState('')
   const [pushingId, setPushingId] = useState<string | null>(null)
 
-  const loadSpondEvents = async () => {
-    if (!spondConfigured()) return
-    setSpondError('')
-    try {
-      const token = await ensureToken()
-      const { groupId } = getSpondCreds()
-      if (!groupId) return
-      setSpondEvents(await spondGetEvents(token, groupId))
-    } catch (e) {
-      const msg = (e instanceof Error ? e.message : '').toLowerCase()
-      setSpondError(msg.includes('401') || msg.includes('unauthorized') || msg.includes('credentials')
-        ? 'Spond needs you to sign in again — tap here'
-        : 'Couldn’t reach Spond — tap to try again')
-    }
-  }
-  useEffect(() => { if (canEdit) void loadSpondEvents() }, [canEdit])
+  // Spond matches arrive by themselves with each update; after connecting
+  // Spond, update straight away so they appear
+  const loadSpondEvents = () => { void useSyncStore.getState().syncAll() }
 
   const pushToSpond = async (fixture: Fixture) => {
     setPushingId(fixture.id)
@@ -106,7 +90,7 @@ export default function MatchesScreen({
       const eventId = await createSpondEventForFixture(fixture)
       await saveFixture({ ...fixture, spondEventId: eventId, version: fixture.version + 1, updatedAt: new Date().toISOString() })
     } catch {
-      setSpondError('Couldn’t add it to Spond — tap to try again')
+      // Stays un-linked; the button remains for another try
     } finally {
       setPushingId(null)
     }
@@ -115,9 +99,12 @@ export default function MatchesScreen({
   // ── grouping by time
   const today = todayIso()
   const weekEnd = isoPlusDays(today, 6)
-  const thisWeek = fixtures.filter(f => f.date >= today && f.date <= weekEnd)
-  const later    = fixtures.filter(f => f.date > weekEnd)
-  const played   = fixtures.filter(f => f.date < today).reverse()
+  // Cancelled (or no longer in Spond) fixtures stay stored but aren't shown,
+  // unless a match was actually played for them
+  const visible  = fixtures.filter(f => !f.cancelled || f.teamSheets.some(ts => matchMap.get(ts.id)?.events.length))
+  const thisWeek = visible.filter(f => f.date >= today && f.date <= weekEnd)
+  const later    = visible.filter(f => f.date > weekEnd)
+  const played   = visible.filter(f => f.date < today).reverse()
   // Remember whether Played was open, so coming back from a result keeps it open
   const [showPlayed, setShowPlayedState] = useState(() => sessionStorage.getItem('coach-show-played') === '1')
   const setShowPlayed = (f: (v: boolean) => boolean) => setShowPlayedState(v => {
@@ -126,8 +113,6 @@ export default function MatchesScreen({
     return next
   })
 
-  const importedSpondIds = new Set(fixtures.filter(f => f.spondEventId).map(f => f.spondEventId!))
-  const spondToAdd = canEdit ? spondEvents.filter(ev => !importedSpondIds.has(ev.id)) : []
 
   const showDemo = squadReady && (!squad || squad.players.length === 0 || squad.id === DEMO_SQUAD_ID)
 
@@ -297,40 +282,6 @@ export default function MatchesScreen({
           </>
         )}
 
-        {/* Spond events not yet in the app — organisers only */}
-        {canEdit && isSpondLinked && (spondToAdd.length > 0 || spondError) && (
-          <>
-            <SectionTitle>In Spond, not here yet</SectionTitle>
-            {spondError ? (
-              <button
-                onClick={() => { setShowSpondSheet(true) }}
-                className="w-full p-4 rounded-m-lg text-left text-sm font-semibold bg-m-error-container text-m-on-error-container"
-              >
-                {spondError}
-              </button>
-            ) : (
-              <div className="space-y-2">
-                {spondToAdd.map(ev => {
-                  const opponent = extractOpponent(ev.heading)
-                  const date = ev.startTimestamp.slice(0, 10)
-                  const yes = ev.responses.acceptedIds.length
-                  return (
-                    <div key={ev.id} className="flex items-center gap-3 p-4 rounded-m-lg border border-dashed border-m-outline-variant">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-base font-semibold text-m-on-surface">vs {opponent}</div>
-                        <div className="text-sm text-m-on-surface-variant">
-                          {fmtDate(date)}{yes > 0 ? ` · ${yes} coming` : ''}
-                        </div>
-                      </div>
-                      <Button variant="tonal" size="sm" onClick={() => onImportSpond(ev.id, opponent, date, defaultFormat)}>Add</Button>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </>
-        )}
-
         {/* Demo — only while there's no real squad */}
         {showDemo && (
           <>
@@ -358,7 +309,7 @@ export default function MatchesScreen({
 
       {showSpondSheet && (
         <SpondSheet
-          onClose={() => { setShowSpondSheet(false); void loadSpondEvents() }}
+          onClose={() => { setShowSpondSheet(false); loadSpondEvents() }}
           onConnected={loadSpondEvents}
         />
       )}

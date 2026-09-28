@@ -2,6 +2,8 @@ import { db } from '@/lib/db/db';
 import type { Fixture, Match, Squad } from '@/lib/events/types';
 import { DriveError, fetchFileJson, listFolder } from './driveRead';
 import { fetchSquadPositions, applyPositions } from './sheetsSync';
+
+const APPLY_POSITIONS_SHEET = false;
 import { hasUnpublishedSquadEdits, markSquadSynced } from './squadSyncState';
 
 export type SyncResult =
@@ -28,8 +30,10 @@ export async function syncFromDrive(folderId: string, _apiKey?: string): Promise
       }
     }
 
-    // Always refresh positions from the squad spreadsheet
-    try {
+    // Positions are edited in the app now (Team tab) and shared through
+    // squad.json. The old spreadsheet is no longer applied: it silently undid
+    // coaches' changes on every update.
+    if (APPLY_POSITIONS_SHEET) try {
       const positions = await fetchSquadPositions();
       const all = await db.squads.toArray();
       const squad = all.length ? all[all.length - 1] : null;
