@@ -7,6 +7,9 @@ export interface Player {
   defaultGroup: Group;
   eligibleGroups: Group[];
   notes?: string;
+  /** Spond's reference for this child, set when a coach matches them by hand.
+   *  Stored instead of the child's full name. */
+  spondMemberId?: string;
   ratings?: { impact: 1 | 2 | 3 | 4 | 5; development: 1 | 2 | 3 | 4 | 5 };
 }
 

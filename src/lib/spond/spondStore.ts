@@ -97,6 +97,9 @@ export function memberName(member: SpondMember): { firstName: string; lastName: 
 // Spond has first + last name; the app uses "Alexander", or "Henry W" where
 // first names clash.
 export function matchMember(member: SpondMember, players: Player[]): Player | undefined {
+  // A match made by hand always wins
+  const linked = players.find(p => p.spondMemberId === member.id)
+  if (linked) return linked
   const name = memberName(member)
   if (!name) return undefined
   const first = name.firstName.toLowerCase().trim()

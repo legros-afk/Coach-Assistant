@@ -35,7 +35,9 @@ export interface SpondAvailability {
   accepted: string[]    // app player IDs who accepted
   declined: string[]    // app player IDs who declined
   unanswered: string[]  // app player IDs who haven't responded
-  unmatched: string[]   // Spond member display names that couldn't be matched to a squad player
+  /** Spond members with a reply who couldn't be matched to a player. Names are
+   *  shown for matching by hand and never stored. */
+  unmatched: { id: string; name: string }[]
 }
 
 export async function getSpondAvailability(
@@ -60,7 +62,7 @@ export async function getSpondAvailability(
     ...event.responses.unansweredIds,
   ])
   const memberToPlayerId = new Map<string, string>()
-  const unmatchedNames: string[] = []
+  const unmatchedNames: { id: string; name: string }[] = []
 
   for (const member of group.members) {
     if (!allResponseIds.has(member.id)) continue
@@ -70,7 +72,7 @@ export async function getSpondAvailability(
     } else {
       const n = memberName(member)
       const name = n ? [n.firstName, n.lastName].filter(Boolean).join(' ').trim() : ''
-      if (name) unmatchedNames.push(name)
+      if (name) unmatchedNames.push({ id: member.id, name })
     }
   }
 

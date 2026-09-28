@@ -13,6 +13,10 @@ import { useFixtureStore } from './useFixtureStore'
 import type { Fixture } from '@/lib/events/types'
 import { clubPinConfigured } from '@/lib/drive/driveRead'
 import { markFixtureUnshared, shareFixture } from '@/lib/drive/pendingShare'
+import { publishSquad } from '@/lib/drive/drivePublish'
+import { markSquadSynced } from '@/lib/drive/squadSyncState'
+import { DRIVE_FOLDER_ID } from '@/config/club'
+import { Sheet } from '@/ui/Sheet'
 import { friendlyShareError } from '@/lib/friendly'
 import { db } from '@/lib/db/db'
 import { COUNTING_FROM } from '@/config/club'
@@ -112,6 +116,25 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
 
   const spondOutIds = useRef<Set<ID>>(new Set())
 
+  // ── matching a Spond member to a player by hand. Only Spond's reference is
+  //    saved on the player (shared with the coaches) — never the full name.
+  const [matching, setMatching] = useState<{ id: string; name: string } | null>(null)
+  const matchToPlayer = async (member: { id: string; name: string }, player: Player) => {
+    const store = useSquadStore.getState()
+    // A reference can only belong to one player
+    for (const p of store.squad?.players ?? []) {
+      if (p.spondMemberId === member.id && p.id !== player.id) await store.updatePlayer(p.id, { spondMemberId: undefined })
+    }
+    await store.updatePlayer(player.id, { spondMemberId: member.id })
+    setMatching(null)
+    const squadNow = useSquadStore.getState().squad
+    if (squadNow && clubPinConfigured()) {
+      const r = await publishSquad(squadNow, DRIVE_FOLDER_ID)
+      if (r.ok) markSquadSynced(squadNow.version)
+    }
+    void syncSpondAvailability()
+  }
+
   // Who's coming loads by itself when an upcoming fixture linked to Spond is
   // opened — no button to find.
   const autoSynced = useRef(false)
@@ -127,7 +150,8 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     if (!spondEventId) return
     setSpondSyncing(true)
     try {
-      const avail = await getSpondAvailability(spondEventId, players)
+      // Latest squad, so a match made a moment ago counts straight away
+      const avail = await getSpondAvailability(spondEventId, useSquadStore.getState().squad?.players ?? players)
       setSpondAvailability(avail)
       // "Not coming" in Spond → Out. Anyone Spond had put Out who has since
       // changed their answer goes back to Bench. Coming / no reply stay as
@@ -601,12 +625,28 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
 
       <div className="px-4 pt-4 space-y-3">
         {spondAvailability && spondAvailability.unmatched.length > 0 && (
-          <div className="flex items-start gap-2 p-4 rounded-m-lg text-sm bg-x-warn-container text-x-on-warn-container">
-            <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" strokeWidth={2.25} />
-            <span>
-              <span className="font-semibold">{spondAvailability.unmatched.length} Spond {spondAvailability.unmatched.length === 1 ? 'member' : 'members'} not matched:</span>
-              {' '}{spondAvailability.unmatched.join(', ')}
-            </span>
+          <div className="p-4 rounded-m-lg bg-x-warn-container text-x-on-warn-container space-y-2">
+            <div className="flex items-start gap-2 text-sm">
+              <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" strokeWidth={2.25} />
+              <span>
+                <span className="font-semibold">
+                  {spondAvailability.unmatched.length === 1 ? 'One Spond reply isn’t matched to a player' : `${spondAvailability.unmatched.length} Spond replies aren’t matched to players`}
+                </span>
+                {canPublish ? ' — tap to match.' : '.'}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {spondAvailability.unmatched.map(u => (
+                <button
+                  key={u.id}
+                  disabled={!canPublish}
+                  onClick={() => setMatching(u)}
+                  className="m-press h-10 px-4 rounded-full text-sm font-semibold bg-m-surface-container-lowest text-m-on-surface disabled:opacity-70"
+                >
+                  {u.name}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -746,6 +786,28 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
           )}
         </div>
       </div>
+
+      {matching && (
+        <Sheet onClose={() => setMatching(null)} title="Who is this?">
+          <p className="text-base text-m-on-surface-variant -mt-1 mb-3">
+            Spond calls them <span className="font-semibold text-m-on-surface">{matching.name}</span>. Pick the player — the app remembers the match, not the name.
+          </p>
+          <div className="grid grid-cols-2 gap-2 pb-2">
+            {[...players]
+              .sort((a, b) => Number(!!a.spondMemberId) - Number(!!b.spondMemberId) || a.name.localeCompare(b.name))
+              .map(pl => (
+                <button
+                  key={pl.id}
+                  onClick={() => void matchToPlayer(matching, pl)}
+                  className="m-press min-h-12 px-4 rounded-m-md text-left text-base font-medium bg-m-surface-container-high text-m-on-surface"
+                >
+                  {pl.name}
+                  {pl.spondMemberId && <span className="block text-xs text-m-on-surface-variant">already matched</span>}
+                </button>
+              ))}
+          </div>
+        </Sheet>
+      )}
 
       {/* Save bar — the list above is the review */}
       <div
