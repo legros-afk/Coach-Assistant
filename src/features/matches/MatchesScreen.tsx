@@ -178,6 +178,12 @@ export default function MatchesScreen({
             ) : null
           })}
 
+          {sheets.length > 0 && !canStartToday && (
+            <span className="w-full text-sm text-m-on-surface-variant">
+              The Start button appears here on match day.
+            </span>
+          )}
+
           {canEdit && isSpondLinked && f.date >= today && !f.spondEventId && (
             <Button
               variant="tonal"

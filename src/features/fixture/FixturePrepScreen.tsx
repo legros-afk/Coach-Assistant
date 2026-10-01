@@ -516,13 +516,29 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
       assignments: effective,
       groupOverrides,
     })
+    // Copy first: phones only allow it straight after the tap
+    let copied = true
     try {
       await navigator.clipboard.writeText(msg)
-      setCopyToast('Copied — now paste it into WhatsApp')
     } catch {
-      setCopyToast('Couldn’t copy — try again')
+      copied = false
     }
-    setTimeout(() => setCopyToast(''), 3000)
+    // Sending the teams out means they're final, so save and share them too
+    const fixture = buildFixture()
+    await saveFixture(fixture)
+    let shared = !canPublish
+    if (canPublish) {
+      markFixtureUnshared(fixture.id)
+      shared = (await shareFixture(fixture.id)).ok
+    }
+    setCopyToast(!copied
+      ? 'Couldn’t copy — try again'
+      : canPublish && shared
+        ? 'Saved, shared with the coaches and copied — now paste it into WhatsApp'
+        : canPublish
+          ? 'Copied and saved on this phone — sharing with the coaches will retry automatically'
+          : 'Saved and copied — now paste it into WhatsApp')
+    setTimeout(() => setCopyToast(''), 4000)
   }
 
 
@@ -824,7 +840,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
           </div>
         )}
         {copyToast && (
-          <div className={`pop-in mb-2 text-sm text-center px-3 py-2 rounded-m-md ${copyToast.startsWith('Copied') ? 'bg-x-good-container text-x-on-good-container' : 'bg-m-error-container text-m-on-error-container'}`}>
+          <div className={`pop-in mb-2 text-sm text-center px-3 py-2 rounded-m-md ${!copyToast.startsWith('Couldn’t') ? 'bg-x-good-container text-x-on-good-container' : 'bg-m-error-container text-m-on-error-container'}`}>
             {copyToast}
           </div>
         )}
