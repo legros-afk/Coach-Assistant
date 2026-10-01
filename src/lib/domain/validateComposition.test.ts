@@ -104,7 +104,7 @@ describe('teamLimits', () => {
   it('12-a-side is 5 forwards, 6 backs, 1 scrum-half', () => {
     expect(teamLimits(12)).toEqual({ f: 5, b: 6, sh: 1 });
   });
-  it('10-a-side is 4 forwards and 6 backs including the scrum-half', () => {
-    expect(teamLimits(10)).toEqual({ f: 4, b: 5, sh: 1 });
+  it('10-a-side keeps a 5-man scrum: 5 forwards, 4 backs, 1 scrum-half', () => {
+    expect(teamLimits(10)).toEqual({ f: 5, b: 4, sh: 1 });
   });
 });
