@@ -47,7 +47,8 @@ export function seasonStats(
     const state = replayEvents(m.events, ts, players);
     for (const [id, ps] of state.playerStates) {
       const started = starters.has(id);
-      if (!started && ps.minutesPlayed <= 0) continue;
+      // A result typed in afterwards has no minutes, but its scorers still played
+      if (!started && ps.minutesPlayed <= 0 && ps.triesScored === 0) continue;
       const s = get(id);
       s.games += 1;
       if (started) s.starts += 1;

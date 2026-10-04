@@ -29,6 +29,10 @@ export interface MatchViewData {
   squad: Player[]
   teamSheet: TeamSheet
   opponent: string
+  /** Which game of the day for this team; 1 when it only played once. */
+  game?: number
+  /** Typed in after the game: a score and scorers, no minutes. */
+  manual?: boolean
   matchState: MatchState
   events: MatchEvent[]
 }
@@ -80,6 +84,10 @@ function buildShareText(
 export default function PostMatchScreen({ onBack, data }: Props) {
   const live = useMatchStore()
   const { squad, teamSheet, opponent, matchState, events } = data ?? live
+  const game = (data ? data.game : live.game) ?? 1
+  const manual = !!data?.manual
+  // "A" or, when the team played more than once, "A · game 2"
+  const teamLabel = game > 1 ? `${teamSheet.label} · game ${game}` : teamSheet.label
   const publishStatus = data ? null : live.publishStatus
   const [tab, setTab]           = useState<'share' | 'coach'>('share')
   const [copied, setCopied]     = useState(false)
@@ -113,7 +121,7 @@ export default function PostMatchScreen({ onBack, data }: Props) {
 
   const shareText = buildShareText(
     opponent, matchDate, scoreUs, scoreThem,
-    teamSheet.label, starterForwards, starterBacks, starterSH, subsOn, tryScorers,
+    teamLabel, starterForwards, starterBacks, starterSH, subsOn, tryScorers,
   )
 
   // Coach rows — players who played or started
@@ -179,7 +187,7 @@ export default function PostMatchScreen({ onBack, data }: Props) {
           scoreUs,
           scoreThem,
           tryScorers,
-          teamLabel: teamSheet.label,
+          teamLabel,
           date,
           subsCount: subLog.length,
           playersUsed: coachRows.length,
@@ -210,7 +218,7 @@ export default function PostMatchScreen({ onBack, data }: Props) {
     <div className="min-h-screen pb-12 bg-m-surface text-m-on-surface">
       <TopAppBar
         title={`vs ${opponent}`}
-        subtitle={matchDate || undefined}
+        subtitle={[matchDate, game > 1 && `Team ${teamLabel}`].filter(Boolean).join(' · ') || undefined}
         onBack={onBack}
         leading={<WoodfordMark size={32} />}
         actions={
@@ -313,10 +321,12 @@ export default function PostMatchScreen({ onBack, data }: Props) {
                       {r.tries} {r.tries === 1 ? 'try' : 'tries'}
                     </span>
                   )}
-                  <span className="mono text-base font-bold w-12 text-right">{r.mins}′</span>
+                  {!manual && <span className="mono text-base font-bold w-12 text-right">{r.mins}′</span>}
                 </div>
               ))}
-              {coachRows.length === 0 && (
+              {manual ? (
+                <div className="px-4 py-4 text-sm text-m-on-surface-variant text-center">Result added afterwards, so no minutes were recorded</div>
+              ) : coachRows.length === 0 && (
                 <div className="px-4 py-4 text-sm text-m-on-surface-variant text-center">No playing time recorded</div>
               )}
             </div>

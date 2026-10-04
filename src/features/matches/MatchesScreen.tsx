@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CalendarPlus, ChevronRight, Link2, Play, Plus, RotateCcw, Settings } from 'lucide-react'
+import { CalendarPlus, ChevronRight, ClipboardEdit, Link2, Play, Plus, RotateCcw, Settings } from 'lucide-react'
 import { TopAppBar, BarButton } from '@/ui/TopAppBar'
 import { Button } from '@/ui/Button'
 import { Card, SectionTitle } from '@/ui/Card'
@@ -16,6 +16,8 @@ import SpondSheet from '@/features/spond/SpondSheet'
 import { spondConfigured } from '@/lib/spond/spondStore'
 import { createSpondEventForFixture } from '@/lib/spond/spondSync'
 import { getDefaultFormat } from '@/lib/prefs'
+import { gameOf, gamesBySheet, hasEnded, nextGame, scoreOf } from '@/lib/domain/games'
+import AddResultSheet from './AddResultSheet'
 
 
 // "Sat 4 Oct" — how coaches talk about match days
@@ -31,14 +33,9 @@ const isoPlusDays = (iso: string, days: number) => {
 // Same notion of "today" as the rest of the app
 const todayIso = () => new Date().toISOString().slice(0, 10)
 
-const hasEnded = (m?: Match) => !!m?.events.some(e => e.type === 'MATCH_END')
-const score = (m: Match) => ({
-  us: m.events.filter(e => e.type === 'TRY_US').length,
-  them: m.events.filter(e => e.type === 'TRY_THEM').length,
-})
 
 interface Props {
-  onStart: (fixture: Fixture, teamSheet: TeamSheet) => void
+  onStart: (fixture: Fixture, teamSheet: TeamSheet, game: number) => void
   onResume: () => void
   onOpenFixture: (fixture: Fixture) => void
   onNew: (playersPerSide: number) => void
@@ -64,16 +61,23 @@ export default function MatchesScreen({
     events: useMatchStore(s => s.events),
     opponent: useMatchStore(s => s.opponent),
     label: useMatchStore(s => s.teamSheet.label),
+    game: useMatchStore(s => s.game),
     half: useMatchStore(s => s.matchState.half),
   }
   const hasActive = active.id !== null && active.events.length > 0 && !active.events.some(e => e.type === 'MATCH_END')
 
-  const [matchMap, setMatchMap] = useState<Map<string, Match>>(new Map())
+  // Each team's games that day, in order: a team can play twice
+  const [gameMap, setGameMap] = useState<Map<string, Match[]>>(new Map())
+  const [reload, setReload] = useState(0)
   useEffect(() => { if (!isHydrated) hydrate() }, [isHydrated, hydrate])
   useEffect(() => { if (!squadReady) hydrateSquad() }, [squadReady, hydrateSquad])
   useEffect(() => {
-    db.matches.toArray().then(all => setMatchMap(new Map(all.map(m => [m.id, m]))))
-  }, [isHydrated, fixtures])
+    db.matches.toArray().then(all => setGameMap(gamesBySheet(all)))
+  }, [isHydrated, fixtures, reload])
+  const gamesOf = (ts: TeamSheet) => gameMap.get(ts.id) ?? []
+
+  // ── typing in a result after the game (one that wasn't run in the app)
+  const [addingResult, setAddingResult] = useState<Fixture | null>(null)
 
   // ── Spond (organisers only)
   const isSpondLinked = spondConfigured()
@@ -101,7 +105,7 @@ export default function MatchesScreen({
   const weekEnd = isoPlusDays(today, 6)
   // Cancelled (or no longer in Spond) fixtures stay stored but aren't shown,
   // unless a match was actually played for them
-  const visible  = fixtures.filter(f => !f.cancelled || f.teamSheets.some(ts => matchMap.get(ts.id)?.events.length))
+  const visible  = fixtures.filter(f => !f.cancelled || f.teamSheets.some(ts => gamesOf(ts).some(m => m.events.length)))
   const thisWeek = visible.filter(f => f.date >= today && f.date <= weekEnd)
   const later    = visible.filter(f => f.date > weekEnd)
   const played   = visible.filter(f => f.date < today).reverse()
@@ -122,7 +126,7 @@ export default function MatchesScreen({
     const canStartToday = f.date <= today
     const statusLine = sheets.length === 0
       ? 'Teams not picked yet'
-      : sheets.every(ts => hasEnded(matchMap.get(ts.id)))
+      : sheets.every(ts => gamesOf(ts).length > 0 && gamesOf(ts).every(hasEnded))
         ? 'Played'
         : sheets.length === 1 ? 'Team picked' : `${sheets.length} teams picked`
 
@@ -149,34 +153,57 @@ export default function MatchesScreen({
               <span className="text-sm text-m-on-surface-variant">Your head coach will pick the teams.</span>
             )
           ) : sheets.map(ts => {
-            const m = matchMap.get(ts.id)
-            const label = sheets.length > 1 ? ` Team ${ts.label}` : ''
-            if (hasEnded(m)) {
-              const sc = score(m!)
+            const games = gamesOf(ts)
+            const team = sheets.length > 1 ? `Team ${ts.label}` : ''
+            const several = games.length > 1
+            const last = games[games.length - 1]
+            const results = games.filter(hasEnded).map(m => {
+              const sc = scoreOf(m)
               const tone = sc.us > sc.them ? 'bg-x-win' : sc.us < sc.them ? 'bg-x-loss' : 'bg-x-draw'
               return (
                 <button
-                  key={ts.id}
-                  onClick={() => onViewMatch(m!, ts)}
+                  key={m.id}
+                  onClick={() => onViewMatch(m, ts)}
                   className={`m-press h-12 px-5 rounded-full font-semibold text-base text-white mono ${tone}`}
                 >
-                  {sheets.length > 1 ? `${ts.label} ` : ''}{sc.us}–{sc.them} · Result
+                  {sheets.length > 1 ? `${ts.label} ` : ''}{several ? `G${gameOf(m)} ` : ''}{sc.us}–{sc.them} · Result
                 </button>
               )
-            }
-            if (m && m.events.length > 0) {
-              return (
-                <Button key={ts.id} onClick={() => onStart(f, ts)} icon={<RotateCcw size={18} strokeWidth={2.25} />}>
-                  Resume{label}
+            })
+            let next: React.ReactNode = null
+            if (last && !hasEnded(last) && last.events.length > 0) {
+              next = (
+                <Button key="next" onClick={() => onStart(f, ts, gameOf(last))} icon={<RotateCcw size={18} strokeWidth={2.25} />}>
+                  Resume{team && ` ${team}`}{several ? ` · game ${gameOf(last)}` : ''}
+                </Button>
+              )
+            } else if (canStartToday) {
+              // After a final whistle the same line-up can go again
+              // against the opposition's other side
+              const g = last ? nextGame(games) : 1
+              next = (
+                <Button
+                  key="next"
+                  variant={g > 1 ? 'tonal' : undefined}
+                  onClick={() => onStart(f, ts, g)}
+                  icon={<Play size={18} strokeWidth={2.25} />}
+                >
+                  {g > 1 ? `Next game${team && ` · ${team}`}` : `Start${team && ` ${team}`}`}
                 </Button>
               )
             }
-            return canStartToday ? (
-              <Button key={ts.id} onClick={() => onStart(f, ts)} icon={<Play size={18} strokeWidth={2.25} />}>
-                Start{label}
-              </Button>
-            ) : null
+            return <div key={ts.id} className="contents">{results}{next}</div>
           })}
+
+          {canEdit && sheets.length > 0 && canStartToday && (
+            <Button
+              variant="outlined"
+              onClick={() => setAddingResult(f)}
+              icon={<ClipboardEdit size={18} strokeWidth={2.25} />}
+            >
+              Add a result
+            </Button>
+          )}
 
           {sheets.length > 0 && !canStartToday && (
             <span className="w-full text-sm text-m-on-surface-variant">
@@ -232,7 +259,7 @@ export default function MatchesScreen({
               <div className="flex-1 min-w-0">
                 <div className="text-lg emphasized">Back to the match</div>
                 <div className="text-sm opacity-80">
-                  vs {active.opponent} · Team {active.label} · {active.half === 2 ? 'second half' : 'first half'}
+                  vs {active.opponent} · Team {active.label}{active.game > 1 ? ` · game ${active.game}` : ''} · {active.half === 2 ? 'second half' : 'first half'}
                 </div>
               </div>
               <ChevronRight size={22} />
@@ -311,6 +338,16 @@ export default function MatchesScreen({
 
       {canEdit && fixtures.length > 0 && (
         <Fab icon={<Plus size={22} strokeWidth={2.5} />} label="Fixture" onClick={() => onNew(defaultFormat)} />
+      )}
+
+      {addingResult && squad && (
+        <AddResultSheet
+          fixture={addingResult}
+          players={squad.players}
+          gamesOf={gamesOf}
+          onClose={() => setAddingResult(null)}
+          onSaved={() => setReload(n => n + 1)}
+        />
       )}
 
       {showSpondSheet && (

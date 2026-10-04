@@ -50,6 +50,11 @@ export interface Match {
   fixtureId: ID;
   teamSheetId: ID;
   opponent: string;
+  /** Which game of the day for this team: a team can play the opposition's
+   *  A and B sides back to back with the same line-up. Missing means 1. */
+  game?: number;
+  /** Result typed in after the final whistle: score and try scorers, no minutes. */
+  manual?: boolean;
   events: MatchEvent[];
   startedAt?: string;
   endedAt?: string;

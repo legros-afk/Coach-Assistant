@@ -114,13 +114,13 @@ export default function App() {
     openOver('fixture')
   }
 
-  // Start — or pick back up — a team's match. initMatch resumes any events
-  // already recorded for that team sheet.
-  const startMatch = async (fixture: Fixture, teamSheet: TeamSheet) => {
+  // Start — or pick back up — one of a team's games. initMatch resumes any
+  // events already recorded for that game.
+  const startMatch = async (fixture: Fixture, teamSheet: TeamSheet, game: number) => {
     const squad = useSquadStore.getState().squad
     if (!squad) return
     await useMatchStore.getState().initMatch({
-      fixtureId: fixture.id, teamSheet, squad: squad.players, opponent: fixture.opponent,
+      fixtureId: fixture.id, teamSheet, squad: squad.players, opponent: fixture.opponent, game,
     })
     openOver('match')
   }
@@ -141,6 +141,8 @@ export default function App() {
       squad: squad.players,
       teamSheet,
       opponent: match.opponent,
+      game: match.game ?? 1,
+      manual: match.manual,
       matchState: replayEvents(match.events, teamSheet, squad.players),
       events: match.events,
     })
@@ -165,7 +167,7 @@ export default function App() {
     <div className="contents">
       {screen === 'matches' && (
         <MatchesScreen
-          onStart={(f, ts) => void startMatch(f, ts)}
+          onStart={(f, ts, g) => void startMatch(f, ts, g)}
           onResume={() => openOver('match')}
           onOpenFixture={f => openFixture(f)}
           onNew={pps => openFixture(undefined, pps)}

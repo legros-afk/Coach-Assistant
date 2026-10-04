@@ -196,7 +196,7 @@ interface LiveMatchProps { onBack?: () => void; onSummary?: () => void }
 
 export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
   const store = useMatchStore()
-  const { matchState, squad, clockRunning, opponent, teamSheet } = store
+  const { matchState, squad, clockRunning, opponent, teamSheet, game } = store
 
   // ── live clock ticker
   const [liveElapsedMs, setLiveElapsedMs] = useState(() => store.currentElapsedMs())
@@ -526,7 +526,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
                 vs {opponent || '—'}
               </div>
               <div className="text-xs text-white/80 truncate">
-                Woodford U12 · Team {teamSheet.label}
+                Woodford U12 · Team {teamSheet.label}{game > 1 ? ` · game ${game}` : ''}
               </div>
             </div>
           </div>
