@@ -634,7 +634,7 @@ Accessible from the **Squad screen**: tap a player, "Report Injury" action. The 
 3. Generate a pre-filled `mailto:` link:
    - **To:** Bekah Owen (Head of Medical)
    - **Cc:** Liz Alvarez (Safeguarding Officer)
-   - **Subject:** `Injury Report — {player name} — {date}`
+   - **Subject:** `Youth & Mini Injury Report: {player name}, {date}`
    - **Body:** All fields formatted as readable text matching the DOCX template
 4. Open the `mailto:` link — this opens the coach's email app with everything pre-filled. The coach reviews and hits send.
 5. If `headInjuryOrConcussion` is true:
@@ -687,7 +687,8 @@ Hardcoded in config (not user-configurable in v1):
 export const MEDICAL_OFFICER_EMAIL    = 'body_elite_essex@hotmail.com';  // To — Bekah Owen, Head of Medical
 export const SAFEGUARDING_OFFICER_EMAIL = 'lizngrant@yahoo.co.uk';       // Cc — Liz Alvarez, Safeguarding Officer
 export const MEDICAL_OFFICER_MOBILE   = '07857301296';                   // Bekah — for concussion SMS alert
-export const INJURY_EMAIL_SUBJECT     = 'Youth & Mini Injury Report Form - 2026/2027';
+// Subject is built per-report: `Youth & Mini Injury Report: {player name}, {date}`
+export const INJURY_EMAIL_SUBJECT_PREFIX = 'Youth & Mini Injury Report';
 ```
 
 These are the same recipients and subject line as the existing DOCX process. The app formats the email body to match the DOCX template structure so Bekah and Liz receive reports in a familiar format.
