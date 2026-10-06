@@ -499,6 +499,214 @@ The action row at the top of the post-match screen should be designed to accommo
 
 ---
 
+## Injury reporting & safeguarding
+
+### Context
+
+RFU guidance (relayed by Bekah Owen, Head of Medical) recommends recording all pitch-side injuries requiring first-aid treatment: sprains, strains, minor cuts, bleeding, bruising, and first-aid kit usage. The club's existing process is a manual email template (see `Injury_reporting_process_202627.docx`). This feature builds it into the app so coaches can file reports pitch-side on a phone, and the team's safeguarding officer can manage injury logs and concussion protocols.
+
+### Roles & PIN
+
+The app currently has one shared coach PIN (`CLUB_PUBLISH_CODE`) that gates publishing. We extend the PIN system to support a second role:
+
+- **Coach PIN** (existing, 4-digit) — unlocks coach features (squad, fixtures, match, injury report form).
+- **Safeguarding PIN** (`DE451AL`) — unlocks a focused safeguarding workspace (injury log, concussion tracker, escalation). No coach features visible.
+
+The SetupScreen becomes role-detecting: the user enters their PIN, the app posts it to a new `/publish` validation endpoint that checks against both `CLUB_PUBLISH_CODE` and `SAFEGUARDING_PIN` server-side secrets, and returns which role to unlock. The role is stored in `localStorage` alongside the PIN. The app renders different tabs/features based on role.
+
+**Sarah** (Flo's wife, team safeguarding officer) uses the safeguarding PIN. She is an app user with access to Flo's Drive and OAuth — no separate account needed. **Liz Alvarez** is the club's overall safeguarding officer ("the big dog") and receives reports by email; she is not an app user in v1.
+
+### Data model
+
+Two new Dexie tables in a separate Drive folder from squad/fixtures:
+
+```ts
+interface InjuryReport {
+  id: ID;
+  playerId: ID;              // Squad player (auto-filled from squad)
+  playerAgeGroup: string;   // "U12"
+  date: string;             // ISO date of incident
+  time: string;             // "HH:mm" local time
+  location: string;        // "Training" | "Match" | "Festival" | free text
+  staffPresent: string;    // Names of coaches/staff present
+  parentGuardian: string;   // Parent/guardian name
+  parentContact: string;   // Phone number
+  incidentDescription: string;  // Free text — what happened
+  injuryType: string[];     // ["sprain", "strain", "cut", "bruise", "bleeding", "other"]
+  bodyPart?: string;        // Optional: where on the body
+  headInjuryOrConcussion: boolean;  // RFU concussion flag
+  hospitalOrAmbulance: boolean;     // Escalated to hospital/ambulance
+  reportedBy: string;       // Coach name
+  reportedAt: string;       // ISO timestamp of report creation
+  version: number;
+}
+
+interface ConcussionProtocol {
+  id: ID;
+  playerId: ID;
+  injuryReportId: ID;       // Links back to the injury report
+  concussionDate: string;    // Day 0 = date of injury (ISO date)
+  stages: ConcussionStage[];
+  completedAt?: string;      // When stage 6 is signed off
+  managedBy: string;         // Sarah (safeguarding officer)
+  version: number;
+}
+
+interface ConcussionStage {
+  stage: 1 | 2 | 3 | 4 | 5 | 6;
+  name: string;
+  description: string;
+  earliestStartDay: number;  // Day number relative to concussionDate (0, 3, flexible, 8, 15, 21)
+  completed: boolean;
+  completedAt?: string;
+  notes?: string;
+}
+```
+
+The GRAS stages are hardcoded constants:
+
+| Stage | Name | Earliest Start | Description |
+|-------|------|----------------|-------------|
+| 1 | Initial relative rest | Day 0 (24-48h) | Physical and cognitive rest. No screens, no school, no sport. See a doctor within 24 hours. |
+| 2 | Return to daily activities | Day 3+ | Gradual return to normal activities. Return to school before starting sport. Symptom-free required to progress. |
+| 3 | Aerobic exercise | When symptoms allow | Light aerobic exercise and low-level resistance training. No contact or head-impact risk. |
+| 4 | Non-contact drills | No earlier than Day 8 | Sport-specific non-contact training. HCP review recommended before progressing. |
+| 5 | Full contact practice | No earlier than Day 15 | Full contact training. Must be symptom-free for 14 days before starting. |
+| 6 | Return to competition | No earlier than Day 21 | Full return to match play. Earliest return is day 21 and only if symptom-free. |
+
+Source: RFU HEADCASE GRAS Programme, September 2023. Applies to all community rugby players regardless of age. Day 0 = date of injury. Minimum 21 days total.
+
+### Red flag symptoms
+
+The app must display a red-flag alert button on every injury/concussion screen. One tap shows all red flags with a direct 999 call button. Red flags:
+
+- Deteriorating or loss of consciousness
+- Increasing confusion or irritability
+- Severe or worsening headache
+- Repeated vomiting
+- Seizure or convulsion
+- Double vision or deafness
+- Weakness or tingling in arms and legs
+- Not waking up or unresponsive
+
+If in doubt, sit them out. A player must never return to the field on the same day as a suspected concussion.
+
+### Drive folder layout
+
+A **separate** Drive folder from the squad/fixtures folder. Different folder ID in config. This folder contains more sensitive data (children's names + medical details + parent contact numbers) so it is kept apart from the less-sensitive first-name-only squad data.
+
+```
+/Coach Assistant — Woodford U12 Safeguarding/
+  injuries/
+    {ulid}.json              # One file per injury report
+  concussions/
+    {ulid}.json             # One file per active concussion protocol
+```
+
+Config adds `SAFEGUARDING_FOLDER_ID` alongside the existing `DRIVE_FOLDER_ID`.
+
+### Data retention
+
+Injury reports and concussion protocols are **retained for 1 year only**. On every sync, records with `reportedAt` (injury) or `concussionDate` (concussion) older than 365 days are automatically deleted from both IndexedDB and Drive. This is a hard auto-deletion, not a soft flag. The retention period is a deliberate safeguarding choice — minimise the window during which children's medical data is stored.
+
+### Injury report form (coach role)
+
+Accessible from the **Squad screen**: tap a player, "Report Injury" action. The form is available to all coaches, not just the safeguarding role — coaches are the people pitch-side when injuries happen.
+
+**Fields** (matching the DOCX template):
+- Date (default: today)
+- Time (default: now)
+- Location (select: Training / Match / Festival / Other + free text)
+- Staff present (free text)
+- Player (auto-filled from tapped player, editable)
+- Age group (auto-filled: "U12")
+- Parent/guardian name (free text)
+- Parent/guardian contact number (free text)
+- Incident description (free text area)
+- Injury type (checkboxes: sprain, strain, cut, bruise, bleeding, other)
+- Body part (optional free text)
+- Head injury / concussion (toggle)
+- Hospital / ambulance called (toggle)
+
+**On submit:**
+1. Save to IndexedDB (`injuryReports` table).
+2. Publish to safeguarding Drive folder (if publisher).
+3. Generate a pre-filled `mailto:` link:
+   - **To:** Bekah Owen (Head of Medical)
+   - **Cc:** Liz Alvarez (Safeguarding Officer)
+   - **Subject:** `Injury Report — {player name} — {date}`
+   - **Body:** All fields formatted as readable text matching the DOCX template
+4. Open the `mailto:` link — this opens the coach's email app with everything pre-filled. The coach reviews and hits send.
+5. If `headInjuryOrConcussion` is true:
+   - Auto-create a `ConcussionProtocol` record with the 6 GRAS stages pre-calculated.
+   - Show an alert: "Suspected concussion. Player cannot return to play today. Text Bekah Owen now?" with a one-tap `sms:` link to her mobile.
+   - The player gets a red concussion badge on the squad list (visible to all coaches).
+
+### Concussion protocol tracker (safeguarding role)
+
+This is the safeguarding workspace's primary feature. Sarah sees:
+
+- **Active protocols** — players currently in the GRTP process. Each shows:
+  - Player name, concussion date, days elapsed
+  - Current stage (highlighted)
+  - Timeline of all 6 stages with earliest dates auto-calculated from `concussionDate`
+  - Checkbox to mark each stage complete (only in order — can't skip ahead)
+  - "Days until earliest return" countdown
+- **Completed protocols** — archived, retained until 1-year expiry.
+- **Red flag button** — always visible, one tap shows symptoms + 999 call.
+
+Stage progression rules enforced in UI:
+- Stages must be completed in order (1→2→3→4→5→6).
+- Stage 4 cannot start before Day 8.
+- Stage 5 cannot start before Day 15 (and requires 14 symptom-free days).
+- Stage 6 cannot start before Day 21.
+- If symptoms return at any stage, the player drops back to the previous stage. This is a manual action by Sarah (not auto-detected — the app can't know symptoms).
+
+### Squad list concussion badge
+
+All coaches (not just Sarah) see a red badge/indicator next to any player currently in an active concussion protocol on the squad list. This is safety-critical: it prevents a coach from accidentally selecting a player who hasn't been cleared. Tapping the badge shows the concussion status (current stage, earliest return date) but only Sarah can manage the protocol stages.
+
+The badge is driven by the concussion protocols synced from the safeguarding Drive folder. Coaches read from this folder (same public read pattern as the squad/fixtures folder) but cannot write to it — only the safeguarding role publishes concussion updates.
+
+### Safeguarding workspace UI
+
+When the safeguarding PIN is entered, the app shows a focused workspace with only:
+
+1. **Injury Log** — all injury reports, filterable by player, date, type. Tap any report for full detail.
+2. **Concussion Tracker** — active and completed concussion protocols with stage management.
+3. **Red Flags** — always-visible red flag symptoms reference with 999 call button.
+
+No squad management, no fixtures, no match features. The safeguarding officer's job is focused on player welfare, not team selection.
+
+### Email recipients
+
+Hardcoded in config (not user-configurable in v1):
+
+```ts
+// src/config/club.ts
+export const MEDICAL_OFFICER_EMAIL    = 'body_elite_essex@hotmail.com';  // To — Bekah Owen, Head of Medical
+export const SAFEGUARDING_OFFICER_EMAIL = 'lizngrant@yahoo.co.uk';       // Cc — Liz Alvarez, Safeguarding Officer
+export const MEDICAL_OFFICER_MOBILE   = '07857301296';                   // Bekah — for concussion SMS alert
+export const INJURY_EMAIL_SUBJECT     = 'Youth & Mini Injury Report Form - 2026/2027';
+```
+
+These are the same recipients and subject line as the existing DOCX process. The app formats the email body to match the DOCX template structure so Bekah and Liz receive reports in a familiar format.
+
+### Publish endpoint changes
+
+The `/publish` Cloudflare function needs two changes:
+
+1. Accept a `folder` parameter (or a `role` parameter) to determine which Drive folder to write to. The safeguarding folder uses the same service account but a different folder ID.
+2. Accept the safeguarding PIN (`SAFEGUARDING_PIN`) as an alternative to `CLUB_PUBLISH_CODE`. Both are checked server-side.
+
+The throttle/lockout logic applies to both PINs.
+
+### Sync changes
+
+The `useSyncStore` gains a safeguarding sync path that reads from the safeguarding folder. Both folders sync on the same "pull to refresh" action. The 1-year retention cleanup runs as part of the sync process.
+
+---
+
 ## Build sequence
 
 Each step is a clean stopping point. Don't try to do this in one session.
