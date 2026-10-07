@@ -1,194 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { GROUP_COLOR } from '@/ui/positions'
 import {
-  Activity, AlertTriangle, ArrowRight, Check, ChevronLeft, Clock,
-  HandHelping, MoreVertical, Pause, Play, Plus, Trophy, Undo2, X,
+  ChevronLeft, Clock, HandHelping, Pause, Play, Trophy, Undo2,
 } from 'lucide-react'
 import { WoodfordMark } from '@/components/WoodfordMark'
-import type { Group, ID, Player, PlayerMatchState } from '@/lib/events/types'
+import type { ID, Player, PlayerMatchState } from '@/lib/events/types'
 import { planSubs } from '@/lib/domain/subPlanner'
 import { useMatchStore } from './useMatchStore'
-
-// ── brand constants ────────────────────────────────────────────────────────────
-
-const PURPLE      = 'var(--m-primary)'
-const PURPLE_DARK = 'var(--m-on-primary-container)'
-const PURPLE_SOFT = 'var(--m-primary-container)'
-const PURPLE_SOFTER = 'var(--m-primary-container)'
-const INK         = 'var(--m-on-surface)'
-
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-function fmt(ms: number): string {
-  const totalSec = Math.floor(ms / 1000)
-  const m = Math.floor(totalSec / 60)
-  const s = totalSec % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-function balanceColor(playerMs: number, avgMs: number): string {
-  const diff = Math.abs(playerMs - avgMs)
-  if (diff < 2 * 60_000) return 'var(--x-go)'
-  if (diff < 5 * 60_000) return 'var(--x-pause)'
-  return 'var(--m-error)'
-}
-
-function liveMinMs(ps: PlayerMatchState, elapsedMs: number): number {
-  return ps.status === 'on' && ps.currentStintStartedAtMs !== undefined
-    ? ps.minutesPlayed + (elapsedMs - ps.currentStintStartedAtMs)
-    : ps.minutesPlayed
-}
-
-const TOTAL_GAME_MS  = 40 * 60_000
-const HALF_LENGTH_MS = TOTAL_GAME_MS / 2
-// Starts reward performance; the guarantee is that everyone plays at least
-// a half, with changes batched at the break wherever possible.
-const MINIMUM_MS     = HALF_LENGTH_MS
-
-// Parent-safe helper mode: subs and scores only. Persisted so a mid-game
-// reload doesn't hand a parent the full coach UI.
-const HELPER_KEY = 'coach-helper-mode'
-
-// ── sub-components ─────────────────────────────────────────────────────────────
-
-const GROUP_LABEL: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf: 'SH' }
-
-function GroupBadge({ group, size = 'md' }: { group: Group; size?: 'md' | 'sm' }) {
-  const bg = GROUP_COLOR[group]
-  const cls = size === 'sm'
-    ? 'text-xs w-5 h-5'
-    : 'text-xs w-7 h-7'
-  return (
-    <span
-      className={`font-bold rounded-full flex items-center justify-center flex-shrink-0 ${cls}`}
-      style={{ background: bg, color: 'white' }}
-    >
-      {GROUP_LABEL[group]}
-    </span>
-  )
-}
-
-function Section({
-  title, count, subtitle, hint, children,
-}: { title: string; count: number; subtitle: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="flex items-baseline justify-between mb-2 px-1">
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-xl font-bold" style={{ color: INK }}>{title}</h2>
-          <span className="mono text-sm opacity-50">({count})</span>
-        </div>
-        <span
-          className="text-xs font-semibold"
-          style={{ color: hint ? PURPLE : 'var(--m-on-surface-variant)' }}
-        >
-          {hint ?? subtitle}
-        </span>
-      </div>
-      {children}
-    </div>
-  )
-}
-
-interface PlayerCardProps {
-  player: Player
-  ps: PlayerMatchState
-  avgMs: number
-  liveElapsedMs: number
-  picked?: boolean
-  pickedTone?: 'rose' | 'emerald'
-  onTap?: () => void
-  /** Opens the blood / injury menu for this player */
-  onMenu?: () => void
-  muted?: boolean
-  suggested?: boolean   // fits the position of the player coming off
-  dimmed?: boolean      // doesn't fit — still tappable, just de-emphasised
-  onReturn?: () => void
-}
-
-function PlayerCard({
-  player, ps, avgMs, liveElapsedMs,
-  picked, pickedTone, onTap, onMenu, muted, suggested, dimmed, onReturn,
-}: PlayerCardProps) {
-  const mins = liveMinMs(ps, liveElapsedMs)
-  const pickedBg     = pickedTone === 'rose' ? 'var(--m-error-container)' : 'var(--x-good-container)'
-  const pickedBorder = pickedTone === 'rose' ? 'var(--m-error)' : 'var(--x-go)'
-
-  return (
-    <div
-      onClick={onTap}
-      className={`p-2.5 rounded-m-md transition relative ${onTap ? 'active:scale-[0.98] cursor-pointer' : ''}`}
-      style={{
-        background: picked ? pickedBg : muted ? 'var(--m-surface-container-low)' : suggested ? PURPLE_SOFTER : 'var(--m-surface-container)',
-        border: picked
-          ? `2px solid ${pickedBorder}`
-          : suggested ? `2px solid ${PURPLE_DARK}` : '1px solid var(--m-outline-variant)',
-        opacity: muted ? 0.7 : dimmed ? 0.5 : 1,
-      }}
-    >
-      <div className="flex items-start gap-2 mb-1.5">
-        <GroupBadge group={ps.activeGroup} />
-        <div className="flex-1 min-w-0">
-          <div className="font-bold text-base leading-tight line-clamp-2" style={{ color: INK }}>
-            {player.name}
-          </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span
-              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ background: balanceColor(mins, avgMs) }}
-            />
-            <span className="mono text-xs tabular-nums opacity-70">{fmt(mins)}</span>
-            {ps.triesScored > 0 && (
-              <span className="mono text-xs font-bold" style={{ color: PURPLE }}>
-                {ps.triesScored}T
-              </span>
-            )}
-          </div>
-        </div>
-        {onMenu && (
-          // Blood and injury live behind this menu, well away from the tap-to-sub
-          // area, so a stray tap can't take a player off by accident.
-          <button
-            onClick={e => { e.stopPropagation(); onMenu() }}
-            aria-label={`Blood or injury — ${player.name}`}
-            className="-mr-1.5 -mt-1.5 w-11 h-11 flex items-center justify-center rounded-m-md active:bg-m-outline-variant flex-shrink-0"
-          >
-            <MoreVertical size={18} strokeWidth={2.5} style={{ color: 'var(--m-on-surface-variant)' }} />
-          </button>
-        )}
-      </div>
-      {onReturn && (
-        <button
-          onClick={e => { e.stopPropagation(); onReturn() }}
-          className="w-full mt-1.5 py-1.5 rounded-m-md text-xs font-bold flex items-center justify-center gap-1 active:scale-95"
-          style={{ background: 'var(--x-go)', color: 'white' }}
-        >
-          <Activity size={12} strokeWidth={2.5} /> Return
-        </button>
-      )}
-    </div>
-  )
-}
-
-function ScoreButton({
-  label, value, primary, onClick,
-}: { label: string; value: number; primary?: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="tap-target flex-1 rounded-m-md flex items-center justify-center gap-1.5 font-bold active:scale-95 transition"
-      style={{
-        background: primary ? 'white' : 'rgba(255,255,255,0.1)',
-        color:      primary ? 'var(--x-on-bright)' : 'white',
-        border:     primary ? 'none' : '1px solid rgba(255,255,255,0.2)',
-      }}
-    >
-      <Plus size={14} strokeWidth={2.5} />
-      <span className="text-sm">{label}</span>
-      <span className="mono text-xl tabular-nums">{value}</span>
-    </button>
-  )
-}
+import {
+  fmt, liveMinMs,
+  PURPLE, PURPLE_DARK, INK,
+  TOTAL_GAME_MS, HALF_LENGTH_MS, MINIMUM_MS, HELPER_KEY,
+} from './liveMatchUtils'
+import { Section } from './Section'
+import { ScoreButton } from './ScoreButton'
+import { MatchPlayerCard } from './MatchPlayerCard'
+import { ScoreModal } from './ScoreModal'
+import { PlayerMenuSheet } from './PlayerMenuSheet'
+import { ReplacementPicker } from './ReplacementPicker'
+import { SubStatusTray, type SubPairing } from './SubStatusTray'
+import { UndoConfirmBar } from './UndoConfirmBar'
+import { MatchToast } from './MatchToast'
+import { HalfTimePanel } from './HalfTimePanel'
+import { SubPlanPanel } from './SubPlanPanel'
 
 // ── main screen ────────────────────────────────────────────────────────────────
 
@@ -360,7 +193,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
   const isShortPitch = !subMode && onPitch.length < starterCount
 
   // ── sub pairings + composition
-  const pairings = useMemo(() => {
+  const pairings = useMemo<SubPairing[]>(() => {
     type Entry = { player: Player; ps: PlayerMatchState }
     const offQueue: Entry[] = comingOffIds.map(id => ({
       player: getPlayer(id)!, ps: matchState.playerStates.get(id)!,
@@ -369,9 +202,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       player: getPlayer(id)!, ps: matchState.playerStates.get(id)!,
     }))
 
-    const result: Array<{
-      off: Entry | null; on: Entry | null; match: boolean; onGroup: Group
-    }> = []
+    const result: SubPairing[] = []
     const remainingOn = [...onQueue]
 
     for (const off of offQueue) {
@@ -379,7 +210,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
         on => on.player.eligibleGroups.includes(off.ps.activeGroup),
       )
       if (idx >= 0) {
-        result.push({ off, on: remainingOn[idx], match: true, onGroup: off.ps.activeGroup })
+        result.push({ off: remainingOn[idx], on: remainingOn[idx], match: true, onGroup: off.ps.activeGroup })
         remainingOn.splice(idx, 1)
       } else {
         result.push({ off, on: null, match: false, onGroup: off.ps.activeGroup })
@@ -450,7 +281,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
   // Positions still waiting for a replacement — used to highlight bench players
   // who fit, drawing the eye to like-for-like subs without forcing them
   const awaitingReplacement = comingOffIds.length > comingOnIds.length
-  const wantedGroups = useMemo<Group[]>(
+  const wantedGroups = useMemo(
     () => awaitingReplacement
       ? pairings.filter(pr => pr.off && !pr.on).map(pr => pr.onGroup)
       : [],
@@ -498,6 +329,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
     .filter((e): e is Extract<typeof store.events[number], { type: 'HALF_END' }> => e.type === 'HALF_END')[0]
     ?.payload.elapsedMs
   const fullTimeDueAtMs = half1EndMs !== undefined ? half1EndMs + HALF_LENGTH_MS : TOTAL_GAME_MS
+
   const halfTimeDue = clockRunning && !halfEnded && liveElapsedMs >= HALF_LENGTH_MS
   const fullTimeDue = clockRunning && halfEnded && !matchEnded && liveElapsedMs >= fullTimeDueAtMs
 
@@ -658,132 +490,30 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
         </div>
       )}
 
-      {/* ── Standing sub plan */}
       {/* ── Half-time panel */}
       {atBreak && !subMode && (
-        <div className="mx-3 mt-3 rounded-m-xl overflow-hidden pop-in bg-m-surface-container" style={{ border: `2px solid ${PURPLE}` }}>
-          <div className="px-3 py-2.5 flex items-center justify-between" style={{ background: PURPLE_SOFTER }}>
-            <div className="text-lg font-bold" style={{ color: PURPLE }}>Half time</div>
-            <div className="mono text-lg font-bold tabular-nums" style={{ color: INK }}>
-              {matchState.scoreUs}–{matchState.scoreThem}
-            </div>
-          </div>
-
-          <div className="px-3 py-2.5">
-            <div className="text-xs font-bold mb-1.5" style={{ color: 'var(--m-on-surface-variant)' }}>
-              {dueSwaps.length > 0 ? 'Changes for the second half' : 'No changes needed'}
-            </div>
-            {dueSwaps.length > 0 ? (
-              <div className="space-y-1.5">
-                {dueSwaps.map((swap, i) => (
-                  <div key={i} className="flex items-center gap-2 text-base">
-                    <GroupBadge group={swap.group} size="sm" />
-                    <span className="font-semibold truncate" style={{ color: 'var(--m-on-error-container)' }}>{swap.off.name}</span>
-                    <ArrowRight size={14} className="flex-shrink-0 opacity-50" />
-                    <span className="font-semibold truncate" style={{ color: 'var(--x-good)' }}>{swap.on.name}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-sm text-m-on-surface-variant">Everyone is on course for at least a half.</div>
-            )}
-          </div>
-
-          <div className="px-3 pb-2.5">
-            <div className="text-xs font-bold mb-1" style={{ color: 'var(--m-on-surface-variant)' }}>Least played so far</div>
-            <div className="text-sm" style={{ color: INK }}>
-              {squad
-                .filter(p => { const st = matchState.playerStates.get(p.id)?.status; return st === 'on' || st === 'bench' })
-                .sort((a, b) => (matchState.playerStates.get(a.id)!.minutesPlayed) - (matchState.playerStates.get(b.id)!.minutesPlayed))
-                .slice(0, 4)
-                .map(p => `${p.name} ${Math.round(matchState.playerStates.get(p.id)!.minutesPlayed / 60_000)}'`)
-                .join(' · ')}
-            </div>
-          </div>
-
-          {!helperMode && (
-            <div className="px-3 pb-3 flex gap-2">
-              {dueSwaps.length > 0 && (
-                <button
-                  onClick={applyDueSwaps}
-                  className="flex-1 rounded-m-md font-bold text-sm active:scale-95 transition"
-                  style={{ minHeight: 48, background: 'var(--m-secondary-container)', color: 'var(--m-on-secondary-container)' }}
-                >
-                  Make {dueSwaps.length} change{dueSwaps.length === 1 ? '' : 's'}
-                </button>
-              )}
-              <button
-                onClick={() => { store.startClock(); showToast('Second half') }}
-                className="flex-1 rounded-m-md font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition"
-                style={{ minHeight: 48, background: 'var(--x-go)', color: 'var(--x-on-bright)' }}
-              >
-                <Play size={16} strokeWidth={2.5} /> Start second half
-              </button>
-            </div>
-          )}
-        </div>
+        <HalfTimePanel
+          scoreUs={matchState.scoreUs}
+          scoreThem={matchState.scoreThem}
+          dueSwaps={dueSwaps}
+          squad={squad}
+          playerStates={matchState.playerStates}
+          helperMode={helperMode}
+          onApplySwaps={applyDueSwaps}
+          onStartSecondHalf={() => { store.startClock(); showToast('Second half') }}
+        />
       )}
 
-      {/* Before the break, half-time changes are one quiet line, not a list */}
-      {subPlan.length > 0 && !subMode && !atBreak && dueSwaps.length === 0 && subPlan.every(sw => sw.atHalfTime) && (
-        <div className="mx-3 mt-3 px-3 py-2.5 rounded-m-md bg-m-surface-container flex items-center gap-2 text-sm" style={{ border: '1px solid var(--m-outline-variant)', color: 'var(--m-on-surface-variant)' }}>
-          <Clock size={16} strokeWidth={2} style={{ color: 'var(--m-on-surface-variant)' }} className="flex-shrink-0" />
-          <span>{subPlan.length} change{subPlan.length === 1 ? '' : 's'} planned for half time</span>
-        </div>
-      )}
-
-      {subPlan.length > 0 && dismissedKey !== dueKey && !subMode && !atBreak && !(dueSwaps.length === 0 && subPlan.every(sw => sw.atHalfTime)) && (
-        <div
-          className="mx-3 mt-3 rounded-m-md p-3 flex items-start gap-3"
-          style={{
-            background: dueSwaps.length ? PURPLE_SOFTER : 'var(--m-surface-container)',
-            border: `1px solid ${dueSwaps.length ? PURPLE : PURPLE_SOFT}`,
-          }}
-        >
-          {dueSwaps.length > 0
-            ? <AlertTriangle size={18} style={{ color: PURPLE }} className="flex-shrink-0 mt-0.5" strokeWidth={2.5} />
-            : <Clock size={18} style={{ color: 'var(--m-on-surface-variant)' }} className="flex-shrink-0 mt-0.5" strokeWidth={2} />}
-          <div className="flex-1 text-sm min-w-0">
-            <div className="font-bold mb-1" style={{ color: PURPLE_DARK }}>
-              {dueSwaps.length > 0 ? 'Subs due now' : 'Next subs'}
-            </div>
-            <div className="space-y-1">
-              {subPlan.map((swap, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-1.5 text-sm"
-                  style={{ color: PURPLE, opacity: swap.dueNow ? 1 : 0.6 }}
-                >
-                  <GroupBadge group={swap.group} size="sm" />
-                  <span className="font-semibold truncate">{swap.off.name}</span>
-                  <ArrowRight size={10} className="flex-shrink-0 opacity-50" />
-                  <span className="font-semibold truncate">{swap.on.name}</span>
-                  <span className="mono text-xs ml-auto flex-shrink-0 tabular-nums">
-                    {swap.dueNow ? 'now' : swap.atHalfTime ? 'HT' : `~${Math.ceil(swap.dueAtMs / 60_000)}'`}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-col gap-1 flex-shrink-0">
-            {dueSwaps.length > 0 && (
-              <button
-                onClick={applyDueSwaps}
-                className="text-xs font-bold px-2.5 py-1 rounded-m-md whitespace-nowrap"
-                style={{ background: PURPLE, color: 'var(--m-on-primary)' }}
-              >
-                {dueSwaps.length > 1 ? 'Apply all' : 'Apply'}
-              </button>
-            )}
-            <button
-              onClick={() => setDismissedKey(dueKey)}
-              className="text-xs px-2 py-1 text-center"
-              style={{ color: PURPLE }}
-            >
-              Later
-            </button>
-          </div>
-        </div>
+      {/* ── Standing sub plan */}
+      {subPlan.length > 0 && !subMode && !atBreak && (
+        <SubPlanPanel
+          subPlan={subPlan}
+          dueSwaps={dueSwaps}
+          dismissedKey={dismissedKey}
+          dueKey={dueKey}
+          onApply={applyDueSwaps}
+          onDismiss={() => setDismissedKey(dueKey)}
+        />
       )}
 
       {/* ── Player sections */}
@@ -794,7 +524,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
         >
           <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-2">
             {onPitch.map(p => (
-              <PlayerCard
+              <MatchPlayerCard
                 key={p.id}
                 player={p}
                 ps={matchState.playerStates.get(p.id)!}
@@ -824,7 +554,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
               const isPicked = comingOnIds.includes(p.id)
               const fits = wantedGroups.some(g => p.eligibleGroups.includes(g))
               return (
-                <PlayerCard
+                <MatchPlayerCard
                   key={p.id}
                   player={p}
                   ps={matchState.playerStates.get(p.id)!}
@@ -849,7 +579,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
           <Section title="Off" count={offPitch.length} subtitle="blood / injured">
             <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-2">
               {offPitch.map(p => (
-                <PlayerCard
+                <MatchPlayerCard
                   key={p.id}
                   player={p}
                   ps={matchState.playerStates.get(p.id)!}
@@ -872,82 +602,22 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
 
       {/* ── Sub status tray */}
       {subMode && (
-        <div
-          className="fixed above-live-bar app-x px-3 py-2.5 shadow-2xl z-30"
-          style={{ background: 'var(--x-live-bar)', color: 'white', borderTop: '2px solid var(--brand)' }}
-        >
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-semibold opacity-60">
-              {comingOffIds.length > comingOnIds.length
-                ? 'Now tap a replacement'
-                : pendingConfirm
-                  ? 'Position mismatch — confirm below'
-                  : 'Sub in progress'}
-            </span>
-            <button onClick={clearSubs} className="opacity-60 active:opacity-100">
-              <X size={16} />
-            </button>
-          </div>
-          <div className="space-y-1">
-            {pairings.map((pr, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm">
-                <div className="flex-1 flex items-center gap-1.5 min-w-0">
-                  {pr.off
-                    ? <><GroupBadge group={pr.off.ps.activeGroup} size="sm" /><span className="font-semibold truncate" style={{ color: 'var(--m-error)' }}>{pr.off.player.name}</span></>
-                    : <span className="opacity-40 italic text-xs">—</span>}
-                </div>
-                <ArrowRight size={13} className="opacity-40 flex-shrink-0" />
-                <div className="flex-1 flex items-center gap-1.5 min-w-0">
-                  {pr.on
-                    ? <><GroupBadge group={pr.onGroup} size="sm" /><span className="font-semibold truncate" style={{ color: 'var(--x-on-brand-good)' }}>{pr.on.player.name}</span></>
-                    : <span className="opacity-40 italic text-xs">tap bench →</span>}
-                </div>
-                <div className="w-4 flex-shrink-0">
-                  {pr.off && pr.on && (
-                    pr.match
-                      ? <Check size={14} style={{ color: 'var(--x-go)' }} strokeWidth={2.5} />
-                      : <AlertTriangle size={14} style={{ color: 'var(--m-error)' }} strokeWidth={2.5} />
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          {pendingConfirm && (
-            <button
-              onClick={confirmPendingSub}
-              className="w-full mt-2 py-2 rounded-m-md text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition"
-              style={{ background: 'var(--x-pause)', color: 'var(--x-on-bright)' }}
-            >
-              <AlertTriangle size={14} strokeWidth={2.5} /> Confirm sub anyway
-            </button>
-          )}
-        </div>
+        <SubStatusTray
+          comingOffIds={comingOffIds}
+          comingOnIds={comingOnIds}
+          pendingConfirm={pendingConfirm}
+          pairings={pairings}
+          onClear={clearSubs}
+          onConfirm={confirmPendingSub}
+        />
       )}
 
       {/* ── Undo confirmation bar */}
-      {pendingUndo && (
-        <div
-          className="fixed above-live-bar app-x px-3 py-3 flex items-center justify-between z-40"
-          style={{ background: 'var(--m-error)', color: 'var(--m-on-error)' }}
-        >
-          <span className="text-sm font-semibold">Undo last action?</span>
-          <div className="flex gap-2">
-            <button
-              onClick={confirmUndo}
-              className="text-sm font-bold px-4 py-1.5 rounded-m-md bg-m-surface-container"
-              style={{ color: 'var(--m-error)' }}
-            >
-              Undo
-            </button>
-            <button
-              onClick={() => setPendingUndo(false)}
-              className="text-sm px-3 py-1.5 opacity-80"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      <UndoConfirmBar
+        open={pendingUndo}
+        onConfirm={confirmUndo}
+        onCancel={() => setPendingUndo(false)}
+      />
 
       {/* ── Bottom bar */}
       <div
@@ -990,248 +660,82 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       </div>
 
       {/* ── Try scorer picker */}
-      {tryPickerOpen && (
-        <div
-          className="fixed inset-0 z-40 flex items-end backdrop-in"
-          style={{ background: 'var(--m-scrim)' }}
-          onClick={() => setTryPickerOpen(false)}
-        >
-          <div
-            className="bg-m-surface-container-low w-full max-w-[40rem] mx-auto rounded-t-m-xl sheet-in px-4 pt-2 max-h-[70vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-m-outline-variant" aria-hidden="true" />
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Trophy size={22} style={{ color: PURPLE }} />
-                <div className="text-2xl font-bold" style={{ color: INK }}>Who scored?</div>
-              </div>
-              <button
-                onClick={() => setTryPickerOpen(false)}
-                className="tap-target w-12 flex items-center justify-center"
-              >
-                <X />
-              </button>
-            </div>
-            <div className="space-y-1.5">
-              {onPitch.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    store.recordTryUs(p.id)
-                    showToast(`Try — ${p.name}`, true)
-                    setTryPickerOpen(false)
-                  }}
-                  className="tap-target w-full flex items-center gap-3 px-3 bg-m-surface-container rounded-m-md border active:scale-[0.98] transition"
-                  style={{ borderColor: 'var(--m-outline-variant)' }}
-                >
-                  <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
-                  <span className="font-semibold flex-1 text-left">{p.name}</span>
-                  {(matchState.playerStates.get(p.id)?.triesScored ?? 0) > 0 && (
-                    <span className="mono text-xs opacity-60">
-                      {matchState.playerStates.get(p.id)!.triesScored}T
-                    </span>
-                  )}
-                </button>
-              ))}
-              <button
-                onClick={() => {
-                  store.recordTryUs()
-                  showToast('Try (unattributed)', true)
-                  setTryPickerOpen(false)
-                }}
-                className="tap-target w-full px-3 italic active:scale-[0.98] transition opacity-70"
-              >
-                Unattributed / decide later
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ScoreModal
+        open={tryPickerOpen}
+        onPitch={onPitch}
+        playerStates={matchState.playerStates}
+        onPick={(playerId) => {
+          if (playerId) {
+            const scorer = playerMap.get(playerId)!
+            store.recordTryUs(playerId)
+            showToast(`Try — ${scorer.name}`, true)
+          } else {
+            store.recordTryUs()
+            showToast('Try (unattributed)', true)
+          }
+          setTryPickerOpen(false)
+        }}
+        onClose={() => setTryPickerOpen(false)}
+      />
 
       {/* ── Blood / injury menu */}
-      {menuFor && (
-        <div
-          className="fixed inset-0 z-40 flex items-end backdrop-in"
-          style={{ background: 'var(--m-scrim)' }}
-          onClick={() => setMenuFor(null)}
-        >
-          <div
-            className="bg-m-surface-container-low w-full max-w-[40rem] mx-auto rounded-t-m-xl sheet-in px-4 pt-2 space-y-2"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-m-outline-variant" aria-hidden="true" />
-            <div className="flex items-center justify-between mb-1">
-              <div className="text-2xl font-bold" style={{ color: INK }}>{menuFor.name}</div>
-              <button onClick={() => setMenuFor(null)} className="w-12 h-12 flex items-center justify-center" aria-label="Close">
-                <X />
-              </button>
-            </div>
-            <button
-              onClick={() => { setBloodPickerFor(menuFor); setMenuFor(null) }}
-              className="tap-target w-full rounded-m-md px-4 text-left active:scale-[0.98] transition"
-              style={{ background: 'var(--m-error-container)', color: 'var(--m-on-error-container)' }}
-            >
-              <div className="font-bold text-base">Blood — temporary</div>
-              <div className="text-sm">Off now, can return once treated</div>
-            </button>
-            <button
-              onClick={() => { setInjuryPickerFor(menuFor); setMenuFor(null) }}
-              className="tap-target w-full rounded-m-md px-4 text-left active:scale-[0.98] transition"
-              style={{ background: 'var(--m-surface-container-high)', color: INK }}
-            >
-              <div className="font-bold text-base">Injury</div>
-              <div className="text-sm text-m-on-surface-variant">Off, left out of the minutes balance</div>
-            </button>
-          </div>
-        </div>
-      )}
+      <PlayerMenuSheet
+        player={menuFor}
+        onClose={() => setMenuFor(null)}
+        onBlood={(p) => { setBloodPickerFor(p); setMenuFor(null) }}
+        onInjury={(p) => { setInjuryPickerFor(p); setMenuFor(null) }}
+      />
 
       {/* ── Blood replacement picker */}
-      {bloodPickerFor && (
-        <div
-          className="fixed inset-0 z-40 flex items-end backdrop-in"
-          style={{ background: 'var(--m-scrim)' }}
-          onClick={() => setBloodPickerFor(null)}
-        >
-          <div
-            className="bg-m-surface-container-low w-full max-w-[40rem] mx-auto rounded-t-m-xl sheet-in px-4 pt-2 max-h-[70vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-m-outline-variant" aria-hidden="true" />
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <div className="text-2xl font-bold" style={{ color: INK }}>
-                  Blood — {bloodPickerFor.name}
-                </div>
-              </div>
-              <button
-                onClick={() => setBloodPickerFor(null)}
-                className="tap-target w-12 flex items-center justify-center"
-              >
-                <X />
-              </button>
-            </div>
-            <p className="text-sm text-m-on-surface-variant mb-3">Who comes on as replacement?</p>
-            <div className="space-y-1.5">
-              {replacementsFor(bloodPickerFor).map(({ p, fits }) => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    store.bloodOff(bloodPickerFor.id, p.id)
-                    showToast(`${bloodPickerFor.name} — blood · ${p.name} on`)
-                    setBloodPickerFor(null)
-                  }}
-                  className="tap-target w-full flex items-center gap-3 px-3 bg-m-surface-container rounded-m-md border active:scale-[0.98] transition"
-                  style={{ borderColor: fits ? PURPLE_DARK : 'var(--m-outline-variant)', opacity: fits ? 1 : 0.5 }}
-                >
-                  <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
-                  <span className="font-semibold flex-1 text-left">{p.name}</span>
-                  <span className="mono text-xs opacity-50">
-                    {fmt(liveMinMs(matchState.playerStates.get(p.id)!, liveElapsedMs))}
-                  </span>
-                </button>
-              ))}
-              {bench.length === 0 && (
-                <p className="text-sm italic text-m-outline px-3 py-2">No bench players available</p>
-              )}
-              <button
-                onClick={() => {
-                  store.bloodOff(bloodPickerFor.id)
-                  showToast(`${bloodPickerFor.name} — blood (no replacement)`)
-                  setBloodPickerFor(null)
-                }}
-                className="tap-target w-full px-3 italic active:scale-[0.98] transition opacity-60 text-sm"
-              >
-                Continue without replacement
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ReplacementPicker
+        kind="blood"
+        player={bloodPickerFor}
+        bench={bench}
+        replacementsFor={replacementsFor}
+        playerStates={matchState.playerStates}
+        liveElapsedMs={liveElapsedMs}
+        onSelect={(replacementId) => {
+          if (replacementId) {
+            const sub = playerMap.get(replacementId)!
+            store.bloodOff(bloodPickerFor!.id, replacementId)
+            showToast(`${bloodPickerFor!.name} — blood · ${sub.name} on`)
+          } else {
+            store.bloodOff(bloodPickerFor!.id)
+            showToast(`${bloodPickerFor!.name} — blood (no replacement)`)
+          }
+          setBloodPickerFor(null)
+        }}
+        onClose={() => setBloodPickerFor(null)}
+      />
 
       {/* ── Injury replacement picker */}
-      {injuryPickerFor && (
-        <div
-          className="fixed inset-0 z-40 flex items-end backdrop-in"
-          style={{ background: 'var(--m-scrim)' }}
-          onClick={() => setInjuryPickerFor(null)}
-        >
-          <div
-            className="bg-m-surface-container-low w-full max-w-[40rem] mx-auto rounded-t-m-xl sheet-in px-4 pt-2 max-h-[70vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-2 h-1 w-8 rounded-full bg-m-outline-variant" aria-hidden="true" />
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <AlertTriangle size={22} style={{ color: INK }} />
-                <div className="text-2xl font-bold" style={{ color: INK }}>
-                  Injured — {injuryPickerFor.name}
-                </div>
-              </div>
-              <button
-                onClick={() => setInjuryPickerFor(null)}
-                className="tap-target w-12 flex items-center justify-center"
-              >
-                <X />
-              </button>
-            </div>
-            <p className="text-sm text-m-on-surface-variant mb-3">Who comes on as replacement?</p>
-            <div className="space-y-1.5">
-              {replacementsFor(injuryPickerFor).map(({ p, fits }) => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    store.injuredOff(injuryPickerFor.id, p.id)
-                    showToast(`${injuryPickerFor.name} — injured · ${p.name} on`)
-                    setInjuryPickerFor(null)
-                  }}
-                  className="tap-target w-full flex items-center gap-3 px-3 bg-m-surface-container rounded-m-md border active:scale-[0.98] transition"
-                  style={{ borderColor: fits ? PURPLE_DARK : 'var(--m-outline-variant)', opacity: fits ? 1 : 0.5 }}
-                >
-                  <GroupBadge group={matchState.playerStates.get(p.id)!.activeGroup} />
-                  <span className="font-semibold flex-1 text-left">{p.name}</span>
-                  <span className="mono text-xs opacity-50">
-                    {fmt(liveMinMs(matchState.playerStates.get(p.id)!, liveElapsedMs))}
-                  </span>
-                </button>
-              ))}
-              {bench.length === 0 && (
-                <p className="text-sm italic text-m-outline px-3 py-2">No bench players available</p>
-              )}
-              <button
-                onClick={() => {
-                  store.injuredOff(injuryPickerFor.id)
-                  showToast(`${injuryPickerFor.name} — injured (no replacement)`)
-                  setInjuryPickerFor(null)
-                }}
-                className="tap-target w-full px-3 italic active:scale-[0.98] transition opacity-60 text-sm"
-              >
-                Continue without replacement
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ReplacementPicker
+        kind="injury"
+        player={injuryPickerFor}
+        bench={bench}
+        replacementsFor={replacementsFor}
+        playerStates={matchState.playerStates}
+        liveElapsedMs={liveElapsedMs}
+        onSelect={(replacementId) => {
+          if (replacementId) {
+            const sub = playerMap.get(replacementId)!
+            store.injuredOff(injuryPickerFor!.id, replacementId)
+            showToast(`${injuryPickerFor!.name} — injured · ${sub.name} on`)
+          } else {
+            store.injuredOff(injuryPickerFor!.id)
+            showToast(`${injuryPickerFor!.name} — injured (no replacement)`)
+          }
+          setInjuryPickerFor(null)
+        }}
+        onClose={() => setInjuryPickerFor(null)}
+      />
 
       {/* ── Toast */}
-      {toast && (
-        <div
-          className="fixed bottom-32 left-1/2 -translate-x-1/2 pl-4 pr-1 py-1 rounded-full text-sm shadow-lg z-50 whitespace-nowrap flex items-center gap-2"
-          style={{ background: 'var(--m-inverse-surface)', color: 'var(--m-inverse-on-surface)', minHeight: 48 }}
-        >
-          <span className={toast.undo ? '' : 'pr-3'}>{toast.msg}</span>
-          {toast.undo && (
-            <button
-              onClick={undoFromToast}
-              className="h-9 px-3 rounded-full text-sm font-bold active:scale-95 transition"
-              style={{ color: 'var(--m-primary-container)' }}
-            >
-              Undo
-            </button>
-          )}
-        </div>
-      )}
+      <MatchToast
+        msg={toast?.msg ?? null}
+        undo={toast?.undo ?? false}
+        onUndo={undoFromToast}
+      />
     </div>
   )
 }
