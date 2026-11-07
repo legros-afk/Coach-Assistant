@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Check, ClipboardPaste, CloudUpload, Copy, History, LayoutGrid, Lock, RefreshCw, Zap } from 'lucide-react'
 import { getSpondAvailability, type SpondAvailability } from '@/lib/spond/spondSync'
 import { spondConfigured } from '@/lib/spond/spondStore'
-import { FORMATS, teamLimits, validateComposition } from '@/lib/domain/validateComposition'
+import { FORMATS, isFormat, teamLimits, validateComposition } from '@/lib/domain/validateComposition'
 import { draftTeams } from '@/lib/domain/draftTeams'
 import { refitToFormat } from '@/lib/domain/refitFormat'
 import { formatTeamsForWhatsApp } from '@/lib/domain/formatTeamSheet'
@@ -92,7 +92,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const [date, setDate]           = useState(existing?.date ?? initialDate ?? todayIso())
   const [opponent, setOpponent]   = useState(existing?.opponent ?? initialOpponent ?? '')
   const opponentRef = useRef<HTMLInputElement>(null)
-  // Editable here: a fixture can be switched to 10-a-side on the day.
+  // Editable here: a fixture can be switched to 11 or 10 a side on the day.
   const [playersPerSide, setPlayersPerSide] = useState(existing?.playersPerSide ?? initialPlayersPerSide ?? 12)
   // An existing fixture already says how many teams it was built for; a new one
   // falls back to whatever this coach chose last.
@@ -732,13 +732,13 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
               <TextField ref={opponentRef} label="Opponent" value={opponent} onChange={e => setOpponent(e.target.value)} placeholder="e.g. Saints" />
             </div>
             <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-medium text-m-on-surface-variant">Format</span>
+              <span className="text-sm font-medium text-m-on-surface-variant">Players a side</span>
               <ButtonGroup
                 size="sm"
-                ariaLabel="Format"
+                ariaLabel="Players a side"
                 value={playersPerSide}
                 onChange={changeFormat}
-                options={[...FORMATS, ...(FORMATS.includes(playersPerSide as 12 | 10) ? [] : [playersPerSide])].map(n => ({ value: n, label: `${n}-a-side` }))}
+                options={[...FORMATS, ...(isFormat(playersPerSide) ? [] : [playersPerSide])].map(n => ({ value: n, label: String(n), ariaLabel: `${n}-a-side` }))}
               />
             </div>
             {formatNote && (

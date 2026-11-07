@@ -7,11 +7,13 @@ export interface CompositionResult {
 }
 
 /** The formats coaches can switch between on a fixture. */
-export const FORMATS = [12, 10] as const;
+export const FORMATS = [12, 11, 10] as const;
+export const isFormat = (n: number): boolean => (FORMATS as readonly number[]).includes(n);
 
 // Always a 5-forward scrum and 1 scrum-half; backs fill the rest.
-// 12-a-side: 5 forwards, 6 backs, 1 scrum-half.
-// 10-a-side: 5 forwards, 4 backs, 1 scrum-half.
+// 12-a-side: 5 forwards, 6 backs, 1 number 9.
+// 11-a-side: 5 forwards, 5 backs, 1 number 9.
+// 10-a-side: 5 forwards, 4 backs, 1 number 9.
 export const teamLimits = (playersPerSide: number) => {
   return { f: 5, b: Math.max(0, playersPerSide - 6), sh: 1 };
 };
