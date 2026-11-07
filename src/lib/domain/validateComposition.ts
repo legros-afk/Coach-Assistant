@@ -23,7 +23,7 @@ export function validateComposition(groups: Group[], playersPerSide = 11): Compo
   const valid = counts.forward === limits.f && counts.back === limits.b && counts.scrumhalf === limits.sh;
   const message = valid
     ? ''
-    : `Would result in ${counts.forward}F · ${counts.back}B · ${counts.scrumhalf}SH (need ${limits.f}·${limits.b}·${limits.sh})`;
+    : `Would result in ${counts.forward}F · ${counts.back}B · ${counts.scrumhalf} number 9 (need ${limits.f}·${limits.b}·${limits.sh})`;
   return { valid, message, counts };
 }
 

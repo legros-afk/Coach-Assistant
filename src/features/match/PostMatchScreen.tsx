@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { GROUP_COLOR } from '@/ui/positions'
+import { GROUP_COLOR, GROUP_SHORT } from '@/ui/positions'
 import { ArrowRight, Check, Copy, RefreshCw, Share2, Sparkles } from 'lucide-react'
 import { TopAppBar } from '@/ui/TopAppBar'
 import { Button } from '@/ui/Button'
@@ -10,7 +10,6 @@ import type { Group, MatchEvent, MatchState, Player, TeamSheet } from '@/lib/eve
 import { useMatchStore } from './useMatchStore'
 
 
-const GROUP_SHORT: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf: 'SH' }
 
 function GroupBadge({ group }: { group: Group }) {
   const bg = GROUP_COLOR[group]
@@ -68,7 +67,7 @@ function buildShareText(
   lines.push(`Team ${teamLabel}`)
   if (starterForwards.length) lines.push(`Forwards: ${starterForwards.join(', ')}`)
   if (starterBacks.length)    lines.push(`Backs: ${starterBacks.join(', ')}`)
-  if (starterSH)              lines.push(`Scrum-half: ${starterSH}`)
+  if (starterSH)              lines.push(`Number 9: ${starterSH}`)
   if (subsOn.length)          lines.push(`Subs on: ${subsOn.join(', ')}`)
   if (tryScorers.length) {
     lines.push('')

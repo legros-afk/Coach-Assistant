@@ -810,10 +810,10 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                 )}
                 <p className="text-sm text-m-on-surface-variant px-1">
                   {draftedIds.size > 0
-                    ? 'Auto-pick fills open places with whoever has played least. Change anyone with one tap; Auto-pick again keeps the players you set by hand.'
+                    ? 'Auto-pick fills open places with whoever has played least. Tap anyone on the pitch to change them; Auto-pick again keeps the players you set by hand.'
                     : teamCount === 1
-                      ? 'Everyone starts on Bench. Tap Start for your starters and Out for anyone missing.'
-                      : 'Pick each team on its tab. Tap a selected option again to free the player for the other team.'}
+                      ? 'Tap a place on the pitch to choose who plays there. Everyone else is on the bench.'
+                      : 'Tap a place on the pitch to choose who plays there. The list shows who’s already in the other team.'}
                 </p>
                 <SquadPicker
                   players={players}

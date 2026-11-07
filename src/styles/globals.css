@@ -78,6 +78,13 @@
   --pos-back:      #2151DA;
   --pos-scrumhalf: #B81059;
 
+  /* The pitch behind team pickers and the live match: same grass in both
+     themes, like the position hues */
+  --pitch-grass:     #2E7D32;
+  --pitch-grass-alt: #2B7430;
+  --pitch-line:      rgba(255, 255, 255, 0.55);
+  --pitch-tile:      var(--m-surface-container-lowest);
+
   /* Shape scale (M3) */
   --shape-xs:   4px;
   --shape-sm:   8px;
@@ -130,6 +137,7 @@
     --m-scrim:                   rgba(0, 0, 0, 0.6);
     --x-good:                #77DC89;
     --x-good-container:      #005321;
+    --pitch-tile:            var(--m-surface-container-highest);
     --x-on-good-container:   #93F9A2;
     --x-warn:                #FFB86E;
     --x-warn-container:      #693C00;
@@ -169,6 +177,7 @@
   --m-scrim:                   rgba(0, 0, 0, 0.6);
   --x-good:                #77DC89;
   --x-good-container:      #005321;
+  --pitch-tile:            var(--m-surface-container-highest);
   --x-on-good-container:   #93F9A2;
   --x-warn:                #FFB86E;
   --x-warn-container:      #693C00;

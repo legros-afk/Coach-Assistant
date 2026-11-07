@@ -46,7 +46,7 @@ export function formatTeamsForWhatsApp({ teamName, opponent, date, players, assi
     lines.push('', `*Team ${team}*`);
     section('Forwards', forwards);
     section('Backs', backs);
-    section('Scrum-half', sh);
+    section('Number 9', sh);
     section('Finishers', bench);
   }
 
