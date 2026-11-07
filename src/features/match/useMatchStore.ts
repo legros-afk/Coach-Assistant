@@ -5,6 +5,7 @@ import type { ID, Match, MatchEvent, MatchState, Player, TeamSheet } from '@/lib
 import { publishMatch } from '@/lib/drive/drivePublish';
 import { DEMO_SQUAD, DEMO_TEAM_SHEET } from './mockData';
 import { DRIVE_FOLDER_ID } from '@/config/club';
+import { gameId } from '@/lib/domain/games';
 
 let _seq = 0;
 const newId = () => `${Date.now()}-${++_seq}`;
@@ -17,12 +18,15 @@ export interface InitMatchArgs {
   teamSheet: TeamSheet;
   squad: Player[];
   opponent: string;
+  /** Which game of the day for this team (default 1). */
+  game?: number;
 }
 
 interface MatchStore {
   matchId: string | null;
   fixtureId: string | null;
   opponent: string;
+  game: number;
   squad: Player[];
   teamSheet: TeamSheet;
   events: MatchEvent[];
@@ -65,7 +69,7 @@ function withEvent(
 // Which match this phone is running, so it can be picked up again after the
 // phone unloads the app (iPhones do this to background apps) or it updates.
 const ACTIVE_KEY = 'coach-active-match'
-interface ActivePointer { matchId: string; fixtureId: string; opponent: string; demo?: boolean }
+interface ActivePointer { matchId: string; fixtureId: string; opponent: string; game?: number; demo?: boolean }
 function saveActive(p: ActivePointer) {
   try { localStorage.setItem(ACTIVE_KEY, JSON.stringify(p)) } catch { /* ignore */ }
 }
@@ -94,20 +98,21 @@ async function loadMatchState(
   opponent: string,
   teamSheet: TeamSheet,
   squad: Player[],
+  game = 1,
 ): Promise<Partial<MatchStore>> {
   const stored = await db.matches.get(matchId);
   if (stored && stored.events.length > 0) {
     const matchState = replayEvents(stored.events, teamSheet, squad);
     const clock = clockFromEvents(stored.events);
     return {
-      matchId, fixtureId, opponent, squad, teamSheet,
+      matchId, fixtureId, opponent, game, squad, teamSheet,
       events: stored.events, matchState,
       baseElapsedMs: clock.running ? clock.baseElapsedMs : matchState.elapsedMs,
       clockRunning: clock.running, clockStartedAt: clock.startedAt, isHydrated: true,
     };
   }
   return {
-    matchId, fixtureId, opponent, squad, teamSheet,
+    matchId, fixtureId, opponent, game, squad, teamSheet,
     events: [], matchState: replayEvents([], teamSheet, squad),
     baseElapsedMs: 0,
     clockRunning: false, clockStartedAt: null, isHydrated: true,
@@ -116,13 +121,14 @@ async function loadMatchState(
 
 export const useMatchStore = create<MatchStore>()((set, get) => {
   function persist(events: MatchEvent[]): void {
-    const { matchId, fixtureId, teamSheet, opponent } = get();
+    const { matchId, fixtureId, teamSheet, opponent, game } = get();
     if (!matchId) return;
     db.matches.put({
       id: matchId,
       fixtureId: fixtureId ?? matchId,
       teamSheetId: teamSheet.id,
       opponent,
+      ...(game > 1 ? { game } : {}),
       events,
       startedAt: undefined,
       endedAt: undefined,
@@ -134,6 +140,7 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
     matchId: null,
     fixtureId: null,
     opponent: '',
+    game: 1,
     squad: DEMO_SQUAD,
     teamSheet: DEMO_TEAM_SHEET,
     events: [],
@@ -152,15 +159,16 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
         : baseElapsedMs;
     },
 
-    initMatch: async ({ fixtureId, teamSheet, squad, opponent }) => {
-      const patch = await loadMatchState(teamSheet.id, fixtureId, opponent, teamSheet, squad);
+    initMatch: async ({ fixtureId, teamSheet, squad, opponent, game = 1 }) => {
+      const matchId = gameId(teamSheet.id, game);
+      const patch = await loadMatchState(matchId, fixtureId, opponent, teamSheet, squad, game);
       set({ ...patch, publishStatus: 'idle' } as MatchStore);
-      saveActive({ matchId: teamSheet.id, fixtureId, opponent });
+      saveActive({ matchId, fixtureId, opponent, game });
     },
 
     initDemoMatch: async () => {
       const patch = await loadMatchState(
-        DEMO_TEAM_SHEET.id, 'demo-fixture', 'Opponents', DEMO_TEAM_SHEET, DEMO_SQUAD,
+        DEMO_TEAM_SHEET.id, 'demo-fixture', 'Opponents', DEMO_TEAM_SHEET, DEMO_SQUAD, 1,
       );
       set(patch as MatchStore);
       saveActive({ matchId: DEMO_TEAM_SHEET.id, fixtureId: 'demo-fixture', opponent: 'Opponents', demo: true });
@@ -175,11 +183,11 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
         await get().initDemoMatch();
       } else {
         const fixture = await db.fixtures.get(p.fixtureId);
-        const teamSheet = fixture?.teamSheets.find(t => t.id === p.matchId);
+        const teamSheet = fixture?.teamSheets.find(t => t.id === stored.teamSheetId);
         const squads = await db.squads.toArray();
         const squad = squads.length ? squads[squads.length - 1] : null;
         if (!fixture || !teamSheet || !squad) return 'none';
-        await get().initMatch({ fixtureId: fixture.id, teamSheet, squad: squad.players, opponent: fixture.opponent });
+        await get().initMatch({ fixtureId: fixture.id, teamSheet, squad: squad.players, opponent: fixture.opponent, game: stored.game ?? 1 });
       }
       return get().clockRunning ? 'running' : 'paused';
     },
@@ -234,6 +242,7 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
         fixtureId: state.fixtureId ?? state.matchId,
         teamSheetId: state.teamSheet.id,
         opponent: state.opponent,
+        ...(state.game > 1 ? { game: state.game } : {}),
         events: state.events,
         startedAt: state.events[0].ts,
         endedAt: state.events[state.events.length - 1].ts,
@@ -346,3 +355,33 @@ export const useMatchStore = create<MatchStore>()((set, get) => {
     },
   };
 });
+
+/**
+ * Save a result typed in after the game (score and try scorers, no minutes)
+ * as the team's next game, and share it with the other coaches.
+ */
+export async function recordManualResult(args: {
+  fixtureId: ID;
+  teamSheetId: ID;
+  opponent: string;
+  game: number;
+  events: MatchEvent[];
+}): Promise<PublishStatus> {
+  const match: Match = {
+    id: gameId(args.teamSheetId, args.game),
+    fixtureId: args.fixtureId,
+    teamSheetId: args.teamSheetId,
+    opponent: args.opponent,
+    ...(args.game > 1 ? { game: args.game } : {}),
+    manual: true,
+    events: args.events,
+    version: 1,
+  };
+  await db.matches.put(match);
+  try {
+    const result = await publishMatch(match, DRIVE_FOLDER_ID);
+    return result.ok ? 'ok' : 'failed';
+  } catch {
+    return 'failed';
+  }
+}

@@ -70,6 +70,12 @@ Bench: Quinn, Roberts`;
     }
   });
 
+  it.each(['9', 'Number 9', '#9', 'No. 9'])('reads "%s:" as the number 9 section', header => {
+    const { blocks } = parseTeamSheet(`Team A\n${header}: Lewis`, squad);
+    const lewis = blocks[0].starters.find(s => s.status === 'resolved' && s.player.id === 'b3');
+    expect(lewis?.status === 'resolved' && lewis.assignedGroup).toBe('scrumhalf');
+  });
+
   it('respects explicit Backs section even for a dual-eligible player', () => {
     const text = `Team A
 B: Brown`;

@@ -33,7 +33,7 @@ const stripWa          = (s: string) => s.replace(/^[*_~]+|[*_~]+$/g, '').trim()
 const isTeamHeader     = (s: string) => /^team\s+[a-c]$/.test(stripWa(s));
 const isForwardsHeader = (s: string) => /^(forwards?|f)$/.test(stripWa(s));
 const isBacksHeader    = (s: string) => /^(backs?|b)$/.test(stripWa(s));
-const isScrumHeader    = (s: string) => /^(scrum[\s-]?half|scrumhalf|sh)$/.test(stripWa(s));
+const isScrumHeader    = (s: string) => /^(scrum[\s-]?half|scrumhalf|sh|#?9|no\.?\s?9|number\s?9)$/.test(stripWa(s));
 const isBenchHeader    = (s: string) => /^(bench|subs?|finishers?)$/.test(stripWa(s));
 const isUnavailHeader  = (s: string) => /^(unavailable|not available|out|missing)$/.test(stripWa(s));
 

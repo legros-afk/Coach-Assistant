@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { GROUP_COLOR } from '@/ui/positions'
+import { GROUP_COLOR, GROUP_SHORT } from '@/ui/positions'
+import { Pitch, PitchTile } from '@/ui/Pitch'
 import {
   Activity, AlertTriangle, ArrowRight, Check, ChevronLeft, Clock,
   HandHelping, MoreVertical, Pause, Play, Plus, Trophy, Undo2, X,
@@ -7,6 +8,7 @@ import {
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, ID, Player, PlayerMatchState } from '@/lib/events/types'
 import { planSubs } from '@/lib/domain/subPlanner'
+import { pitchOrder } from '@/lib/domain/pitchOrder'
 import { useMatchStore } from './useMatchStore'
 
 // ── brand constants ────────────────────────────────────────────────────────────
@@ -51,8 +53,6 @@ const HELPER_KEY = 'coach-helper-mode'
 
 // ── sub-components ─────────────────────────────────────────────────────────────
 
-const GROUP_LABEL: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf: 'SH' }
-
 function GroupBadge({ group, size = 'md' }: { group: Group; size?: 'md' | 'sm' }) {
   const bg = GROUP_COLOR[group]
   const cls = size === 'sm'
@@ -63,7 +63,7 @@ function GroupBadge({ group, size = 'md' }: { group: Group; size?: 'md' | 'sm' }
       className={`font-bold rounded-full flex items-center justify-center flex-shrink-0 ${cls}`}
       style={{ background: bg, color: 'white' }}
     >
-      {GROUP_LABEL[group]}
+      {GROUP_SHORT[group]}
     </span>
   )
 }
@@ -196,7 +196,7 @@ interface LiveMatchProps { onBack?: () => void; onSummary?: () => void }
 
 export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
   const store = useMatchStore()
-  const { matchState, squad, clockRunning, opponent, teamSheet } = store
+  const { matchState, squad, clockRunning, opponent, teamSheet, game } = store
 
   // ── live clock ticker
   const [liveElapsedMs, setLiveElapsedMs] = useState(() => store.currentElapsedMs())
@@ -354,6 +354,52 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       return s + (ps ? liveMinMs(ps, liveElapsedMs) : 0)
     }, 0) / active.length
   }, [squad, matchState, liveElapsedMs])
+
+  // ── the pitch: each player keeps their place through the game; a sub takes
+  //    the place of the player they replace
+  const placeOrder = useMemo(() => pitchOrder(teamSheet, store.events), [teamSheet, store.events])
+  const expectedIn: Record<Group, number> = {
+    forward: teamSheet.starters.forwards.length,
+    scrumhalf: teamSheet.starters.scrumhalf ? 1 : 0,
+    back: teamSheet.starters.backs.length,
+  }
+  const pitchSlots = (g: Group) => {
+    const at = (id: ID) => { const i = placeOrder.indexOf(id); return i < 0 ? Infinity : i }
+    const here = onPitch
+      .filter(p => matchState.playerStates.get(p.id)?.activeGroup === g)
+      .sort((a, b) => at(a.id) - at(b.id))
+    const tiles = here.map(p => {
+      const ps = matchState.playerStates.get(p.id)!
+      const mins = liveMinMs(ps, liveElapsedMs)
+      return (
+        <PitchTile
+          key={p.id}
+          group={g}
+          name={p.name}
+          tone={comingOffIds.includes(p.id) ? 'off' : 'normal'}
+          ariaLabel={`${p.name}, ${fmt(mins)} played — tap to sub off`}
+          onClick={() => togglePickOff(p)}
+          detail={<>
+            <span className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle" style={{ background: balanceColor(mins, avgMs) }} />
+            {fmt(mins)}
+            {ps.triesScored > 0 && <span className="font-bold ml-1" style={{ color: PURPLE }}>{ps.triesScored}T</span>}
+          </>}
+        />
+      )
+    })
+    for (let i = here.length; i < expectedIn[g]; i++) {
+      tiles.push(
+        <PitchTile
+          key={`gap-${g}-${i}`}
+          group={g}
+          emptyLabel="Send on"
+          ariaLabel="Empty place — tap a bench player to send them on"
+          onClick={() => showToast('Tap a bench player to send them on')}
+        />,
+      )
+    }
+    return tiles
+  }
 
   // ── short-pitch detection (fewer on pitch than the original starter count)
   const starterCount = teamSheet.starters.forwards.length + teamSheet.starters.backs.length + 1
@@ -526,7 +572,7 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
                 vs {opponent || '—'}
               </div>
               <div className="text-xs text-white/80 truncate">
-                Woodford U12 · Team {teamSheet.label}
+                Woodford U12 · Team {teamSheet.label}{game > 1 ? ` · game ${game}` : ''}
               </div>
             </div>
           </div>
@@ -789,24 +835,10 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
       {/* ── Player sections */}
       <div className="px-3 pt-3 space-y-4">
         <Section
-          title="On pitch" count={onPitch.length} subtitle="most played first"
+          title="On pitch" count={onPitch.length} subtitle="dot: minutes vs the team"
           hint={subMode ? 'tap to take off' : undefined}
         >
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-2">
-            {onPitch.map(p => (
-              <PlayerCard
-                key={p.id}
-                player={p}
-                ps={matchState.playerStates.get(p.id)!}
-                avgMs={avgMs}
-                liveElapsedMs={liveElapsedMs}
-                picked={comingOffIds.includes(p.id)}
-                pickedTone="rose"
-                onTap={() => togglePickOff(p)}
-                onMenu={!subMode && !helperMode ? () => setMenuFor(p) : undefined}
-              />
-            ))}
-          </div>
+          <Pitch forwards={pitchSlots('forward')} nine={pitchSlots('scrumhalf')} backs={pitchSlots('back')} />
         </Section>
 
         <Section
@@ -912,6 +944,15 @@ export default function LiveMatch({ onBack, onSummary }: LiveMatchProps) {
               </div>
             ))}
           </div>
+          {!helperMode && comingOffIds.length === 1 && comingOnIds.length === 0 && (
+            <button
+              onClick={() => { const p = getPlayer(comingOffIds[0]); clearSubs(); if (p) setMenuFor(p) }}
+              className="w-full mt-2 py-2 rounded-m-md text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition"
+              style={{ background: 'rgba(255,255,255,0.12)', color: 'white' }}
+            >
+              <Activity size={14} strokeWidth={2.5} /> Blood or injury instead
+            </button>
+          )}
           {pendingConfirm && (
             <button
               onClick={confirmPendingSub}

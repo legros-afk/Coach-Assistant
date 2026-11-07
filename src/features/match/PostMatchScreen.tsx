@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { GROUP_COLOR } from '@/ui/positions'
+import { GROUP_COLOR, GROUP_SHORT } from '@/ui/positions'
 import { ArrowRight, Check, Copy, RefreshCw, Share2, Sparkles } from 'lucide-react'
 import { TopAppBar } from '@/ui/TopAppBar'
 import { Button } from '@/ui/Button'
@@ -10,7 +10,6 @@ import type { Group, MatchEvent, MatchState, Player, TeamSheet } from '@/lib/eve
 import { useMatchStore } from './useMatchStore'
 
 
-const GROUP_SHORT: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf: 'SH' }
 
 function GroupBadge({ group }: { group: Group }) {
   const bg = GROUP_COLOR[group]
@@ -29,6 +28,10 @@ export interface MatchViewData {
   squad: Player[]
   teamSheet: TeamSheet
   opponent: string
+  /** Which game of the day for this team; 1 when it only played once. */
+  game?: number
+  /** Typed in after the game: a score and scorers, no minutes. */
+  manual?: boolean
   matchState: MatchState
   events: MatchEvent[]
 }
@@ -64,7 +67,7 @@ function buildShareText(
   lines.push(`Team ${teamLabel}`)
   if (starterForwards.length) lines.push(`Forwards: ${starterForwards.join(', ')}`)
   if (starterBacks.length)    lines.push(`Backs: ${starterBacks.join(', ')}`)
-  if (starterSH)              lines.push(`Scrum-half: ${starterSH}`)
+  if (starterSH)              lines.push(`Number 9: ${starterSH}`)
   if (subsOn.length)          lines.push(`Subs on: ${subsOn.join(', ')}`)
   if (tryScorers.length) {
     lines.push('')
@@ -80,6 +83,10 @@ function buildShareText(
 export default function PostMatchScreen({ onBack, data }: Props) {
   const live = useMatchStore()
   const { squad, teamSheet, opponent, matchState, events } = data ?? live
+  const game = (data ? data.game : live.game) ?? 1
+  const manual = !!data?.manual
+  // "A" or, when the team played more than once, "A · game 2"
+  const teamLabel = game > 1 ? `${teamSheet.label} · game ${game}` : teamSheet.label
   const publishStatus = data ? null : live.publishStatus
   const [tab, setTab]           = useState<'share' | 'coach'>('share')
   const [copied, setCopied]     = useState(false)
@@ -113,7 +120,7 @@ export default function PostMatchScreen({ onBack, data }: Props) {
 
   const shareText = buildShareText(
     opponent, matchDate, scoreUs, scoreThem,
-    teamSheet.label, starterForwards, starterBacks, starterSH, subsOn, tryScorers,
+    teamLabel, starterForwards, starterBacks, starterSH, subsOn, tryScorers,
   )
 
   // Coach rows — players who played or started
@@ -179,7 +186,7 @@ export default function PostMatchScreen({ onBack, data }: Props) {
           scoreUs,
           scoreThem,
           tryScorers,
-          teamLabel: teamSheet.label,
+          teamLabel,
           date,
           subsCount: subLog.length,
           playersUsed: coachRows.length,
@@ -210,7 +217,7 @@ export default function PostMatchScreen({ onBack, data }: Props) {
     <div className="min-h-screen pb-12 bg-m-surface text-m-on-surface">
       <TopAppBar
         title={`vs ${opponent}`}
-        subtitle={matchDate || undefined}
+        subtitle={[matchDate, game > 1 && `Team ${teamLabel}`].filter(Boolean).join(' · ') || undefined}
         onBack={onBack}
         leading={<WoodfordMark size={32} />}
         actions={
@@ -313,10 +320,12 @@ export default function PostMatchScreen({ onBack, data }: Props) {
                       {r.tries} {r.tries === 1 ? 'try' : 'tries'}
                     </span>
                   )}
-                  <span className="mono text-base font-bold w-12 text-right">{r.mins}′</span>
+                  {!manual && <span className="mono text-base font-bold w-12 text-right">{r.mins}′</span>}
                 </div>
               ))}
-              {coachRows.length === 0 && (
+              {manual ? (
+                <div className="px-4 py-4 text-sm text-m-on-surface-variant text-center">Result added afterwards, so no minutes were recorded</div>
+              ) : coachRows.length === 0 && (
                 <div className="px-4 py-4 text-sm text-m-on-surface-variant text-center">No playing time recorded</div>
               )}
             </div>
