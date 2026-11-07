@@ -64,4 +64,21 @@ describe('refitToFormat', () => {
     })
     expect(r.assignments.size).toBe(0)
   })
+
+  it('12 → 11 sits one back down; 10 → 11 brings one on', () => {
+    const twelve = tenASide()
+    twelve.set('xb1', 'A')
+    twelve.set('xb2', 'A')
+    const down = refitToFormat({
+      players, assignments: twelve, groupOverrides: new Map(), playersPerSide: 11,
+      played: new Map([['b2', 30]]), teamCount: 1,
+    })
+    expect(down.down.map(d => d.id)).toEqual(['b2'])
+
+    const up = refitToFormat({
+      players, assignments: tenASide(), groupOverrides: new Map(), playersPerSide: 11,
+      played: new Map([['xb1', 5]]), teamCount: 1,
+    })
+    expect(up.up.map(u => u.id)).toEqual(['xb2'])
+  })
 })

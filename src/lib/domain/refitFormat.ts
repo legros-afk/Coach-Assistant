@@ -29,7 +29,7 @@ export interface RefitResult {
 const GROUPS: Group[] = ['scrumhalf', 'forward', 'back'];
 
 /**
- * A last-minute change of format (10-a-side to 12, or back): move players
+ * A last-minute change of format (say 12-a-side down to 11 or 10): move players
  * between each team's starting side and its own bench until the shape fits.
  * Only a team that already has starters is touched.
  */
