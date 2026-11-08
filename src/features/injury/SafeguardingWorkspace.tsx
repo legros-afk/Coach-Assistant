@@ -17,6 +17,7 @@ import InjuryReportSheet from './InjuryReportSheet'
 import { ConcussionSummary, ConcussionTimeline } from './ConcussionStatus'
 import { RedFlagButton, RedFlagList } from './RedFlags'
 import { useInjuryStore } from './useInjuryStore'
+import { shareSafeguardingRecord } from '@/lib/safeguarding/safeguardingSync'
 
 type Tab = 'log' | 'concussions' | 'redflags'
 
@@ -248,6 +249,7 @@ function ConcussionTracker({ onProtocolChanged }: { onProtocolChanged?: (p: Conc
 
   const save = async (p: ConcussionProtocol) => {
     await saveProtocol(p)
+    void shareSafeguardingRecord('concussions', p.id)
     onProtocolChanged?.(p)
   }
   const complete = (p: ConcussionProtocol, stage: StageNumber) =>

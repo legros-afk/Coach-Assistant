@@ -7,6 +7,8 @@ import { flushUnshared } from './pendingShare';
 import { clubPinConfigured } from './driveRead';
 import { syncFixturesFromSpond } from '@/lib/spond/syncFixturesFromSpond';
 import { friendlySyncError } from '@/lib/friendly';
+import { syncSafeguarding } from '@/lib/safeguarding/safeguardingSync';
+import { useInjuryStore } from '@/features/injury/useInjuryStore';
 
 const LAST_SYNCED_KEY = 'coach-last-synced';
 
@@ -31,6 +33,11 @@ export const useSyncStore = create<SyncStore>()((set) => ({
     // below can't mistake it for something older than the club's copy.
     await flushUnshared();
     const result = await syncFromDrive(DRIVE_FOLDER_ID);
+
+    // Injury reports and concussion protocols: share, pull, and delete
+    // anything past the one-year retention. Never blocks the main sync.
+    await syncSafeguarding().catch(() => undefined);
+    await useInjuryStore.getState().hydrate();
 
     if (result.ok) {
       // Spond is the fixture list: fold in its changes, then share them

@@ -4,6 +4,7 @@ import type { Player } from '@/lib/events/types'
 import { INJURY_TYPES, type InjuryReport } from '@/lib/safeguarding/types'
 import { concussionSms, injuryMailto } from '@/lib/safeguarding/injuryEmail'
 import { protocolFromReport } from '@/lib/safeguarding/protocol'
+import { shareSafeguardingRecord } from '@/lib/safeguarding/safeguardingSync'
 import { Sheet } from '@/ui/Sheet'
 import { Button } from '@/ui/Button'
 import { ButtonGroup } from '@/ui/ButtonGroup'
@@ -50,9 +51,11 @@ export default function InjuryReportSheet({ player, onClose }: Props) {
       setReporterName(form.reportedBy)
       await saveReport(report)
       // A suspected concussion starts the return-to-play steps straight away
-      if (report.headInjuryOrConcussion) {
-        await saveProtocol(protocolFromReport(report, newSafeguardingId('con')))
-      }
+      const protocol = report.headInjuryOrConcussion ? protocolFromReport(report, newSafeguardingId('con')) : null
+      if (protocol) await saveProtocol(protocol)
+      // Shared with the safeguarding officer in the background (or next sync)
+      void shareSafeguardingRecord('injuries', report.id)
+        .then(() => protocol && shareSafeguardingRecord('concussions', protocol.id))
       setSaved(report)
       // Opens the coach's email app with everything filled in; they press send
       window.location.href = injuryMailto(report)
