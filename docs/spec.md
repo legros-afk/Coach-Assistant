@@ -532,6 +532,9 @@ interface InjuryReport {
   parentGuardian: string;   // Parent/guardian name
   parentContact: string;   // Phone number
   incidentDescription: string;  // Free text — what happened
+  treatmentGiven: string;      // Free text — first aid / treatment given
+  followUp?: string;           // Optional — follow-up required (if any)
+  parentsInformed: boolean;    // Tickbox — parents/guardians informed?
   injuryType: string[];     // ["sprain", "strain", "cut", "bruise", "bleeding", "other"]
   bodyPart?: string;        // Optional: where on the body
   headInjuryOrConcussion: boolean;  // RFU concussion flag
@@ -613,27 +616,34 @@ Injury reports and concussion protocols are **retained for 1 year only**. On eve
 
 Accessible from the **Squad screen**: tap a player, "Report Injury" action. The form is available to all coaches, not just the safeguarding role — coaches are the people pitch-side when injuries happen.
 
-**Fields** (matching the DOCX template):
+**Fields (Sarah's lean quick form — default view, per feedback 08/11):**
 - Date (default: today)
 - Time (default: now)
 - Location (select: Training / Match / Festival / Other + free text)
+- How it happened (free text area)
+- Treatment given (free text area)
+- Follow-up (optional free text — "if any")
+- Parents informed? (tickbox)
+
+**Full DOCX-template fields (optional expand — "More details" disclosure):**
 - Staff present (free text)
 - Player (auto-filled from tapped player, editable)
 - Age group (auto-filled: "U12")
 - Parent/guardian name (free text)
 - Parent/guardian contact number (free text)
-- Incident description (free text area)
 - Injury type (checkboxes: sprain, strain, cut, bruise, bleeding, other)
 - Body part (optional free text)
 - Head injury / concussion (toggle)
 - Hospital / ambulance called (toggle)
+
+The lean form is the default because the person filing pitch-side (often Sarah) needs it fast. The full form is one tap away for the complete DOCX record. Both write the same `InjuryReport` record; unused expanded fields are empty.
 
 **On submit:**
 1. Save to IndexedDB (`injuryReports` table).
 2. Publish to safeguarding Drive folder (if publisher).
 3. Generate a pre-filled `mailto:` link:
    - **To:** Bekah Owen (Head of Medical)
-   - **Cc:** Liz Alvarez (Safeguarding Officer)
+   - **Cc:** Liz Alvarez (Safeguarding Officer), couppis@gmail.com (per Sarah, 08/11)
    - **Subject:** `Youth & Mini Injury Report: {player name}, {date}`
    - **Body:** All fields formatted as readable text matching the DOCX template
 4. Open the `mailto:` link — this opens the coach's email app with everything pre-filled. The coach reviews and hits send.
@@ -686,6 +696,7 @@ Hardcoded in config (not user-configurable in v1):
 // src/config/club.ts
 export const MEDICAL_OFFICER_EMAIL    = 'body_elite_essex@hotmail.com';  // To — Bekah Owen, Head of Medical
 export const SAFEGUARDING_OFFICER_EMAIL = 'lizngrant@yahoo.co.uk';       // Cc — Liz Alvarez, Safeguarding Officer
+export const SAFEGUARDING_CC_EMAIL     = 'couppis@gmail.com';            // Cc — second safeguarding Cc (per Sarah, 08/11)
 export const MEDICAL_OFFICER_MOBILE   = '07857301296';                   // Bekah — for concussion SMS alert
 // Subject is built per-report: `Youth & Mini Injury Report: {player name}, {date}`
 export const INJURY_EMAIL_SUBJECT_PREFIX = 'Youth & Mini Injury Report';
