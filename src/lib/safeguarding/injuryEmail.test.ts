@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { concussionSms, injuryEmailBody, injuryEmailSubject, injuryMailto } from './injuryEmail'
+import { concussionSms, injuryEmailBody, injuryWhere, injuryEmailSubject, injuryMailto } from './injuryEmail'
 import { protocolFromReport } from './protocol'
 import { earliestReturnDate } from './gras'
 import type { InjuryReport } from './types'
@@ -55,5 +55,28 @@ describe('concussion protocol from a report', () => {
     expect(p.stages).toHaveLength(6)
     expect(p.stages.every(s => !s.completed)).toBe(true)
     expect(earliestReturnDate(p)).toBe('2026-11-29')
+  })
+})
+
+describe('injury email fixture', () => {
+  const atMatch: InjuryReport = { ...report, location: 'Match', fixtureId: 'f1', fixtureLabel: '14 Sep vs Chingford (away)' }
+
+  it('gives the fixture straight after the location', () => {
+    const body = injuryEmailBody(atMatch)
+    const loc = body.indexOf('Location: Match')
+    const fixture = body.indexOf('Fixture: 14 Sep vs Chingford (away)')
+    expect(loc).toBeGreaterThan(-1)
+    expect(fixture).toBeGreaterThan(loc)
+    expect(fixture).toBeLessThan(body.indexOf('Staff:'))
+  })
+
+  it('leaves the fixture line out for older reports and training', () => {
+    expect(injuryEmailBody(report)).not.toContain('Fixture:')
+    expect(injuryEmailBody({ ...report, location: 'Match' })).not.toContain('Fixture:')
+  })
+
+  it('reads where it happened in one line', () => {
+    expect(injuryWhere(atMatch)).toBe('Match · 14 Sep vs Chingford (away)')
+    expect(injuryWhere(report)).toBe('Training')
   })
 })

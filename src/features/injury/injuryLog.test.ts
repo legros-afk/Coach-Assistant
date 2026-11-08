@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterReports } from './SafeguardingWorkspace'
+import { filterReports, logSummary } from './SafeguardingWorkspace'
 import type { InjuryReport } from '@/lib/safeguarding/types'
 
 const base: InjuryReport = {
@@ -24,5 +24,17 @@ describe('injury log filters', () => {
     expect(ids(filterReports(reports, { ...none, to: '2026-11-05' }))).toEqual(['a', 'b'])
     expect(ids(filterReports(reports, { ...none, types: ['head'] }))).toEqual(['b'])
     expect(ids(filterReports(reports, { ...none, types: ['cut', 'hospital'] }))).toEqual(['a', 'c'])
+  })
+})
+
+describe('injury log summary', () => {
+  it('shows the fixture when there is one', () => {
+    expect(logSummary({ ...base, location: 'Match', fixtureId: 'f1', fixtureLabel: '14 Sep vs Chingford (away)' }))
+      .toBe('01/10/2026 · 10:00 · Match · 14 Sep vs Chingford (away)')
+  })
+
+  it('reads older reports with no fixture as before', () => {
+    expect(logSummary(base)).toBe('01/10/2026 · 10:00 · Training')
+    expect(logSummary({ ...base, location: 'Match' })).toBe('01/10/2026 · 10:00 · Match')
   })
 })

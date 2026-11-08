@@ -12,6 +12,11 @@ export function ukDate(iso: string): string {
 
 const yesNo = (b: boolean) => (b ? 'Yes' : 'No');
 
+/** "Match · 14 Sep vs Chingford (away)", or just the location. */
+export function injuryWhere(r: Pick<InjuryReport, 'location' | 'fixtureLabel'>): string {
+  return r.fixtureLabel ? `${r.location} · ${r.fixtureLabel}` : r.location;
+}
+
 export function injuryEmailSubject(r: Pick<InjuryReport, 'playerName' | 'date'>): string {
   return `${INJURY_EMAIL_SUBJECT_PREFIX}: ${r.playerName}, ${ukDate(r.date)}`;
 }
@@ -32,6 +37,7 @@ export function injuryEmailBody(r: InjuryReport): string {
     `Date: ${ukDate(r.date)}`,
     `Time: ${r.time}`,
     `Location: ${r.location}`,
+    ...(r.fixtureLabel ? [`Fixture: ${r.fixtureLabel}`] : []),
     `Staff: ${r.staffPresent}`,
     `Player [Full Name]: ${r.playerName}`,
     `Age Group: ${r.playerAgeGroup}`,

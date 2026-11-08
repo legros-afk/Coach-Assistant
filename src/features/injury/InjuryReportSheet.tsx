@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AlertTriangle, CheckCircle2, ChevronDown, Mail, MessageSquare } from 'lucide-react'
-import type { Player } from '@/lib/events/types'
+import type { Fixture, Player } from '@/lib/events/types'
 import { INJURY_TYPES, type InjuryReport } from '@/lib/safeguarding/types'
 import { concussionSms, injuryMailto } from '@/lib/safeguarding/injuryEmail'
 import { protocolFromReport } from '@/lib/safeguarding/protocol'
@@ -10,7 +10,11 @@ import { Button } from '@/ui/Button'
 import { ButtonGroup } from '@/ui/ButtonGroup'
 import { TextArea, TextField } from '@/ui/TextField'
 import { CheckChip, CheckRow, SwitchRow } from '@/ui/Toggle'
-import { emptyInjuryForm, formMissing, formToReport, type InjuryForm, type LocationChoice } from './injuryForm'
+import { useFixtureStore } from '@/features/fixture/useFixtureStore'
+import {
+  FIXTURE_OTHER, atFixture, chooseFixture, chooseLocation, emptyInjuryForm, fixtureLabel, fixtureOptions,
+  formMissing, formToReport, type InjuryForm, type LocationChoice,
+} from './injuryForm'
 import { RedFlagButton } from './RedFlags'
 import { getReporterName, newSafeguardingId, setReporterName, useInjuryStore } from './useInjuryStore'
 
@@ -35,6 +39,11 @@ export default function InjuryReportSheet({ player, onClose }: Props) {
   const [more, setMore] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Read-only use of the fixtures, for "which match was it?"
+  const fixtures = useFixtureStore(s => s.fixtures)
+  const fixturesReady = useFixtureStore(s => s.isHydrated)
+  const hydrateFixtures = useFixtureStore(s => s.hydrate)
+  useEffect(() => { if (!fixturesReady) void hydrateFixtures() }, [fixturesReady, hydrateFixtures])
 
   const set = <K extends keyof InjuryForm>(k: K, v: InjuryForm[K]) => setForm(f => ({ ...f, [k]: v }))
   const toggleType = (t: string) =>
@@ -87,13 +96,16 @@ export default function InjuryReportSheet({ player, onClose }: Props) {
             size="sm"
             ariaLabel="Where it happened"
             value={form.locationChoice}
-            onChange={v => set('locationChoice', v)}
+            onChange={v => setForm(f => chooseLocation(f, v, fixtures))}
             options={LOCATIONS.map(l => ({ value: l, label: l }))}
           />
           {form.locationChoice === 'Other' && (
             <div className="mt-2">
               <TextField label="Where was it?" value={form.locationOther} onChange={e => set('locationOther', e.target.value)} placeholder="e.g. tour, school match" />
             </div>
+          )}
+          {atFixture(form.locationChoice) && (
+            <FixturePicker form={form} fixtures={fixtures} onChange={setForm} />
           )}
         </div>
 
@@ -159,6 +171,45 @@ export default function InjuryReportSheet({ player, onClose }: Props) {
         </div>
       </div>
     </Sheet>
+  )
+}
+
+/** Which match or festival: from the fixtures list, or typed in when it isn't there. */
+function FixturePicker({ form, fixtures, onChange }: {
+  form: InjuryForm
+  fixtures: Fixture[]
+  onChange: (f: InjuryForm) => void
+}) {
+  const what = form.locationChoice === 'Match' ? 'match' : 'festival'
+  const options = fixtureOptions(fixtures, form.date)
+  // The picked fixture stays listed even if it is now further away than the rest
+  const picked = fixtures.find(f => f.id === form.fixtureChoice)
+  if (picked && !options.includes(picked)) options.unshift(picked)
+  return (
+    <div className="mt-2 space-y-2">
+      {options.length > 0 && (
+        <label className="block">
+          <span className="text-sm font-medium text-m-on-surface-variant">Which {what}?</span>
+          <select
+            value={form.fixtureChoice}
+            onChange={e => onChange(chooseFixture(form, e.target.value, fixtures))}
+            className="mt-1 w-full h-14 px-3 rounded-m-xs border border-m-outline bg-transparent text-base"
+          >
+            <option value="" disabled>Choose…</option>
+            {options.map(f => <option key={f.id} value={f.id}>{fixtureLabel(f)}</option>)}
+            <option value={FIXTURE_OTHER}>Not in the list</option>
+          </select>
+        </label>
+      )}
+      {form.fixtureChoice === FIXTURE_OTHER && (
+        <TextField
+          label={`Which ${what} was it?`}
+          value={form.fixtureOther}
+          onChange={e => onChange({ ...form, fixtureOther: e.target.value })}
+          placeholder={what === 'match' ? 'e.g. 14 Sep vs Chingford (away)' : 'e.g. Harlow festival'}
+        />
+      )}
+    </div>
   )
 }
 

@@ -4,7 +4,7 @@ import type { Player } from '@/lib/events/types'
 import type { ConcussionProtocol, InjuryReport, StageNumber } from '@/lib/safeguarding/types'
 import { INJURY_TYPES } from '@/lib/safeguarding/types'
 import { completeStage, dropBackStage, isActive } from '@/lib/safeguarding/gras'
-import { injuryMailto, ukDate } from '@/lib/safeguarding/injuryEmail'
+import { injuryMailto, injuryWhere, ukDate } from '@/lib/safeguarding/injuryEmail'
 import { useSquadStore } from '@/features/squad/useSquadStore'
 import { TopAppBar, BarButton } from '@/ui/TopAppBar'
 import { NavBar } from '@/ui/NavBar'
@@ -88,6 +88,11 @@ export function filterReports(
   )
 }
 
+/** The log card's second line: "08/11/2026 · 10:05 · Match · 14 Sep vs Chingford (away)". */
+export function logSummary(r: InjuryReport): string {
+  return `${ukDate(r.date)} · ${r.time} · ${injuryWhere(r)}`
+}
+
 function InjuryLog() {
   const reports = useInjuryStore(s => s.reports)
   const [player, setPlayer] = useState('')
@@ -150,7 +155,7 @@ function InjuryLog() {
                 {r.headInjuryOrConcussion && <span className="text-xs font-bold px-2 py-1 rounded-full bg-m-error text-m-on-error">Head</span>}
                 {r.hospitalOrAmbulance && <span className="text-xs font-bold px-2 py-1 rounded-full bg-m-tertiary-container text-m-on-tertiary-container">Hospital</span>}
               </div>
-              <div className="text-sm text-m-on-surface-variant">{ukDate(r.date)} · {r.time} · {r.location}</div>
+              <div className="text-sm text-m-on-surface-variant">{logSummary(r)}</div>
               <div className="text-sm mt-1 line-clamp-2">{r.incidentDescription}</div>
             </Card>
           </button>
@@ -213,6 +218,7 @@ function ReportDetail({ report: r, onClose }: { report: InjuryReport; onClose: (
         <div className="flex justify-end -mt-1 mb-2"><RedFlagButton /></div>
         <Row label="Date and time" value={`${ukDate(r.date)} at ${r.time}`} />
         <Row label="Where" value={r.location} />
+        {r.fixtureLabel && <Row label={r.location === 'Festival' ? 'Festival' : 'Match'} value={r.fixtureLabel} />}
         <Row label="How it happened" value={r.incidentDescription} />
         <Row label="Treatment given" value={r.treatmentGiven} />
         <Row label="Follow-up" value={r.followUp} />

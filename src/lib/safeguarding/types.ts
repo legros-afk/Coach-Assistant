@@ -18,6 +18,11 @@ export interface InjuryReport {
   date: string;              // ISO date of incident (yyyy-mm-dd)
   time: string;              // "HH:mm" local time
   location: string;          // "Training" | "Match" | "Festival" | free text
+  /** The fixture it happened at (Match/Festival), when picked from the list. */
+  fixtureId?: ID;
+  /** "14 Sep vs Chingford (away)", or typed in. Copied onto the report so it
+   *  still reads right after the fixture is edited or deleted. */
+  fixtureLabel?: string;
   staffPresent: string;      // Names of coaches/staff present
   parentGuardian: string;    // Parent/guardian name
   parentContact: string;     // Phone number
