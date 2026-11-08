@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { GROUP_COLOR } from '@/ui/positions'
+import { GROUP_COLOR, GROUP_NAME, GROUP_SHORT } from '@/ui/positions'
 import {
   AlertTriangle, Brain, ClipboardPlus, Pencil, Plus, Settings, Trash2, UserPlus, Users,
 } from 'lucide-react'
@@ -26,8 +26,7 @@ import SeasonView from './SeasonView'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
 
 
-const GROUP_LABEL: Record<Group, string> = { forward: 'Forward', back: 'Back', scrumhalf: 'Scrum-half' }
-const GROUP_SHORT: Record<Group, string> = { forward: 'F', back: 'B', scrumhalf: 'SH' }
+const GROUP_LABEL = GROUP_NAME
 const ALL_GROUPS: Group[] = ['forward', 'back', 'scrumhalf']
 
 interface PlayerForm {

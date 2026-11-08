@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Check, ClipboardPaste, CloudUpload, Copy, History, LayoutGrid, Lock, RefreshCw, Zap } from 'lucide-react'
 import { getSpondAvailability, type SpondAvailability } from '@/lib/spond/spondSync'
 import { spondConfigured } from '@/lib/spond/spondStore'
-import { FORMATS, teamLimits, validateComposition } from '@/lib/domain/validateComposition'
+import { FORMATS, isFormat, teamLimits, validateComposition } from '@/lib/domain/validateComposition'
 import { draftTeams } from '@/lib/domain/draftTeams'
+import { refitToFormat } from '@/lib/domain/refitFormat'
 import { formatTeamsForWhatsApp } from '@/lib/domain/formatTeamSheet'
 import { parseTeamSheet } from '@/lib/domain/parseTeamSheet'
 import type { ParsedSlot } from '@/lib/domain/parseTeamSheet'
@@ -91,7 +92,7 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
   const [date, setDate]           = useState(existing?.date ?? initialDate ?? todayIso())
   const [opponent, setOpponent]   = useState(existing?.opponent ?? initialOpponent ?? '')
   const opponentRef = useRef<HTMLInputElement>(null)
-  // Editable here: a fixture can be switched to 10-a-side on the day.
+  // Editable here: a fixture can be switched to 11 or 10 a side on the day.
   const [playersPerSide, setPlayersPerSide] = useState(existing?.playersPerSide ?? initialPlayersPerSide ?? 12)
   // An existing fixture already says how many teams it was built for; a new one
   // falls back to whatever this coach chose last.
@@ -369,6 +370,55 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
     setAssignments(base)
     setGroupOverrides(baseOverrides)
     setDraftedIds(new Set(result.assignments.keys()))
+  }
+
+  // ── a last-minute change of format (say 10-a-side to 12): each team's
+  // starting side is reshaped from its own bench, with an undo.
+  const [formatNote, setFormatNote] = useState<{ text: string; undo: () => void } | null>(null)
+  const changeFormat = (n: number) => {
+    const before = { assignments, groupOverrides, draftedIds, playersPerSide }
+    setPlayersPerSide(n)
+    const r = refitToFormat({
+      players,
+      assignments: effective,
+      groupOverrides,
+      playersPerSide: n,
+      played: minutesById.size > 0 ? minutesById : startsById,
+      teamCount,
+    })
+    if (r.assignments.size === 0 && !r.short.A && !r.short.B) { setFormatNote(null); return }
+
+    const nextAssign = new Map(assignments)
+    r.assignments.forEach((v, k) => nextAssign.set(k, v))
+    const nextOverrides = new Map(groupOverrides)
+    r.down.forEach(d => nextOverrides.delete(d.id))
+    r.groups.forEach((g, k) => nextOverrides.set(k, g))
+    setAssignments(nextAssign)
+    setGroupOverrides(nextOverrides)
+    // Moved for the format, so Auto-pick again keeps them where they are
+    setDraftedIds(s => new Set([...s].filter(id => !r.assignments.has(id))))
+
+    const name = (id: ID) => players.find(p => p.id === id)?.name ?? '?'
+    const list = (ids: ID[]) => ids.length <= 1 ? ids.map(name).join('') : `${ids.slice(0, -1).map(name).join(', ')} and ${name(ids[ids.length - 1])}`
+    const parts: string[] = []
+    for (const team of (teamCount === 2 ? ['A', 'B'] : ['A']) as ('A' | 'B')[]) {
+      const which = teamCount === 2 ? ` for Team ${team}` : ''
+      const up = r.up.filter(u => u.team === team).map(u => u.id)
+      const down = r.down.filter(d => d.team === team).map(d => d.id)
+      if (up.length) parts.push(`${list(up)} ${up.length === 1 ? 'starts' : 'start'}${which}.`)
+      if (down.length) parts.push(`${list(down)} to the bench${which}.`)
+      if (r.short[team]) parts.push(`${teamCount === 2 ? `Team ${team}` : 'The team'} is ${r.short[team]} short — move someone in by hand.`)
+    }
+    setFormatNote({
+      text: `${n}-a-side: ${parts.join(' ')}`,
+      undo: () => {
+        setPlayersPerSide(before.playersPerSide)
+        setAssignments(before.assignments)
+        setGroupOverrides(before.groupOverrides)
+        setDraftedIds(before.draftedIds)
+        setFormatNote(null)
+      },
+    })
   }
 
   const [clearArmed, setClearArmed] = useState(false)
@@ -682,15 +732,21 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
               <TextField ref={opponentRef} label="Opponent" value={opponent} onChange={e => setOpponent(e.target.value)} placeholder="e.g. Saints" />
             </div>
             <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-medium text-m-on-surface-variant">Format</span>
+              <span className="text-sm font-medium text-m-on-surface-variant">Players a side</span>
               <ButtonGroup
                 size="sm"
-                ariaLabel="Format"
+                ariaLabel="Players a side"
                 value={playersPerSide}
-                onChange={setPlayersPerSide}
-                options={[...FORMATS, ...(FORMATS.includes(playersPerSide as 12 | 10) ? [] : [playersPerSide])].map(n => ({ value: n, label: `${n}-a-side` }))}
+                onChange={changeFormat}
+                options={[...FORMATS, ...(isFormat(playersPerSide) ? [] : [playersPerSide])].map(n => ({ value: n, label: String(n), ariaLabel: `${n}-a-side` }))}
               />
             </div>
+            {formatNote && (
+              <div className="flex items-start gap-3 p-3 rounded-m-md bg-m-secondary-container text-m-on-secondary-container">
+                <span className="flex-1 text-sm">{formatNote.text}</span>
+                <Button variant="text" size="sm" className="-my-1" onClick={formatNote.undo}>Undo</Button>
+              </div>
+            )}
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-medium text-m-on-surface-variant">Teams today</span>
               <ButtonGroup
@@ -754,10 +810,10 @@ export default function FixturePrepScreen({ existing, initialPlayersPerSide, ini
                 )}
                 <p className="text-sm text-m-on-surface-variant px-1">
                   {draftedIds.size > 0
-                    ? 'Auto-pick fills open places with whoever has played least. Change anyone with one tap; Auto-pick again keeps the players you set by hand.'
+                    ? 'Auto-pick fills open places with whoever has played least. Tap anyone on the pitch to change them; Auto-pick again keeps the players you set by hand.'
                     : teamCount === 1
-                      ? 'Everyone starts on Bench. Tap Start for your starters and Out for anyone missing.'
-                      : 'Pick each team on its tab. Tap a selected option again to free the player for the other team.'}
+                      ? 'Tap a place on the pitch to choose who plays there. Everyone else is on the bench.'
+                      : 'Tap a place on the pitch to choose who plays there. The list shows who’s already in the other team.'}
                 </p>
                 <SquadPicker
                   players={players}

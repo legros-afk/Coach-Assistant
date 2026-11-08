@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Check, X } from 'lucide-react'
+import { Activity, AlertTriangle, ArrowRight, Check, X } from 'lucide-react'
 import type { Group, Player, PlayerMatchState } from '@/lib/events/types'
 import { GroupBadge } from './GroupBadge'
 
@@ -16,10 +16,12 @@ interface SubStatusTrayProps {
   pairings: SubPairing[]
   onClear: () => void
   onConfirm: () => void
+  /** Shown while one player is picked to come off: switch to the blood / injury menu instead */
+  onInjuryInstead?: () => void
 }
 
 export function SubStatusTray({
-  comingOffIds, comingOnIds, pendingConfirm, pairings, onClear, onConfirm,
+  comingOffIds, comingOnIds, pendingConfirm, pairings, onClear, onConfirm, onInjuryInstead,
 }: SubStatusTrayProps) {
   const statusText = comingOffIds.length > comingOnIds.length
     ? 'Now tap a replacement'
@@ -62,6 +64,15 @@ export function SubStatusTray({
           </div>
         ))}
       </div>
+      {onInjuryInstead && (
+        <button
+          onClick={onInjuryInstead}
+          className="w-full mt-2 py-2 rounded-m-md text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition"
+          style={{ background: 'rgba(255,255,255,0.12)', color: 'white' }}
+        >
+          <Activity size={14} strokeWidth={2.5} /> Blood or injury instead
+        </button>
+      )}
       {pendingConfirm && (
         <button
           onClick={onConfirm}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateComposition, projectOnPitchGroups, teamLimits } from './validateComposition';
+import { FORMATS, validateComposition, projectOnPitchGroups, teamLimits } from './validateComposition';
 import type { Group, ID, PlayerMatchState } from '../events/types';
 
 describe('validateComposition', () => {
@@ -51,6 +51,12 @@ describe('validateComposition', () => {
     const result = validateComposition(groups, 12);
     expect(result.valid).toBe(true);
     expect(result.message).toBe('');
+  });
+
+  it('11-a-side is 5 forwards, 5 backs and a 9', () => {
+    expect(teamLimits(11)).toEqual({ f: 5, b: 5, sh: 1 });
+    expect(validateComposition(valid5x5x1, 11).valid).toBe(true);
+    expect(FORMATS).toContain(11);
   });
 
   it('rejects 5F 5B 1SH for 12-a-side and states the needed shape', () => {
