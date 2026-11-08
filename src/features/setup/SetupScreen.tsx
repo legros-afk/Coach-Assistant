@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { CheckCircle2, KeyRound, Link2, Share2 } from 'lucide-react'
-import { getClubPin, setClubPin } from '@/lib/drive/driveRead'
+import { checkClubPin, getClubPin, getClubRole, setClubPin, setClubRole } from '@/lib/drive/driveRead'
 import { FORMATS } from '@/lib/domain/validateComposition'
 import { getDefaultFormat, setDefaultFormat } from '@/lib/prefs'
 import { getKickoffDefaults, saveKickoffDefaults, spondConfigured, getSpondCreds } from '@/lib/spond/spondStore'
@@ -15,6 +15,8 @@ import { getAppearance, setAppearance, type Appearance } from '@/ui/theme'
 
 interface Props {
   onBack: () => void
+  /** The PIN turned out to be the safeguarding officer's: switch workspace. */
+  onRoleChange?: () => void
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -27,15 +29,31 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 // Everything that isn't match day lives here, in plain words.
-export default function SetupScreen({ onBack }: Props) {
+export default function SetupScreen({ onBack, onRoleChange }: Props) {
   // ── coach PIN
   const [pin, setPin] = useState(() => getClubPin())
   const [hasPin, setHasPin] = useState(() => getClubPin().length > 0)
   const [editingPin, setEditingPin] = useState(() => getClubPin().length === 0)
+  const [pinWarning, setPinWarning] = useState<string | null>(null)
   const savePin = () => {
+    // Saved straight away, as before — a coach with no signal can still set it.
+    // The server is then asked whose PIN it is.
     setClubPin(pin)
     setHasPin(pin.length > 0)
     setEditingPin(false)
+    setPinWarning(null)
+    const saved = pin
+    if (!saved) return
+    void checkClubPin(saved).then(r => {
+      if (getClubPin() !== saved) return // changed again meanwhile
+      if (r.ok) {
+        const before = getClubRole()
+        setClubRole(r.role)
+        if (r.role !== before) onRoleChange?.()
+      } else if (r.wrong) {
+        setPinWarning('That PIN wasn’t recognised. Check it with your head coach.')
+      }
+    })
   }
 
   // ── appearance
@@ -97,7 +115,11 @@ export default function SetupScreen({ onBack }: Props) {
               <div className="flex-1 text-base">Set — you can pick teams and share them.</div>
               <Button variant="tonal" size="sm" onClick={() => setEditingPin(true)}>Change</Button>
             </div>
-          ) : (
+          ) : null}
+          {!editingPin && hasPin && pinWarning ? (
+            <div role="alert" className="mt-3 text-sm font-medium text-m-error">{pinWarning}</div>
+          ) : null}
+          {!editingPin && hasPin ? null : (
             <>
               <p className="text-sm leading-relaxed mb-3 text-m-on-surface-variant">
                 Ask your head coach for it. It lets you pick teams and share them with the other

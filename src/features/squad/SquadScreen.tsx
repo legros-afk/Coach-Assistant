@@ -12,7 +12,7 @@ import { Sheet } from '@/ui/Sheet'
 import { TextField, TextArea } from '@/ui/TextField'
 import { WoodfordMark } from '@/components/WoodfordMark'
 import type { Group, Player } from '@/lib/events/types'
-import { clubPinConfigured } from '@/lib/drive/driveRead'
+import { coachPinConfigured } from '@/lib/drive/driveRead'
 import { publishSquad } from '@/lib/drive/drivePublish'
 import { markSquadSynced, discardLocalSquadEdits } from '@/lib/drive/squadSyncState'
 import { DRIVE_FOLDER_ID } from '@/config/club'
@@ -73,7 +73,7 @@ export default function SquadScreen({ onOpenSettings }: Props) {
   const { isSyncing, syncAll } = useSyncStore()
 
   // Only the PIN holders look after the squad; for everyone else it's a list.
-  const canEdit = clubPinConfigured()
+  const canEdit = coachPinConfigured()
 
   useEffect(() => { if (!isHydrated) hydrate() }, [isHydrated, hydrate])
 
@@ -138,7 +138,7 @@ export default function SquadScreen({ onOpenSettings }: Props) {
   const handlePublish = async (force = false) => {
     // Read the latest squad: this runs straight after a store update
     const squad = useSquadStore.getState().squad
-    if (!squad || !clubPinConfigured()) return
+    if (!squad || !coachPinConfigured()) return
     setPublishing(true)
     const result = await publishSquad(squad, DRIVE_FOLDER_ID, force)
     setPublishing(false)

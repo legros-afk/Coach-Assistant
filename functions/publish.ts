@@ -11,6 +11,16 @@
 //
 // Accepts POST { code, folderId, subfolder?, fileName, content, baseVersion?, force? }
 //      or POST { code, folderId, collection: 'fixtures' | 'matches', item }
+//      or POST { code, check: true }            → { ok, role } and writes nothing
+//      or POST { code, folder: 'safeguarding', folderId, subfolder, fileName, content?, createOnly?, delete? }
+//
+// Two PINs: CLUB_PUBLISH_CODE (coaches) and SAFEGUARDING_PIN (the
+// safeguarding officer). The PIN decides the role:
+//   coach        — squad/fixtures/matches as before; in the safeguarding folder
+//                  may file injury reports and start (create-only) a
+//                  concussion protocol, nothing else.
+//   safeguarding — the safeguarding folder only: updates concussion
+//                  protocols and deletes records past the 1-year retention.
 //
 // Why collections: a service account has no Drive storage of its own, so it
 // can't create files in a personal Drive — it can only edit files a person
@@ -21,6 +31,41 @@ interface Env {
   GOOGLE_SERVICE_ACCOUNT_EMAIL: string
   GOOGLE_SERVICE_ACCOUNT_KEY: string
   CLUB_PUBLISH_CODE: string
+  /** Safeguarding officer's PIN. Optional: unset means no safeguarding role. */
+  SAFEGUARDING_PIN?: string
+  /** When set, safeguarding-folder writes must target exactly this folder. */
+  SAFEGUARDING_FOLDER_ID?: string
+}
+
+type Role = 'coach' | 'safeguarding'
+
+/** Which role a PIN unlocks, or null for a wrong PIN. */
+export function roleForCode(code: unknown, env: Pick<Env, 'CLUB_PUBLISH_CODE' | 'SAFEGUARDING_PIN'>): Role | null {
+  if (typeof code !== 'string' || !code) return null
+  if (code === env.CLUB_PUBLISH_CODE) return 'coach'
+  if (env.SAFEGUARDING_PIN && code === env.SAFEGUARDING_PIN) return 'safeguarding'
+  return null
+}
+
+const SAFEGUARDING_SUBFOLDERS = ['injuries', 'concussions'] as const
+
+/**
+ * What each role may do. Returns an error message, or null when allowed.
+ * Kept pure so it can be unit-tested without Drive.
+ */
+export function authorise(role: Role, p: Pick<PublishRequest, 'folder' | 'collection' | 'subfolder' | 'createOnly' | 'delete'>): string | null {
+  if (p.folder === 'safeguarding') {
+    if (!p.subfolder || !(SAFEGUARDING_SUBFOLDERS as readonly string[]).includes(p.subfolder)) {
+      return 'Unknown safeguarding folder.'
+    }
+    if (role === 'safeguarding') return null
+    if (p.delete) return 'Only the safeguarding officer can delete records.'
+    if (p.subfolder === 'concussions' && !p.createOnly) return 'Only the safeguarding officer can update a concussion protocol.'
+    return null
+  }
+  if (role === 'safeguarding') return 'The safeguarding PIN can only publish safeguarding records.'
+  if (p.delete) return 'Delete is only for safeguarding records.'
+  return null
 }
 
 interface PublishRequest {
@@ -41,6 +86,14 @@ interface PublishRequest {
   /** Upsert `item` into <collection>.json in the folder root instead of writing a file */
   collection?: 'fixtures' | 'matches'
   item?: { id: string; version?: number; events?: unknown[] }
+  /** Just report which role the PIN unlocks; write nothing. */
+  check?: boolean
+  /** 'safeguarding' targets the separate injuries/concussions folder. */
+  folder?: 'safeguarding'
+  /** Write only if no file of that name exists yet (never overwrite). */
+  createOnly?: boolean
+  /** Remove the file instead of writing it (retention clean-up). */
+  delete?: boolean
 }
 
 type CollectionItem = NonNullable<PublishRequest['item']>
@@ -246,6 +299,16 @@ async function storedVersion(fileId: string, token: string): Promise<number | nu
   }
 }
 
+async function deleteFile(name: string, parentId: string, token: string): Promise<void> {
+  const existing = await findFileId(name, parentId, token)
+  if (!existing) return // already gone
+  const res = await fetch(`${DRIVE_BASE}/files/${existing}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok && res.status !== 404) throw new Error(`Drive API error (${res.status}): ${(await res.text()).slice(0, 300)}`)
+}
+
 async function upsertFile(name: string, content: unknown, parentId: string, token: string, baseVersion?: number): Promise<string> {
   // Name-based lookup, not a client-cached file ID — any coach's device finds
   // the same file, so two coaches publishing the same fixture update in
@@ -291,12 +354,42 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return Response.json({ ok: false, error: 'Invalid request body' }, { status: 400 })
   }
 
-  if (payload.code !== env.CLUB_PUBLISH_CODE) {
+  // Both PINs share the same wrong-attempt throttle and lockout
+  const role = roleForCode(payload.code, env)
+  if (!role) {
     recordWrongAttempt(ip)
     await sleep(WRONG_DELAY_MS)
     return Response.json({ ok: false, error: 'Wrong PIN.' }, { status: 403 })
   }
   clearAttempts(ip)
+
+  if (payload.check) return Response.json({ ok: true, role })
+
+  const denied = authorise(role, payload)
+  if (denied) return Response.json({ ok: false, error: denied }, { status: 403 })
+
+  if (payload.folder === 'safeguarding') {
+    if (!payload.folderId || !payload.fileName || (!payload.delete && payload.content === undefined)) {
+      return Response.json({ ok: false, error: 'Missing folderId, fileName, or content.' }, { status: 400 })
+    }
+    if (env.SAFEGUARDING_FOLDER_ID && payload.folderId !== env.SAFEGUARDING_FOLDER_ID) {
+      return Response.json({ ok: false, error: 'That is not the safeguarding folder.' }, { status: 403 })
+    }
+    try {
+      const token = await getAccessToken(env)
+      const parentId = await ensureSubfolder(payload.subfolder!, payload.folderId, token)
+      if (payload.delete) {
+        await deleteFile(payload.fileName, parentId, token)
+      } else if (payload.createOnly && await findFileId(payload.fileName, parentId, token)) {
+        // already there — a coach never overwrites the officer's copy
+      } else {
+        await upsertFile(payload.fileName, payload.content, parentId, token)
+      }
+      return Response.json({ ok: true, role })
+    } catch (e) {
+      return Response.json({ ok: false, error: e instanceof Error ? e.message : 'Publish failed' }, { status: 502 })
+    }
+  }
   if (payload.collection) {
     if (!payload.folderId || !payload.item?.id || (payload.collection !== 'fixtures' && payload.collection !== 'matches')) {
       return Response.json({ ok: false, error: 'Missing folderId, collection or item.' }, { status: 400 })

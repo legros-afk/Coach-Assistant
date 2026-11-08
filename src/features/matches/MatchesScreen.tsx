@@ -11,7 +11,7 @@ import { useFixtureStore } from '@/features/fixture/useFixtureStore'
 import { DEMO_SQUAD_ID, useSquadStore } from '@/features/squad/useSquadStore'
 import { useMatchStore } from '@/features/match/useMatchStore'
 import { useSyncStore, syncStatusText } from '@/lib/drive/useSyncStore'
-import { clubPinConfigured } from '@/lib/drive/driveRead'
+import { coachPinConfigured } from '@/lib/drive/driveRead'
 import SpondSheet from '@/features/spond/SpondSheet'
 import { spondConfigured } from '@/lib/spond/spondStore'
 import { createSpondEventForFixture } from '@/lib/spond/spondSync'
@@ -56,7 +56,7 @@ export default function MatchesScreen({
   const { fixtures, isHydrated, hydrate, saveFixture } = useFixtureStore()
   const { squad, isHydrated: squadReady, hydrate: hydrateSquad } = useSquadStore()
   const sync = useSyncStore()
-  const canEdit = clubPinConfigured()
+  const canEdit = coachPinConfigured()
   const defaultFormat = getDefaultFormat()
 
   const active = {
