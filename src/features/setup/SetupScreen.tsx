@@ -112,7 +112,11 @@ export default function SetupScreen({ onBack, onRoleChange }: Props) {
           {!editingPin && hasPin ? (
             <div className="flex items-center gap-3">
               <CheckCircle2 size={24} className="text-x-good flex-shrink-0" strokeWidth={2.25} />
-              <div className="flex-1 text-base">Set — you can pick teams and share them.</div>
+              <div className="flex-1 text-base">
+                {getClubRole() === 'safeguarding'
+                  ? 'Set — safeguarding officer. You see injuries and concussions.'
+                  : 'Set — you can pick teams and share them.'}
+              </div>
               <Button variant="tonal" size="sm" onClick={() => setEditingPin(true)}>Change</Button>
             </div>
           ) : null}

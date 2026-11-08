@@ -15,6 +15,8 @@ import InstallPrompt from '@/components/InstallPrompt'
 import { NavBar } from '@/ui/NavBar'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
 import { useInjuryStore } from '@/features/injury/useInjuryStore'
+import SafeguardingWorkspace from '@/features/injury/SafeguardingWorkspace'
+import { getClubRole } from '@/lib/drive/driveRead'
 
 
 // Two tabs: Matches (everything about a fixture, from picking to the result)
@@ -25,6 +27,8 @@ const isTab = (s: unknown): s is Tab => s === 'matches' || s === 'team'
 
 export default function App() {
   const [screen, setScreen]                 = useState<Screen>('loading')
+  // The safeguarding officer's PIN opens a separate, welfare-only workspace
+  const [role, setRole]                     = useState(getClubRole)
   const [editingFixture, setEditingFixture] = useState<Fixture | undefined>()
   const [newFixturePPS, setNewFixturePPS]   = useState<number>(12)
   const [newFixtureSpond, setNewFixtureSpond] = useState<{ id: string; opponent: string; date: string } | undefined>()
@@ -160,7 +164,16 @@ export default function App() {
   }
 
   if (screen === 'settings') {
-    return <SetupScreen onBack={closeOver} />
+    return (
+      <SetupScreen
+        onBack={() => { setRole(getClubRole()); closeOver() }}
+        onRoleChange={() => setRole(getClubRole())}
+      />
+    )
+  }
+
+  if (role === 'safeguarding') {
+    return <SafeguardingWorkspace onOpenSettings={openSettings} />
   }
 
   return (
