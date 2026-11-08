@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { GROUP_COLOR } from '@/ui/positions'
 import {
-  AlertTriangle, Plus, Settings, Trash2, UserPlus, Users,
+  AlertTriangle, ClipboardPlus, Pencil, Plus, Settings, Trash2, UserPlus, Users,
 } from 'lucide-react'
 import { TopAppBar, BarButton } from '@/ui/TopAppBar'
 import { Button } from '@/ui/Button'
@@ -18,6 +18,7 @@ import { markSquadSynced, discardLocalSquadEdits } from '@/lib/drive/squadSyncSt
 import { DRIVE_FOLDER_ID } from '@/config/club'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
 import { friendlyShareError } from '@/lib/friendly'
+import InjuryReportSheet from '@/features/injury/InjuryReportSheet'
 import SeasonView from './SeasonView'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
 
@@ -61,6 +62,10 @@ export default function SquadScreen({ onOpenSettings }: Props) {
   const { squad, isHydrated, hydrate } = store
 
   const [editTarget, setEditTarget] = useState<Player | 'new' | null>(null)
+  // Tapping a player offers what can be done for them; reporting an injury
+  // is open to everyone, editing needs the coach PIN.
+  const [actionTarget, setActionTarget] = useState<Player | null>(null)
+  const [injuryTarget, setInjuryTarget] = useState<Player | null>(null)
   const [form, setForm] = useState<PlayerForm>(emptyForm())
   const [publishing, setPublishing] = useState(false)
   const [conflict, setConflict]     = useState(false)
@@ -255,9 +260,8 @@ export default function SquadScreen({ onOpenSettings }: Props) {
               {players.map(p => (
                 <button
                   key={p.id}
-                  onClick={canEdit ? () => openEdit(p) : undefined}
-                  disabled={!canEdit}
-                  className="w-full flex items-center gap-3 px-4 min-h-[3.5rem] py-2 text-left enabled:active:bg-m-surface-container-high transition-colors"
+                  onClick={() => setActionTarget(p)}
+                  className="w-full flex items-center gap-3 px-4 min-h-[3.5rem] py-2 text-left active:bg-m-surface-container-high transition-colors"
                 >
                   <GroupBadge group={p.defaultGroup} />
                   <div className="flex-1 min-w-0">
@@ -278,6 +282,37 @@ export default function SquadScreen({ onOpenSettings }: Props) {
 
       {players.length > 0 && canEdit && view === 'squad' && (
         <Fab icon={<Plus size={22} strokeWidth={2.5} />} label="Player" onClick={openNew} />
+      )}
+
+      {actionTarget && (
+        <Sheet onClose={() => setActionTarget(null)} title={actionTarget.name}>
+          <div className="space-y-2 mb-4">
+            <Button
+              size="lg"
+              full
+              variant="tonal"
+              icon={<ClipboardPlus size={20} strokeWidth={2.25} />}
+              onClick={() => { setInjuryTarget(actionTarget); setActionTarget(null) }}
+            >
+              Report injury
+            </Button>
+            {canEdit && (
+              <Button
+                size="lg"
+                full
+                variant="outlined"
+                icon={<Pencil size={18} strokeWidth={2.25} />}
+                onClick={() => { const p = actionTarget; setActionTarget(null); openEdit(p) }}
+              >
+                Edit player
+              </Button>
+            )}
+          </div>
+        </Sheet>
+      )}
+
+      {injuryTarget && (
+        <InjuryReportSheet player={injuryTarget} onClose={() => setInjuryTarget(null)} />
       )}
 
       {editTarget !== null && (
