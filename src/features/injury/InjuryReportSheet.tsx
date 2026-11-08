@@ -10,6 +10,7 @@ import { ButtonGroup } from '@/ui/ButtonGroup'
 import { TextArea, TextField } from '@/ui/TextField'
 import { CheckChip, CheckRow, SwitchRow } from '@/ui/Toggle'
 import { emptyInjuryForm, formMissing, formToReport, type InjuryForm, type LocationChoice } from './injuryForm'
+import { RedFlagButton } from './RedFlags'
 import { getReporterName, newSafeguardingId, setReporterName, useInjuryStore } from './useInjuryStore'
 
 const LOCATIONS: LocationChoice[] = ['Training', 'Match', 'Festival', 'Other']
@@ -67,6 +68,10 @@ export default function InjuryReportSheet({ player, onClose }: Props) {
   return (
     <Sheet onClose={onClose} title={`Injury: ${player.name}`} maxHeight="92vh">
       <div className="space-y-5 pb-2">
+        <div className="flex items-center gap-3 -mt-1">
+          <div className="flex-1 text-sm text-m-on-surface-variant leading-snug">Serious? Check the red flags.</div>
+          <RedFlagButton />
+        </div>
         <div className="flex gap-2">
           <div className="flex-1"><TextField label="Date" type="date" value={form.date} onChange={e => set('date', e.target.value)} /></div>
           <div className="w-32"><TextField label="Time" type="time" value={form.time} onChange={e => set('time', e.target.value)} /></div>
@@ -159,6 +164,7 @@ function SavedView({ report, onClose }: { report: InjuryReport; onClose: () => v
   return (
     <Sheet onClose={onClose} title="Report saved" maxHeight="92vh">
       <div className="space-y-4 pb-4">
+        <div className="flex justify-end -mt-1"><RedFlagButton /></div>
         {report.headInjuryOrConcussion && (
           <div role="alertdialog" aria-labelledby="concussion-alert" className="p-4 rounded-m-lg bg-m-error-container text-m-on-error-container">
             <div className="flex items-start gap-3">
