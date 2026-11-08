@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ChevronDown, Mail, MessageSquare } from 'lucide-react'
 import type { Player } from '@/lib/events/types'
-import { INJURY_TYPES } from '@/lib/safeguarding/types'
+import { INJURY_TYPES, type InjuryReport } from '@/lib/safeguarding/types'
+import { concussionSms, injuryMailto } from '@/lib/safeguarding/injuryEmail'
+import { protocolFromReport } from '@/lib/safeguarding/protocol'
 import { Sheet } from '@/ui/Sheet'
 import { Button } from '@/ui/Button'
 import { ButtonGroup } from '@/ui/ButtonGroup'
@@ -25,6 +27,8 @@ interface Props {
 // Anyone can file one — no PIN needed — and it is saved on this phone first.
 export default function InjuryReportSheet({ player, onClose }: Props) {
   const saveReport = useInjuryStore(s => s.saveReport)
+  const saveProtocol = useInjuryStore(s => s.saveProtocol)
+  const [saved, setSaved] = useState<InjuryReport | null>(null)
   const [form, setForm] = useState<InjuryForm>(() => emptyInjuryForm(player, getReporterName()))
   const [more, setMore] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -44,13 +48,21 @@ export default function InjuryReportSheet({ player, onClose }: Props) {
       const report = formToReport(form, newSafeguardingId('inj'), player.id, new Date().toISOString())
       setReporterName(form.reportedBy)
       await saveReport(report)
-      onClose()
+      // A suspected concussion starts the return-to-play steps straight away
+      if (report.headInjuryOrConcussion) {
+        await saveProtocol(protocolFromReport(report, newSafeguardingId('con')))
+      }
+      setSaved(report)
+      // Opens the coach's email app with everything filled in; they press send
+      window.location.href = injuryMailto(report)
     } catch {
       setError('Could not save the report on this phone. Try again.')
     } finally {
       setSaving(false)
     }
   }
+
+  if (saved) return <SavedView report={saved} onClose={onClose} />
 
   return (
     <Sheet onClose={onClose} title={`Injury: ${player.name}`} maxHeight="92vh">
@@ -134,9 +146,54 @@ export default function InjuryReportSheet({ player, onClose }: Props) {
 
         <div className="sticky bottom-0 -mx-4 px-4 pt-3 pb-4 bg-m-surface-container-low">
           <Button size="lg" full onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save report'}
+            {saving ? 'Saving…' : 'Save and email'}
           </Button>
         </div>
+      </div>
+    </Sheet>
+  )
+}
+
+/** After saving: the email to send, and — for a head injury — the concussion alert. */
+function SavedView({ report, onClose }: { report: InjuryReport; onClose: () => void }) {
+  return (
+    <Sheet onClose={onClose} title="Report saved" maxHeight="92vh">
+      <div className="space-y-4 pb-4">
+        {report.headInjuryOrConcussion && (
+          <div role="alertdialog" aria-labelledby="concussion-alert" className="p-4 rounded-m-lg bg-m-error-container text-m-on-error-container">
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={24} strokeWidth={2.25} className="flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div id="concussion-alert" className="text-lg font-bold leading-snug">
+                  Suspected concussion. Player cannot return to play today.
+                </div>
+                <div className="text-sm mt-1">Text Bekah Owen now? The return-to-play steps have been started.</div>
+              </div>
+            </div>
+            <a
+              href={concussionSms(report)}
+              className="m-press mt-3 h-14 w-full rounded-full bg-m-error text-m-on-error font-semibold text-base inline-flex items-center justify-center gap-2"
+            >
+              <MessageSquare size={20} strokeWidth={2.25} />
+              Text Bekah now
+            </a>
+          </div>
+        )}
+
+        <div className="flex items-start gap-3">
+          <CheckCircle2 size={24} className="text-x-good flex-shrink-0" strokeWidth={2.25} />
+          <div className="text-base">
+            Saved on this phone. Your email app should open with the report filled in — check it and press send.
+          </div>
+        </div>
+        <a
+          href={injuryMailto(report)}
+          className="m-press h-14 w-full rounded-full bg-m-primary text-m-on-primary font-semibold text-base inline-flex items-center justify-center gap-2"
+        >
+          <Mail size={20} strokeWidth={2.25} />
+          Open the email again
+        </a>
+        <Button size="lg" variant="text" full onClick={onClose}>Done</Button>
       </div>
     </Sheet>
   )

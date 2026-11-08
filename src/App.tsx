@@ -14,6 +14,7 @@ import { WoodfordMark } from '@/components/WoodfordMark'
 import InstallPrompt from '@/components/InstallPrompt'
 import { NavBar } from '@/ui/NavBar'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
+import { useInjuryStore } from '@/features/injury/useInjuryStore'
 
 
 // Two tabs: Matches (everything about a fixture, from picking to the result)
@@ -74,6 +75,7 @@ export default function App() {
 
   useEffect(() => {
     useSyncStore.getState().syncAll()   // background sync, tracked in store
+    void useInjuryStore.getState().hydrate()   // injury reports + concussion protocols on this phone
     window.history.replaceState({ s: 'matches' }, '')
     setScreen('matches')
     // If the phone closed the app during a running match, go straight back to it.
