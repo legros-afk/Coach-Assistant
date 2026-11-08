@@ -46,7 +46,6 @@ describe('liveMinMs', () => {
     currentStintStartedAtMs: 1_000_000,      // current stint started at 16:40 of game time
     activeGroup: 'forward',
     triesScored: 0,
-    hooks: 0,
   }
 
   it('adds elapsed time of the current stint for an on-pitch player', () => {
