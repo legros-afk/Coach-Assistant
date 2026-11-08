@@ -510,7 +510,7 @@ RFU guidance (relayed by Bekah Owen, Head of Medical) recommends recording all p
 The app currently has one shared coach PIN (`CLUB_PUBLISH_CODE`) that gates publishing. We extend the PIN system to support a second role:
 
 - **Coach PIN** (existing, 4-digit) — unlocks coach features (squad, fixtures, match, injury report form).
-- **Safeguarding PIN** (`DE451AL`) — unlocks a focused safeguarding workspace (injury log, concussion tracker, escalation). No coach features visible.
+- **Safeguarding PIN** (4-digit, Sarah's own — e.g. set via the Cloudflare `SAFEGUARDING_PIN` secret; replaces the earlier alphanumeric `DE451AL` design for consistency with the coach PIN) — unlocks a focused safeguarding workspace (injury log, concussion tracker, escalation). No coach features visible.
 
 The SetupScreen becomes role-detecting: the user enters their PIN, the app posts it to a new `/publish` validation endpoint that checks against both `CLUB_PUBLISH_CODE` and `SAFEGUARDING_PIN` server-side secrets, and returns which role to unlock. The role is stored in `localStorage` alongside the PIN. The app renders different tabs/features based on role.
 
