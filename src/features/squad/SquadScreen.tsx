@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { GROUP_COLOR } from '@/ui/positions'
 import {
-  AlertTriangle, ClipboardPlus, Pencil, Plus, Settings, Trash2, UserPlus, Users,
+  AlertTriangle, Brain, ClipboardPlus, Pencil, Plus, Settings, Trash2, UserPlus, Users,
 } from 'lucide-react'
 import { TopAppBar, BarButton } from '@/ui/TopAppBar'
 import { Button } from '@/ui/Button'
@@ -19,6 +19,9 @@ import { DRIVE_FOLDER_ID } from '@/config/club'
 import { useSyncStore } from '@/lib/drive/useSyncStore'
 import { friendlyShareError } from '@/lib/friendly'
 import InjuryReportSheet from '@/features/injury/InjuryReportSheet'
+import ConcussionStatusSheet from '@/features/injury/ConcussionStatusSheet'
+import { activeProtocolFor, useInjuryStore } from '@/features/injury/useInjuryStore'
+import type { ConcussionProtocol } from '@/lib/safeguarding/types'
 import SeasonView from './SeasonView'
 import { DEMO_SQUAD_ID, useSquadStore } from './useSquadStore'
 
@@ -66,6 +69,8 @@ export default function SquadScreen({ onOpenSettings }: Props) {
   // is open to everyone, editing needs the coach PIN.
   const [actionTarget, setActionTarget] = useState<Player | null>(null)
   const [injuryTarget, setInjuryTarget] = useState<Player | null>(null)
+  const [statusTarget, setStatusTarget] = useState<ConcussionProtocol | null>(null)
+  const protocols = useInjuryStore(s => s.protocols)
   const [form, setForm] = useState<PlayerForm>(emptyForm())
   const [publishing, setPublishing] = useState(false)
   const [conflict, setConflict]     = useState(false)
@@ -258,10 +263,10 @@ export default function SquadScreen({ onOpenSettings }: Props) {
             )}
             <Card className="overflow-hidden divide-y divide-m-outline-variant">
               {players.map(p => (
+                <div key={p.id} className="flex items-center">
                 <button
-                  key={p.id}
                   onClick={() => setActionTarget(p)}
-                  className="w-full flex items-center gap-3 px-4 min-h-[3.5rem] py-2 text-left active:bg-m-surface-container-high transition-colors"
+                  className="flex-1 min-w-0 flex items-center gap-3 px-4 min-h-[3.5rem] py-2 text-left active:bg-m-surface-container-high transition-colors"
                 >
                   <GroupBadge group={p.defaultGroup} />
                   <div className="flex-1 min-w-0">
@@ -274,6 +279,18 @@ export default function SquadScreen({ onOpenSettings }: Props) {
                   </div>
                   {p.notes && <div className="w-2 h-2 rounded-full flex-shrink-0 bg-m-primary" aria-label="Has notes" />}
                 </button>
+                {/* Safety: never pick a player still on the return-to-play steps */}
+                {activeProtocolFor(protocols, p.id) && (
+                  <button
+                    onClick={() => setStatusTarget(activeProtocolFor(protocols, p.id)!)}
+                    className="m-press mr-3 h-8 px-3 rounded-full bg-m-error text-m-on-error text-xs font-bold inline-flex items-center gap-1 flex-shrink-0"
+                    aria-label={`${p.name}: concussion, not cleared to play`}
+                  >
+                    <Brain size={14} strokeWidth={2.5} />
+                    Concussion
+                  </button>
+                )}
+                </div>
               ))}
             </Card>
           </>
@@ -287,6 +304,17 @@ export default function SquadScreen({ onOpenSettings }: Props) {
       {actionTarget && (
         <Sheet onClose={() => setActionTarget(null)} title={actionTarget.name}>
           <div className="space-y-2 mb-4">
+            {activeProtocolFor(protocols, actionTarget.id) && (
+              <Button
+                size="lg"
+                full
+                variant="danger"
+                icon={<Brain size={20} strokeWidth={2.25} />}
+                onClick={() => { setStatusTarget(activeProtocolFor(protocols, actionTarget.id)!); setActionTarget(null) }}
+              >
+                Concussion — not cleared
+              </Button>
+            )}
             <Button
               size="lg"
               full
@@ -309,6 +337,10 @@ export default function SquadScreen({ onOpenSettings }: Props) {
             )}
           </div>
         </Sheet>
+      )}
+
+      {statusTarget && (
+        <ConcussionStatusSheet protocol={statusTarget} onClose={() => setStatusTarget(null)} />
       )}
 
       {injuryTarget && (
